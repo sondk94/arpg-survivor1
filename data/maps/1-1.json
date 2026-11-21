@@ -1,0 +1,42 @@
+{
+  "id": "1-1",
+  "name": "Đồng hoang Mục rữa",
+  "level": 1,
+  "size": [3000, 3000],
+  "obstacles": {
+    "seed": 1101,
+    "clearRadius": 260,
+    "minGap": 30,
+    "types": [
+      { "kind": "grave", "count": 80, "r": [11, 16] },
+      { "kind": "tree", "count": 45, "r": [16, 26] },
+      { "kind": "swamp", "count": 12, "r": [55, 110] }
+    ]
+  },
+  "spawnInterval": 0.6,
+  "spawnRange": [500, 700],
+  "phases": [
+    { "from": 0, "to": 60, "maxAlive": 40, "perTick": 2, "distance": "edge", "weights": { "zombie": 1 } },
+    { "from": 60, "to": 120, "maxAlive": 40, "perTick": 2, "distance": "edge", "weights": { "zombie": 0.92, "bat": 0.08 } },
+    { "from": 120, "to": 180, "maxAlive": 120, "perTick": 3, "distance": "range", "weights": { "zombie": 0.9, "bat": 0.1 } },
+    { "from": 180, "to": 300, "maxAlive": 120, "perTick": 3, "distance": "range", "weights": { "zombie": 0.6, "bat": 0.08, "bone_thrower": 0.32 } },
+    { "from": 300, "to": 330, "maxAlive": 60, "perTick": 1, "distance": "range", "weights": { "zombie": 0.7, "bone_thrower": 0.3 } },
+    { "from": 330, "to": 510, "maxAlive": 300, "perTick": 6, "distance": "range", "weights": { "zombie": 0.55, "bat": 0.08, "bone_thrower": 0.37 } },
+    { "from": 510, "to": 540, "maxAlive": 0, "perTick": 0, "distance": "range", "weights": {} },
+    { "from": 540, "to": 99999, "maxAlive": 40, "perTick": 0, "distance": "range", "weights": {} }
+  ],
+  "events": [
+    { "t": 0, "type": "spawnGroup", "monster": "zombie", "count": 8, "distance": "edge" },
+    { "t": 60, "type": "banner", "text": "Dơi hang xuất hiện" },
+    { "t": 120, "type": "elite" },
+    { "t": 180, "type": "banner", "text": "Kẻ ném xương xuất hiện" },
+    { "t": 210, "type": "elite" },
+    { "t": 300, "type": "miniboss", "monster": "gravedigger" },
+    { "t": 360, "type": "elite" },
+    { "t": 420, "type": "elite" },
+    { "t": 480, "type": "elite" },
+    { "t": 510, "type": "retreat", "text": "Mặt đất rung chuyển... Chúa Đầm Lầy sắp xuất hiện!" },
+    { "t": 540, "type": "boss", "monster": "swamp_lord" },
+    { "t": 600, "type": "enrage", "text": "Chúa Đầm Lầy nổi điên! Sát thương ×2" }
+  ]
+}
