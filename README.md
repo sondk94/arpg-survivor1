@@ -14,6 +14,14 @@ Mở `http://localhost:8080/`. Thêm `?debug` (`http://localhost:8080/?debug`) �
 
 Không mở thẳng `index.html` bằng `file://`, vì trình duyệt chặn đọc file JSON. Máy chủ tĩnh nào cũng dùng được, ví dụ `python3 -m http.server`.
 
+## Chạy online (GitHub Pages)
+
+Workflow `.github/workflows/pages.yml` tự chạy `tools/test.mjs` rồi đưa game lên GitHub Pages mỗi khi có code mới trên `main`. Lần đầu cần bật Pages: **Settings → Pages → Source: GitHub Actions**. Sau đó game chạy ở `https://<tên-tài-khoản>.github.io/<tên-repo>/`.
+
+Có thể chạy tay ở thẻ **Actions → Deploy GitHub Pages → Run workflow**.
+
+Repo riêng tư chỉ dùng được GitHub Pages khi tài khoản có gói trả phí. Nhân vật lưu theo từng trình duyệt và từng tên miền, nên muốn chuyển nhân vật từ `localhost` lên bản online thì dùng Xuất mã / Nhập mã.
+
 ## Điều khiển
 
 | Phím | Tác dụng |
