@@ -2,6 +2,7 @@
 import { RNG } from './rng.js';
 import { Grid } from './grid.js';
 import * as P from './progression.js';
+import { generateItem, addToInventory, firstFree } from './items.js';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -72,6 +73,7 @@ export class Game {
 
     this.enemies = [];
     this.projectiles = [];
+    this.orbs = [];
     this.shots = [];
     this.zones = [];
     this.pending = [];
@@ -80,7 +82,7 @@ export class Game {
     this.texts = [];
     this.grid = new Grid(this.W, this.H, 64);
     this.skillState = {};
-    for (const s of data.skillList) this.skillState[s.id] = { cd: 0, tick: 0, active: false, noMana: false };
+    for (const s of data.skillList) this.skillState[s.id] = { cd: s.interval || 0, tick: 0, active: false, noMana: false };
 
     this.events = [...this.map.events].sort((a, b) => a.t - b.t);
     this.eventIdx = 0;
@@ -106,6 +108,8 @@ export class Game {
     this.dpsIdx = 0;
     this.dpsT = 0;
     this.totalDamage = 0;
+    this.effDamage = 0; // sát thương thực (không tính phần thừa khi quái đã hết máu)
+    this.dmgByElement = {};
 
     this.log = {
       seed: this.seed,
@@ -120,7 +124,12 @@ export class Game {
       potions: { hp: 0, mana: 0 },
       minHpPct: 1,
       outOfManaSec: 0,
+      freezes: 0,
+      itemsDropped: 0,
+      itemsPicked: [],
+      gold: 0,
     };
+    this.invFullT = 0;
   }
 
   // ---------- Tiện ích ----------
@@ -157,6 +166,7 @@ export class Game {
     this.updatePlayer(dt);
     this.grid.rebuild(this.enemies);
     this.updateSkills(dt);
+    this.updateOrbs(dt);
     this.updateProjectiles(dt);
     this.updatePending(dt);
     this.updateZones(dt);
@@ -413,6 +423,7 @@ export class Game {
       dmg *= 1 - red;
     } else {
       dmg *= 1 - Math.min(this.cfg.caps.playerResist, this.stats.resist[type] || 0);
+      if (dmg < 0) dmg = 0;
     }
     p.hp -= dmg;
     this.log.damageTaken[source] = (this.log.damageTaken[source] || 0) + dmg;
@@ -525,6 +536,10 @@ export class Game {
   }
 
   // ---------- Kỹ năng ----------
+  lvl(id) {
+    return P.skillLevel(this.ch, id, this.data, this.stats);
+  }
+
   skillMult(skill) {
     return P.damageMult(this.ch, skill, this.stats, this.data);
   }
@@ -539,7 +554,7 @@ export class Game {
     let anyNoMana = false;
     for (const id of ch.slots) {
       if (!id) continue;
-      const lvl = ch.skills[id] || 0;
+      const lvl = this.lvl(id);
       if (lvl <= 0) continue;
       const sk = this.data.skills[id];
       const st = this.skillState[id];
@@ -552,10 +567,7 @@ export class Game {
       if (st.cd > 0) continue;
       if (this.player.mana < sk.mana) { st.noMana = true; anyNoMana = true; continue; }
       st.noMana = false;
-      let cast = false;
-      if (sk.kind === 'projectile') cast = this.castFireball(sk, lvl);
-      else if (sk.kind === 'meteor') cast = this.castMeteor(sk, lvl);
-      else if (sk.kind === 'wall') cast = this.castWall(sk, lvl);
+      const cast = this.castSkill(sk, lvl);
       if (cast) {
         this.player.mana -= sk.mana;
         st.cd = sk.cooldown / this.stats.cdSpeed;
@@ -563,6 +575,38 @@ export class Game {
       }
     }
     if (anyNoMana) this.log.outOfManaSec += dt;
+    // Bị động có đòn đánh riêng (Bão Sấm).
+    const ts = this.data.skills.thunder_storm;
+    const tl = this.lvl('thunder_storm');
+    if (ts && tl > 0) {
+      const st = this.skillState.thunder_storm;
+      st.cd -= dt;
+      if (st.cd <= 0) {
+        st.cd += ts.interval;
+        const t = this.randomEnemy(ts.range);
+        if (t) {
+          const mult = this.skillMult(ts);
+          this.areaDamage(t.x, t.y, ts.radius, () => this.rollSkill(ts, tl, mult), ts.element);
+          this.addFx({ kind: 'strike', x: t.x, y: t.y, dur: 0.3, color: ts.color });
+        }
+      }
+    }
+  }
+
+  castSkill(sk, lvl) {
+    switch (sk.kind) {
+      case 'projectile': return this.castProjectile(sk, lvl);
+      case 'meteor': return this.castMeteor(sk, lvl);
+      case 'wall': return this.castWall(sk, lvl);
+      case 'nova': return this.castNova(sk, lvl);
+      case 'storm': return this.castStorm(sk, lvl);
+      case 'orb': return this.castOrb(sk, lvl);
+      case 'sparks': return this.castSparks(sk, lvl);
+      case 'beam': return this.castBeam(sk, lvl);
+      case 'chain': return this.castChain(sk, lvl);
+      case 'static': return this.castStatic(sk, lvl);
+    }
+    return false;
   }
 
   updateAura(sk, st, lvl, dt) {
@@ -577,23 +621,29 @@ export class Game {
     const p = this.player;
     const r = P.lv(sk.radius, lvl);
     const mult = this.skillMult(sk);
-    this.grid.query(p.x, p.y, r + 45, (e) => {
-      const dx = e.x - p.x, dy = e.y - p.y;
-      const rr = r + e.r;
-      if (dx * dx + dy * dy < rr * rr) this.damageEnemy(e, this.rollSkill(sk, lvl, mult), sk.element);
-    });
+    this.areaDamage(p.x, p.y, r, () => this.rollSkill(sk, lvl, mult), sk.element);
   }
 
-  nearestEnemy(range) {
-    const p = this.player;
+  nearestEnemy(range, from = this.player) {
     let best = null, bd = range * range;
     for (const e of this.enemies) {
       if (e.dead || e.flee) continue;
-      const dx = e.x - p.x, dy = e.y - p.y;
+      const dx = e.x - from.x, dy = e.y - from.y;
       const d = dx * dx + dy * dy;
       if (d < bd) { bd = d; best = e; }
     }
     return best;
+  }
+
+  randomEnemy(range) {
+    const p = this.player;
+    const list = [];
+    for (const e of this.enemies) {
+      if (e.dead || e.flee) continue;
+      const dx = e.x - p.x, dy = e.y - p.y;
+      if (dx * dx + dy * dy < range * range) list.push(e);
+    }
+    return list.length ? list[(this.rng.next() * list.length) | 0] : null;
   }
 
   // Tìm cụm quái đông nhất trong tầm: lấy mẫu tối đa 24 quái, đếm hàng xóm, trả về trọng tâm cụm.
@@ -623,19 +673,26 @@ export class Game {
     return best;
   }
 
-  castFireball(sk, lvl) {
+  addProjectile(o) {
+    this.projectiles.push({ hitIds: [], dead: false, pierce: 0, turn: 0, ...o });
+  }
+
+  castProjectile(sk, lvl) {
     const t = this.nearestEnemy(sk.range);
     if (!t) return false;
     const p = this.player;
-    const n = 1 + sk.extraProjectileAt.filter((l) => lvl >= l).length;
+    const n = 1 + (sk.extraProjectileAt || []).filter((l) => lvl >= l).length;
     const base = Math.atan2(t.y - p.y, t.x - p.x);
-    const spread = (sk.spreadDeg * Math.PI) / 180;
+    const spread = ((sk.spreadDeg || 10) * Math.PI) / 180;
+    const pierce = (sk.pierce || 0) + (sk.pierceFromLevel && lvl >= sk.pierceFromLevel ? sk.pierceBonus : 0);
+    const mult = this.skillMult(sk);
+    const dmg = P.damageRange(sk, lvl);
     for (let k = 0; k < n; k++) {
       const a = base + (k - (n - 1) / 2) * spread;
-      this.projectiles.push({
+      this.addProjectile({
         x: p.x, y: p.y, vx: Math.cos(a) * sk.projectileSpeed, vy: Math.sin(a) * sk.projectileSpeed,
-        r: sk.projectileRadius, life: sk.range / sk.projectileSpeed, pierce: sk.pierce,
-        hitIds: [], skill: sk, lvl, dead: false,
+        r: sk.projectileRadius, life: sk.range / sk.projectileSpeed, pierce, dmg, mult,
+        element: sk.element, slow: sk.slow, color: sk.color, look: sk.id,
       });
     }
     return true;
@@ -666,6 +723,135 @@ export class Game {
     return true;
   }
 
+  castNova(sk, lvl) {
+    const p = this.player;
+    if (!this.nearestEnemy(sk.radius + 20)) return false;
+    const mult = this.skillMult(sk);
+    this.areaDamage(p.x, p.y, sk.radius, () => this.rollSkill(sk, lvl, mult), sk.element, { slow: sk.slow });
+    this.addFx({ kind: 'nova', x: p.x, y: p.y, dur: 0.35, r: sk.radius, color: sk.color });
+    return true;
+  }
+
+  castStorm(sk, lvl) {
+    const t = this.densestPoint(sk.searchRange, sk.radius);
+    if (!t) return false;
+    this.zones.push({
+      kind: 'area', look: 'blizzard', x: t.x, y: t.y, r: sk.radius, t: 0, dur: sk.duration, tick: sk.tick, tickT: 0.05,
+      dps: P.lv(sk.dps, lvl), skill: sk, element: sk.element, slow: sk.slow,
+    });
+    return true;
+  }
+
+  castOrb(sk, lvl) {
+    const t = this.densestPoint(sk.range, 120) || this.nearestEnemy(sk.range);
+    if (!t) return false;
+    const p = this.player;
+    const a = Math.atan2(t.y - p.y, t.x - p.x);
+    this.orbs.push({
+      x: p.x, y: p.y, vx: Math.cos(a) * sk.orbSpeed, vy: Math.sin(a) * sk.orbSpeed, life: sk.orbLife,
+      emitT: 0, ang: a, skill: sk, lvl, mult: this.skillMult(sk), dmg: P.damageRange(sk, lvl),
+    });
+    return true;
+  }
+
+  updateOrbs(dt) {
+    if (!this.orbs.length) return;
+    for (const o of this.orbs) {
+      o.x += o.vx * dt; o.y += o.vy * dt; o.life -= dt;
+      o.emitT -= dt;
+      const sk = o.skill;
+      while (o.emitT <= 0) {
+        o.emitT += sk.shardInterval;
+        o.ang += sk.shardAngleStep;
+        this.addProjectile({
+          x: o.x, y: o.y, vx: Math.cos(o.ang) * sk.shardSpeed, vy: Math.sin(o.ang) * sk.shardSpeed,
+          r: sk.shardRadius, life: sk.shardRange / sk.shardSpeed, dmg: o.dmg, mult: o.mult,
+          element: sk.element, slow: sk.slow, color: sk.color, look: 'shard',
+        });
+      }
+    }
+    this.orbs = this.orbs.filter((o) => o.life > 0);
+  }
+
+  castSparks(sk, lvl) {
+    const t = this.nearestEnemy(sk.range);
+    if (!t) return false;
+    const p = this.player;
+    const base = Math.atan2(t.y - p.y, t.x - p.x);
+    const mult = this.skillMult(sk);
+    const dmg = P.damageRange(sk, lvl);
+    for (let k = 0; k < sk.count; k++) {
+      const a = base + this.rng.range(-sk.spread, sk.spread);
+      this.addProjectile({
+        x: p.x, y: p.y, vx: Math.cos(a) * sk.speed, vy: Math.sin(a) * sk.speed, r: sk.radius, life: sk.life,
+        dmg, mult, element: sk.element, color: sk.color, look: 'spark', jitter: sk.jitter,
+      });
+    }
+    return true;
+  }
+
+  castBeam(sk, lvl) {
+    const t = this.nearestEnemy(sk.length);
+    if (!t) return false;
+    const p = this.player;
+    let dx = t.x - p.x, dy = t.y - p.y;
+    const d = Math.hypot(dx, dy) || 1;
+    dx /= d; dy /= d;
+    const x2 = p.x + dx * sk.length, y2 = p.y + dy * sk.length;
+    const mult = this.skillMult(sk);
+    const half = sk.width / 2;
+    const hits = [];
+    this.grid.query(p.x + dx * sk.length / 2, p.y + dy * sk.length / 2, sk.length / 2 + 50, (e) => {
+      if (e.flee) return;
+      if (segDist(e.x, e.y, p.x, p.y, x2, y2) < half + e.r) hits.push(e);
+    });
+    for (const e of hits) this.damageEnemy(e, this.rollSkill(sk, lvl, mult), sk.element);
+    this.addFx({ kind: 'bolt', pts: [[p.x, p.y], [x2, y2]], dur: 0.2, color: sk.color, w: 3 });
+    return true;
+  }
+
+  castChain(sk, lvl) {
+    const first = this.nearestEnemy(sk.range);
+    if (!first) return false;
+    const p = this.player;
+    const mult = this.skillMult(sk);
+    const jumps = sk.jumps + Math.floor(lvl / sk.jumpEveryLevels);
+    const hit = new Set();
+    const pts = [[p.x, p.y]];
+    let cur = first;
+    for (let i = 0; i <= jumps && cur; i++) {
+      hit.add(cur.id);
+      pts.push([cur.x, cur.y]);
+      this.damageEnemy(cur, this.rollSkill(sk, lvl, mult), sk.element);
+      let next = null, bd = sk.jumpRange * sk.jumpRange;
+      const from = cur;
+      this.grid.query(from.x, from.y, sk.jumpRange, (e) => {
+        if (hit.has(e.id) || e.flee) return;
+        const dx = e.x - from.x, dy = e.y - from.y;
+        const dd = dx * dx + dy * dy;
+        if (dd < bd) { bd = dd; next = e; }
+      });
+      cur = next;
+    }
+    this.addFx({ kind: 'bolt', pts, dur: 0.25, color: sk.color, w: 2.5 });
+    return true;
+  }
+
+  castStatic(sk, lvl) {
+    const p = this.player;
+    const r = P.lv(sk.radius, lvl);
+    if (!this.nearestEnemy(r)) return false;
+    this.grid.query(p.x, p.y, r + 45, (e) => {
+      const dx = e.x - p.x, dy = e.y - p.y;
+      const rr = r + e.r;
+      if (dx * dx + dy * dy >= rr * rr || e.hp <= 0) return;
+      const pct = e.ai === 'boss' ? sk.bossPct : sk.pct;
+      this.damageEnemy(e, e.hp * pct, sk.element, { noCrit: true });
+    });
+    this.addFx({ kind: 'nova', x: p.x, y: p.y, dur: 0.3, r, color: sk.color });
+    return true;
+  }
+
   // ---------- Sát thương lên quái ----------
   damageEnemy(e, amount, element, opts = {}) {
     if (e.dead) return 0;
@@ -678,15 +864,46 @@ export class Game {
       const af = this.data.monsters.elite.affixes.stone_skin;
       if (e.hp > e.maxHp * af.untilHpPct) dmg *= af.damageTakenMult;
     }
+    if (e.frozenT > 0) {
+      const sl = this.lvl('shatter');
+      if (sl > 0) dmg *= 1 + P.lv(this.data.skills.shatter.frozenDmgBonus, sl);
+    }
+    const before = e.hp;
     e.hp -= dmg;
     e.hit = 0.08;
     this.dpsBuckets[this.dpsIdx] += dmg;
     this.totalDamage += dmg;
+    this.effDamage += Math.max(0, Math.min(dmg, before));
+    this.dmgByElement[element] = (this.dmgByElement[element] || 0) + Math.max(0, Math.min(dmg, before));
+    if (opts.slow) this.applySlow(e, opts.slow.pct, opts.slow.duration);
+    if (element === 'cold') this.chill(e);
     if (this.showDamage && !this.headless && (crit || dmg >= 6 || e.big || e.elite)) {
-      this.addText(e.x, e.y - e.r - 4, Math.round(dmg).toString(), crit ? '#ffe14d' : '#ffffff', crit ? 17 : 13);
+      this.addText(e.x, e.y - e.r - 4, Math.round(dmg).toString(), crit ? '#ffe14d' : element === 'cold' ? '#bfeaff' : '#ffffff', crit ? 17 : 13);
     }
     if (e.hp <= 0) this.killEnemy(e, element);
     return dmg;
+  }
+
+  applySlow(e, pct, dur) {
+    if (e.ai === 'boss') pct *= this.cfg.freeze.bossSlowMult;
+    if (e.slowT <= 0 || pct >= e.slowPct) e.slowPct = pct;
+    e.slowT = Math.max(e.slowT, dur);
+  }
+
+  // Cơ chế đóng băng: đủ N đòn băng liên tiếp (cách nhau không quá window giây) thì đóng băng.
+  chill(e) {
+    const fr = this.cfg.freeze;
+    if (e.dead || e.frozenT > 0 || e.freezeCd > 0) return;
+    if (e.ai === 'boss' && fr.bossImmune) return;
+    if (this.time - (e.lastCold ?? -99) > fr.window) e.coldHits = 0;
+    e.lastCold = this.time;
+    e.coldHits = (e.coldHits || 0) + 1;
+    const need = Math.max(1, fr.hits - this.stats.freezeHitsReduce);
+    if (e.coldHits >= need) {
+      e.coldHits = 0;
+      e.frozenT = fr.duration * (e.elite || e.big ? fr.eliteMult : 1);
+      this.log.freezes++;
+    }
   }
 
   killEnemy(e, element) {
@@ -694,9 +911,11 @@ export class Game {
     e.dead = true;
     if (!e.big) this.aliveNormal--;
     this.kills++;
+    if (this.stats.hpOnKill) this.player.hp = Math.min(this.stats.maxHp, this.player.hp + this.stats.hpOnKill);
     const drops = this.cfg.drops;
     if (e === this.boss) {
       this.addXp(e.xp);
+      this.dropLoot(e, 'boss');
       this.addFx({ kind: 'burst', x: e.x, y: e.y, dur: 1.2, r: 160, color: '#7dff9a' });
       this.win();
       return;
@@ -705,21 +924,70 @@ export class Game {
       this.dropXp(e.x, e.y, e.xp);
       if (e.elite || this.rng.next() < drops.hpPotion.chance) this.dropPickup('hp', e.x + 8, e.y);
       if (this.rng.next() < drops.manaPotion.chance) this.dropPickup('mana', e.x - 8, e.y);
+      this.dropLoot(e, e.elite ? 'elite' : e.ai === 'miniboss' ? 'miniboss' : 'normal');
     }
     if (e.affixes.includes('fire_enchanted')) {
       const ex = this.data.monsters.elite.affixes.fire_enchanted.deathExplosion;
       this.pending.push({ kind: 'eliteBlast', t: ex.delay, dur: ex.delay, x: e.x, y: e.y, r: ex.radius, dmg: ex.damage * e.dmgMult, name: e.name });
     }
     const ib = this.data.skills.inferno_burst;
-    const ibl = this.ch.skills.inferno_burst || 0;
+    const ibl = this.lvl('inferno_burst');
     if (element === 'fire' && ibl > 0 && this.rng.next() < P.lv(ib.chance, ibl)) {
       this.pending.push({ kind: 'inferno', t: 0.05, dur: 0.05, x: e.x, y: e.y, r: ib.radius, dmg: e.maxHp * ib.hpPct, src: e.id });
+    }
+    const sh = this.data.skills.shatter;
+    if (e.frozenT > 0 && this.lvl('shatter') > 0) {
+      const dmg = e.maxHp * sh.shardHpPct;
+      const a0 = this.rng.next() * TAU;
+      for (let i = 0; i < sh.shardCount; i++) {
+        const a = a0 + (i / sh.shardCount) * TAU;
+        this.addProjectile({
+          x: e.x, y: e.y, vx: Math.cos(a) * sh.shardSpeed, vy: Math.sin(a) * sh.shardSpeed, r: sh.shardRadius,
+          life: sh.shardRange / sh.shardSpeed, dmg: [dmg, dmg], mult: 1, element: 'cold', noCrit: true,
+          color: '#ffffff', look: 'shard', hitIds: [e.id],
+        });
+      }
     }
     if (e === this.miniboss) {
       this.showBanner(`Đã hạ ${e.name}!`, 2.5);
       this.miniboss = null;
     }
     if (!this.headless) this.addFx({ kind: 'death', x: e.x, y: e.y, dur: 0.3, r: e.r, color: e.color });
+  }
+
+  // Cấp đồ rơi: cấp bản đồ + số phút đã chơi + thưởng theo loại quái.
+  itemLevel(bonus = 0) {
+    return this.map.level + Math.floor(this.time / 60) * this.data.items.drops.ilvlPerMinute + bonus;
+  }
+
+  dropLoot(e, kind) {
+    const D = this.data.items.drops;
+    const cfg = D[kind];
+    if (!cfg) return;
+    if (kind === 'normal') {
+      if (this.rng.next() < cfg.itemChance) this.dropItem(e.x, e.y, generateItem(this.rng, this.data, this.itemLevel()));
+      if (this.rng.next() < cfg.goldChance) this.dropGold(e.x, e.y, this.itemLevel());
+      return;
+    }
+    const ilvl = this.itemLevel(cfg.ilvlBonus);
+    for (let i = 0; i < cfg.items; i++) {
+      const minRarity = i === 0 && cfg.firstMinRarity ? cfg.firstMinRarity : cfg.minRarity;
+      const it = generateItem(this.rng, this.data, ilvl, { minRarity, rareMult: cfg.rareMult, uniqueMult: cfg.uniqueMult });
+      const a = (i / cfg.items) * TAU;
+      this.dropItem(e.x + Math.cos(a) * 18, e.y + Math.sin(a) * 18, it);
+    }
+    if (cfg.gold) this.dropGold(e.x, e.y + 10, ilvl, 3);
+  }
+
+  dropItem(x, y, item) {
+    this.pickups.push({ kind: 'item', x, y, item, value: 0, mag: false, dead: false });
+    this.log.itemsDropped++;
+  }
+
+  dropGold(x, y, ilvl, mult = 1) {
+    const g = this.data.items.drops.gold;
+    const v = Math.round(this.rng.range(g.min, g.max) * (1 + g.perIlvl * ilvl) * mult);
+    this.pickups.push({ kind: 'gold', x, y, value: v, mag: false, dead: false });
   }
 
   dropXp(x, y, value) {
@@ -741,6 +1009,14 @@ export class Game {
   updateProjectiles(dt) {
     for (const pr of this.projectiles) {
       if (pr.dead) continue;
+      if (pr.jitter) {
+        // Tia điện chạy lung tung: đổi hướng ngẫu nhiên liên tục.
+        const a = (this.rng.next() - 0.5) * pr.jitter * dt * 2;
+        const c = Math.cos(a), s = Math.sin(a);
+        const vx = pr.vx * c - pr.vy * s;
+        pr.vy = pr.vx * s + pr.vy * c;
+        pr.vx = vx;
+      }
       pr.x += pr.vx * dt;
       pr.y += pr.vy * dt;
       pr.life -= dt;
@@ -751,7 +1027,7 @@ export class Game {
         const rr = e.r + pr.r;
         if (dx * dx + dy * dy >= rr * rr || pr.hitIds.includes(e.id)) return;
         pr.hitIds.push(e.id);
-        this.damageEnemy(e, this.rollSkill(pr.skill, pr.lvl, this.skillMult(pr.skill)), pr.skill.element);
+        this.damageEnemy(e, this.rng.range(pr.dmg[0], pr.dmg[1]) * pr.mult, pr.element, { slow: pr.slow, noCrit: pr.noCrit });
         if (pr.pierce-- <= 0) { pr.dead = true; return true; }
       });
     }
@@ -778,7 +1054,7 @@ export class Game {
         const sk = pd.skill;
         const mult = this.skillMult(sk);
         this.areaDamage(pd.x, pd.y, pd.r, () => this.rollSkill(sk, pd.lvl, mult), sk.element);
-        this.zones.push({ kind: 'burn', x: pd.x, y: pd.y, r: pd.r, t: 0, dur: sk.burnDuration, tickT: sk.burnTick, tick: sk.burnTick, dps: P.lv(sk.burnDps, pd.lvl), skill: sk, lvl: pd.lvl });
+        this.zones.push({ kind: 'area', look: 'burn', x: pd.x, y: pd.y, r: pd.r, t: 0, dur: sk.burnDuration, tickT: sk.burnTick, tick: sk.burnTick, dps: P.lv(sk.burnDps, pd.lvl), skill: sk, element: sk.element });
         this.addFx({ kind: 'burst', x: pd.x, y: pd.y, dur: 0.4, r: pd.r, color: '#ff7a2a' });
         this.emit({ type: 'shake', amount: 4 });
         break;
@@ -798,11 +1074,13 @@ export class Game {
   }
 
   areaDamage(x, y, r, dmgFn, element, opts) {
+    const list = [];
     this.grid.query(x, y, r + 45, (e) => {
       const dx = e.x - x, dy = e.y - y;
       const rr = r + e.r;
-      if (dx * dx + dy * dy < rr * rr) this.damageEnemy(e, dmgFn(), element, opts);
+      if (dx * dx + dy * dy < rr * rr) list.push(e);
     });
+    for (const e of list) this.damageEnemy(e, dmgFn(), element, opts);
   }
 
   updateZones(dt) {
@@ -818,8 +1096,7 @@ export class Game {
         this.grid.query(z.cx, z.cy, z.skill.length / 2 + 50, (e) => {
           if (e.x < minx || e.x > maxx || e.y < miny || e.y > maxy) return;
           if (segDist(e.x, e.y, z.x1, z.y1, z.x2, z.y2) < z.half + e.r) {
-            e.slowT = 0.2;
-            e.slowPct = Math.max(e.slowPct, z.slow);
+            this.applySlow(e, z.slow, 0.2);
             touching.push(e);
           }
         });
@@ -829,12 +1106,12 @@ export class Game {
           const mult = this.skillMult(z.skill);
           for (const e of touching) this.damageEnemy(e, z.dps * z.tick * mult, 'fire');
         }
-      } else if (z.kind === 'burn') {
+      } else if (z.kind === 'area') {
         z.tickT -= dt;
         if (z.tickT <= 0) {
           z.tickT += z.tick;
           const mult = this.skillMult(z.skill);
-          this.areaDamage(z.x, z.y, z.r, () => z.dps * z.tick * mult, 'fire');
+          this.areaDamage(z.x, z.y, z.r, () => z.dps * z.tick * mult, z.element, { slow: z.slow });
         }
       } else if (z.kind === 'poison') {
         z.tickT -= dt;
@@ -858,6 +1135,14 @@ export class Game {
       if (e.dead) continue;
       e.t += dt;
       e.hit = Math.max(0, e.hit - dt);
+      if (e.freezeCd > 0) e.freezeCd -= dt;
+      if (e.frozenT > 0) {
+        // Đóng băng: đứng yên, không tấn công.
+        e.frozenT -= dt;
+        if (e.frozenT <= 0) { e.frozenT = 0; e.freezeCd = this.cfg.freeze.cooldown; }
+        e.kx *= 0.9; e.ky *= 0.9;
+        continue;
+      }
       if (e.slowT > 0) { e.slowT -= dt; if (e.slowT <= 0) e.slowPct = 0; }
       const spd = e.speed * (1 - e.slowPct);
       let dx = p.x - e.x, dy = p.y - e.y;
@@ -1063,13 +1348,30 @@ export class Game {
       if (k.dead) continue;
       const dx = p.x - k.x, dy = p.y - k.y;
       const d = Math.hypot(dx, dy);
-      if (!k.mag && d < pr) { k.mag = true; k.sp = 120; }
+      if (!k.mag && d < pr) {
+        if (k.kind === 'item' && firstFree(this.ch.inventory) < 0) {
+          if (this.time > this.invFullT) { this.invFullT = this.time + 3; this.addText(p.x, p.y - 44, 'Kho đồ đầy!', '#ff9a8a', 14); }
+          continue;
+        }
+        k.mag = true; k.sp = 120;
+      }
       if (!k.mag) continue;
       k.sp = Math.min(drops.magnetSpeed * 2, k.sp + drops.magnetSpeed * 3 * dt);
       const step = k.sp * dt;
       if (d <= step + p.r) {
         k.dead = true;
         if (k.kind === 'xp') this.addXp(k.value);
+        else if (k.kind === 'gold') {
+          this.ch.gold += k.value;
+          this.log.gold += k.value;
+          this.addText(p.x, p.y - 30, `+${k.value} vàng`, '#ffd76a', 13);
+        } else if (k.kind === 'item') {
+          if (!addToInventory(this.ch, k.item)) { k.dead = false; k.mag = false; continue; }
+          const col = this.data.items.rarities[k.item.rarity].color;
+          this.log.itemsPicked.push({ rarity: k.item.rarity, name: k.item.name, ilvl: k.item.ilvl, t: Math.round(this.time) });
+          this.addText(p.x, p.y - 48, k.item.name, col, 15);
+          this.emit({ type: 'item', item: k.item });
+        }
         else if (k.kind === 'hp') {
           p.hp = Math.min(this.stats.maxHp, p.hp + this.stats.maxHp * drops.hpPotion.healPct);
           this.log.potions.hp++;
@@ -1103,6 +1405,7 @@ export class Game {
     const t = Math.max(0, seconds);
     for (const e of this.enemies) if (e !== this.boss) e.dead = true;
     this.shots = [];
+    this.orbs = [];
     this.zones = this.zones.filter((z) => z.kind !== 'poison');
     this.pending = this.pending.filter((p) => p.kind !== 'pool' && p.kind !== 'eliteBlast');
     this.miniboss = null;

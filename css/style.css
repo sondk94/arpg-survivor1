@@ -32,14 +32,15 @@ input, textarea { font: inherit; color: var(--text); background: #0f0e0c; border
 @media (pointer: coarse), (max-width: 560px) { #btn-plus { left: auto; right: 22px; bottom: 118px; width: 56px; height: 56px; line-height: 52px; } }
 
 .overlay { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; padding: 16px; overflow: auto; }
-#panel { background: rgba(0,0,0,.35); }
+#panel { background: rgba(0,0,0,.35); z-index: 12; }
 
 /* Bảng cộng điểm */
 .panel-box { background: var(--panel); border: 2px solid var(--line); border-radius: 10px; width: min(1040px, 100%); max-height: 100%; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
 .panel-box header { display: flex; align-items: center; gap: 16px; padding: 12px 18px; border-bottom: 1px solid var(--line); }
 .panel-box header h2 { margin: 0; font-size: 18px; color: var(--gold); }
 #panel-msg { color: #ff8a7a; opacity: 0; }
-#panel-msg.show { animation: msg 1.6s; }
+#panel-msg.show { opacity: 1; }
+#panel-msg { transition: opacity .3s; }
 @keyframes msg { 0%,70% { opacity: 1; } 100% { opacity: 0; } }
 .panel-cols { display: grid; grid-template-columns: 340px 1fr; gap: 0; overflow: auto; min-height: 0; }
 .panel-cols section { padding: 14px 18px; }
@@ -149,3 +150,73 @@ input, textarea { font: inherit; color: var(--text); background: #0f0e0c; border
 .dbg-row button { padding: 3px 8px; font-size: 12px; }
 .dbg-row input[type=number] { width: 56px; padding: 2px 4px; }
 body:has(#panel:not(.hidden)) #debug { display: none; }
+
+/* ---- Giai đoạn 1: thẻ, nhánh kỹ năng, đồ đạc ---- */
+.panel-box header { flex-wrap: wrap; }
+#panel-tabs { display: flex; gap: 6px; align-items: center; flex: 1; }
+#panel-tabs .gold { margin-left: auto; color: #ffd76a; font-weight: 700; }
+#panel-body { overflow: auto; min-height: 0; flex: 1; }
+.tab { padding: 5px 12px; border-radius: 6px 6px 0 0; background: transparent; border-color: transparent; color: var(--muted); }
+.tab.on { background: var(--panel2); border-color: var(--line); color: var(--text); font-weight: 700; }
+.tab .badge { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--red); color: #fff; font-size: 11px; line-height: 18px; }
+.tree-tabs { display: flex; gap: 6px; margin-bottom: 10px; border-bottom: 1px solid var(--line); }
+.tab.tree.on { color: var(--tc); border-bottom-color: var(--panel2); }
+.tab.tree small { color: var(--muted); font-weight: 400; }
+.gear { margin-left: 3px; font-size: 11px; color: #7fb6ff; }
+.attr-val .gear { font-size: 11px; }
+
+.items-wrap { display: grid; grid-template-columns: auto auto 1fr; gap: 16px; padding: 14px 18px; align-items: start; }
+.items-wrap h4 { margin: 0 0 8px; color: var(--gold); font-size: 14px; }
+.items-wrap h4 small { color: var(--muted); font-weight: 400; }
+.eqgrid { display: grid; grid-template-columns: repeat(3, 76px); grid-template-areas: "head head amulet" "weapon body offhand" "gloves belt boots" "ring1 . ring2"; gap: 6px; }
+.eqslot { display: flex; flex-direction: column; }
+.eqslot em { font-size: 10px; font-style: normal; }
+.eq-head { grid-area: head; } .eq-amulet { grid-area: amulet; } .eq-weapon { grid-area: weapon; } .eq-body { grid-area: body; }
+.eq-offhand { grid-area: offhand; } .eq-gloves { grid-area: gloves; } .eq-belt { grid-area: belt; } .eq-boots { grid-area: boots; }
+.eq-ring1 { grid-area: ring1; } .eq-ring2 { grid-area: ring2; }
+.grid { display: grid; gap: 4px; }
+.inv-grid { grid-template-columns: repeat(6, 58px); }
+.stash-grid { grid-template-columns: repeat(10, 58px); }
+.cell { height: 58px; border: 2px solid var(--rc, #3a3326); border-radius: 6px; background: #12110e; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; padding: 2px; text-align: center; }
+.eqslot .cell { height: 64px; }
+.cell.empty { border-color: #2e2920; border-style: dashed; }
+.cell.empty span { font-size: 10px; color: #6a6252; }
+.cell .ic { font-size: 18px; color: var(--rc); line-height: 1; }
+.cell .nm { font-size: 9.5px; line-height: 1.1; color: var(--rc); max-height: 2.3em; overflow: hidden; }
+.cell.sel { box-shadow: 0 0 0 3px rgba(217,179,92,.7); }
+.cell.unmet { background: #2a1212; }
+.bad { color: #ff7a6a; }
+.idetail { min-width: 260px; }
+.item-detail { display: flex; flex-wrap: wrap; gap: 10px; }
+.card { background: #0e0d0b; border: 1px solid var(--rc); border-radius: 8px; padding: 8px 12px; min-width: 200px; max-width: 260px; font-size: 12px; }
+.card-title { font-size: 10px; text-transform: uppercase; color: var(--muted); letter-spacing: .05em; }
+.iname { color: var(--rc); font-weight: 800; font-size: 14px; }
+.ibase { color: var(--muted); font-size: 11px; margin-bottom: 4px; }
+.req { font-size: 11px; }
+.istats { margin-top: 4px; color: #9fb8ff; }
+.ival { margin-top: 4px; color: #ffd76a; font-size: 11px; }
+.cmp { display: flex; gap: 8px; align-items: flex-start; }
+.diff { font-size: 12px; min-width: 140px; }
+.diff h5 { margin: 0 0 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; }
+.diff .up { color: #7fe08a; } .diff .down { color: #ff8a7a; }
+.item-btns { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+@media (max-width: 900px) { .items-wrap { grid-template-columns: 1fr; } .stash-grid { grid-template-columns: repeat(6, 52px); } .inv-grid { grid-template-columns: repeat(6, 52px); } .cell { height: 52px; } }
+
+/* Làng */
+.village-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.code-box textarea { width: 100%; min-height: 70px; font: 11px ui-monospace, monospace; word-break: break-all; }
+.char .gold { color: #ffd76a; font-weight: 700; }
+.warn { color: #ffb36a; }
+.items-wrap.stash-mode { grid-template-columns: auto auto; }
+.items-wrap.stash-mode .idetail { grid-column: 1 / -1; }
+.stash-mode .cell { height: 52px; }
+.stash-mode .stash-grid { grid-template-columns: repeat(10, 52px); }
+.stash-mode .inv-grid { grid-template-columns: repeat(6, 52px); }
+@media (max-width: 1000px) { .items-wrap.stash-mode { grid-template-columns: 1fr; } .stash-mode .stash-grid { grid-template-columns: repeat(8, 46px); } .stash-mode .cell { height: 46px; } }
+@media (max-width: 560px) {
+  .inv-grid, .stash-mode .inv-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .stash-mode .stash-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .eqgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .items-wrap { padding: 10px; }
+  .card { max-width: none; width: 100%; }
+}

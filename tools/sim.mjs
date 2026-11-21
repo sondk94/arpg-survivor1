@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // Mô phỏng các lượt 10 phút bằng bot, dùng đúng lõi game và file JSON.
-// Cách dùng: node tools/sim.mjs [--runs 4] [--build fireball|ring|balanced] [--persist] [--seed 1] [--no-dodge] [--god]
+// Cách dùng: node tools/sim.mjs [--runs 4] [--build fire|fire_ring|cold|lightning|hybrid] [--items] [--persist] [--seed 1] [--no-dodge] [--god]
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { loadData } from '../src/core/data.js';
 import { Game, fmtTime } from '../src/core/game.js';
 import { createCharacter } from '../src/core/progression.js';
-import { botInput, botAllocate } from '../src/core/bot.js';
+import { botInput, botAllocate, botManageItems } from '../src/core/bot.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -19,7 +19,8 @@ const arg = (name, def) => {
 };
 
 const runs = Number(arg('runs', 4));
-const build = arg('build', 'fireball');
+const build = arg('build', 'fire');
+const useItems = !!arg('items', false);
 const persist = !!arg('persist', false);
 const seed0 = Number(arg('seed', 1));
 const dodge = !arg('no-dodge', false);
@@ -51,6 +52,8 @@ for (let r = 0; r < runs; r++) {
       g.endEdit();
       g.recordAllocation(diff);
     }
+    if (useItems && g.out.some((e) => e.type === 'item')) { botManageItems(ch, data, build); g.refreshStats(); }
+    g.out.length = 0;
     maxAlive = Math.max(maxAlive, g.enemies.length);
     if (g.time >= nextMark) {
       perMin.push(`${nextMark / 60}m:L${ch.level} k${g.kills} e${g.enemies.length} hp${Math.round(g.player.hp)}`);
@@ -68,11 +71,13 @@ for (let r = 0; r < runs; r++) {
     boss: g.boss ? `${Math.round((g.boss.hp / g.boss.maxHp) * 100)}%` : '-',
     maxAlive,
     noManaSec: Math.round(g.log.outOfManaSec),
+    dmg: Object.fromEntries(Object.entries(g.dmgByElement).map(([k, v]) => [k, Math.round(v)])),
+    items: g.log.itemsPicked.length,
     skills: Object.entries(ch.skills).map(([k, v]) => `${k}:${v}`).join(' '),
     simMs: Math.round(ms),
   };
   results.push(res);
-  console.log(`Lượt ${res.run}: ${res.result} lúc ${res.time}, cấp ${res.level}, giết ${res.kills}, nguyên nhân: ${res.cause}, boss còn ${res.boss}, quái tối đa ${maxAlive}, thiếu mana ${res.noManaSec}s (${ms.toFixed(0)}ms)`);
+  console.log(`Lượt ${res.run}: ${res.result} lúc ${res.time}, cấp ${res.level}, giết ${res.kills}, nguyên nhân: ${res.cause}, boss còn ${res.boss}, quái tối đa ${maxAlive}, thiếu mana ${res.noManaSec}s, đồ ${res.items}, vàng ${g.log.gold}, đóng băng ${g.log.freezes} (${ms.toFixed(0)}ms)`);
   if (verbose) console.log('   ' + perMin.join(' | '));
   if (verbose) console.log('   kỹ năng: ' + res.skills + ' | thuộc tính: ' + JSON.stringify(ch.attrs) + ' | lên cấp: ' + g.log.levelUps.map((l) => `${l.level}@${fmtTime(l.t)}`).join(' '));
 }

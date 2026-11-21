@@ -1,21 +1,36 @@
 // Bot đơn giản cho mô phỏng và chế độ debug "bot tự chơi".
 import * as P from './progression.js';
+import { itemScore, equipFromInventory, meetsReq, totalStr, slotsForType } from './items.js';
 
 // Các kiểu cộng điểm. attrs: tỉ lệ chia mỗi 5 điểm. skills: [id, cấp mục tiêu] ưu tiên từ trên xuống.
 export const BUILDS = {
-  fireball: {
+  fire: {
+    tree: 'fire',
     attrs: { ene: 2, vit: 2, dex: 1 },
-    skills: [['ember_ring', 1], ['fire_mastery', 1], ['meteor', 1], ['firewall', 1], ['inferno_burst', 1], ['fireball', 20]],
+    skills: [['fireball', 1], ['ember_ring', 1], ['fire_mastery', 1], ['meteor', 1], ['firewall', 1], ['inferno_burst', 1], ['fireball', 20]],
   },
-  ring: {
+  fire_ring: {
+    tree: 'fire',
     attrs: { vit: 3, ene: 2 },
-    skills: [['ember_ring', 3], ['fire_mastery', 1], ['meteor', 1], ['firewall', 1], ['inferno_burst', 1], ['ember_ring', 20]],
+    skills: [['fireball', 1], ['ember_ring', 3], ['fire_mastery', 1], ['meteor', 1], ['firewall', 1], ['inferno_burst', 1], ['ember_ring', 20]],
   },
-  balanced: {
+  cold: {
+    tree: 'cold',
     attrs: { ene: 2, vit: 2, dex: 1 },
-    skills: [['ember_ring', 1], ['fire_mastery', 1], ['meteor', 1], ['firewall', 1], ['inferno_burst', 1], ['meteor', 4], ['fireball', 4], ['fire_mastery', 20]],
+    skills: [['ice_bolt', 1], ['frost_nova', 1], ['cold_mastery', 1], ['blizzard', 1], ['frozen_orb', 1], ['shatter', 1], ['ice_bolt', 20]],
+  },
+  lightning: {
+    tree: 'lightning',
+    attrs: { ene: 2, vit: 2, dex: 1 },
+    skills: [['charged_bolt', 1], ['lightning', 1], ['lightning_mastery', 1], ['chain_lightning', 1], ['static_field', 1], ['thunder_storm', 1], ['chain_lightning', 20]],
+  },
+  hybrid: {
+    tree: 'cold',
+    attrs: { ene: 2, vit: 2, dex: 1 },
+    skills: [['ice_bolt', 1], ['frost_nova', 1], ['fireball', 1], ['meteor', 1], ['fire_mastery', 1], ['fireball', 20]],
   },
 };
+BUILDS.fireball = BUILDS.fire;
 
 export function botAllocate(ch, data, buildName = 'fireball') {
   const b = BUILDS[buildName] || BUILDS.fireball;
@@ -122,4 +137,23 @@ export function botInput(game, opts = {}) {
     return { x: Math.cos(a) * 0.5, y: Math.sin(a) * 0.5 };
   }
   return { x: fx / len, y: fy / len };
+}
+
+// Bot tự mặc món tốt hơn trong kho (theo điểm đánh giá đơn giản).
+export function botManageItems(ch, data, buildName = 'fire') {
+  const tree = (BUILDS[buildName] || BUILDS.fire).tree;
+  let changed = false;
+  for (let i = 0; i < ch.inventory.length; i++) {
+    const it = ch.inventory[i];
+    if (!it || !meetsReq(it, ch.level, totalStr(ch))) continue;
+    const slots = slotsForType(it.type, data);
+    let target = null, worst = Infinity;
+    for (const s of slots) {
+      const cur = ch.equipment[s];
+      const sc = cur ? itemScore(cur, tree) : -1;
+      if (sc < worst) { worst = sc; target = s; }
+    }
+    if (target && itemScore(it, tree) > worst && equipFromInventory(ch, i, data, target) === 'ok') changed = true;
+  }
+  return changed;
 }

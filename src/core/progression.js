@@ -1,6 +1,8 @@
-// Nhân vật vĩnh viễn: cấp, kinh nghiệm, thuộc tính, kỹ năng, ô kỹ năng. Dùng chung cho game, bảng cộng điểm và bot.
+// Nhân vật vĩnh viễn: cấp, kinh nghiệm, thuộc tính, kỹ năng, ô kỹ năng, đồ đạc. Dùng chung cho game, giao diện và bot.
+import { sumGear } from './items.js';
 
 export const ATTRS = ['str', 'dex', 'vit', 'ene'];
+export const ELEMENTS = ['fire', 'cold', 'lightning'];
 
 // Giá trị tham số kỹ năng theo cấp: số cố định hoặc { base, perLevel }.
 export function lv(param, level) {
@@ -10,8 +12,10 @@ export function lv(param, level) {
 
 export function damageRange(skill, level) {
   const d = skill.damage;
-  const add = d.perLevel * (level - 1);
-  return [d.min + add, d.max + add];
+  const k = level - 1;
+  const pMin = d.perLevelMin ?? d.perLevel ?? 0;
+  const pMax = d.perLevelMax ?? d.perLevel ?? 0;
+  return [d.min + pMin * k, d.max + pMax * k];
 }
 
 export function xpToNext(level, cfg) {
@@ -25,6 +29,7 @@ export function unlockLevel(skill, cfg) {
 export function createCharacter(data) {
   const p = data.config.player;
   const ch = {
+    version: 1,
     level: 1,
     xp: 0,
     attrs: { ...p.startAttributes },
@@ -32,67 +37,104 @@ export function createCharacter(data) {
     skillPoints: p.startSkillPoints || 0,
     skills: {},
     slots: new Array(p.maxSlots).fill(null),
+    gold: 0,
+    inventory: new Array(data.items.inventorySize).fill(null),
+    equipment: Object.fromEntries(data.items.slots.map((s) => [s.id, null])),
     runs: 0,
     deaths: 0,
     clears: 0,
     mapDeaths: {},
   };
-  for (const [id, l] of Object.entries(p.startSkills)) {
+  applyStartSkills(ch, data);
+  return ch;
+}
+
+function applyStartSkills(ch, data) {
+  for (const [id, l] of Object.entries(data.config.player.startSkills || {})) {
     ch.skills[id] = l;
     if (data.skills[id].type === 'active') {
       const free = ch.slots.indexOf(null);
       if (free >= 0) ch.slots[free] = id;
     }
   }
-  return ch;
+}
+
+export function totalAttrs(ch, gear) {
+  const g = gear || sumGear(ch).stats;
+  const o = {};
+  for (const k of ATTRS) o[k] = ch.attrs[k] + (g[k] || 0);
+  return o;
 }
 
 export function computeStats(ch, data) {
   const c = data.config;
   const p = c.player;
   const a = c.attributes;
-  const at = ch.attrs;
-  const maxHp = p.baseHp + at.vit * a.vit.hp + ch.level * p.hpPerLevel;
-  const maxMana = p.baseMana + at.ene * a.ene.mana + ch.level * p.manaPerLevel;
+  const gear = sumGear(ch);
+  const g = gear.stats;
+  const at = totalAttrs(ch, g);
+  const pct = (k) => (g[k] || 0) / 100;
+  const maxHp = p.baseHp + at.vit * a.vit.hp + ch.level * p.hpPerLevel + (g.maxHp || 0);
+  const maxMana = p.baseMana + at.ene * a.ene.mana + ch.level * p.manaPerLevel + (g.maxMana || 0);
+  const resAll = pct('resAll');
   return {
+    attrs: at,
     maxHp,
     maxMana,
-    manaRegen: maxMana * p.manaRegenPct,
+    manaRegen: maxMana * p.manaRegenPct * (1 + pct('manaRegenPct')),
     hpRegen: maxHp * p.hpRegenPct,
-    cdSpeed: 1 + at.dex * a.dex.cdSpeedPct,
+    cdSpeed: 1 + at.dex * a.dex.cdSpeedPct + pct('cdSpeedPct'),
     dodge: Math.min(c.caps.dodge, at.dex * a.dex.dodgePct),
     physDmgPct: at.str * a.str.physDmgPct,
-    spellDmgPct: at.ene * a.ene.spellDmgPct,
-    moveSpeed: p.moveSpeed,
-    pickupRadius: p.pickupRadius,
-    critChance: p.critChance,
+    spellDmgPct: at.ene * a.ene.spellDmgPct + pct('spellDmgPct'),
+    elemDmgPct: { fire: pct('fireDmgPct'), cold: pct('coldDmgPct'), lightning: pct('lightningDmgPct') },
+    skillBonus: { fire: g.fireSkills || 0, cold: g.coldSkills || 0, lightning: g.lightningSkills || 0, all: g.allSkills || 0 },
+    moveSpeed: p.moveSpeed * (1 + pct('moveSpeedPct')),
+    pickupRadius: p.pickupRadius * (1 + pct('pickupPct')),
+    critChance: p.critChance + pct('critChance'),
     critMult: p.critMult,
-    armor: 0, // Giai đoạn 0 chưa có đồ
-    resist: { fire: 0, cold: 0, lightning: 0, poison: 0 },
-    gearDmgPct: 0,
+    armor: g.armor || 0,
+    resist: {
+      fire: pct('resFire') + resAll,
+      cold: pct('resCold') + resAll,
+      lightning: pct('resLightning') + resAll,
+      poison: pct('resPoison') + resAll,
+    },
+    hpOnKill: g.hpOnKill || 0,
+    freezeHitsReduce: g.freezeHits || 0,
+    inactiveGear: gear.inactive,
   };
 }
 
-// %Synergy cộng vào sát thương của kỹ năng.
+// Cấp hiệu lực = điểm đã cộng + cấp cộng từ đồ (chỉ với kỹ năng đã học, giống Diablo 2).
+export function skillLevel(ch, id, data, stats) {
+  const base = ch.skills[id] || 0;
+  if (!base) return 0;
+  const sk = data.skills[id];
+  const b = stats ? stats.skillBonus : { all: 0 };
+  return Math.min(sk.maxLevel + 10, base + (b[sk.tree] || 0) + (b.all || 0));
+}
+
+// %Synergy: chỉ tính điểm đã cộng thật (không tính cấp từ đồ).
 export function synergyPct(ch, skill) {
   let s = 0;
   for (const syn of skill.synergies || []) s += (ch.skills[syn.from] || 0) * syn.pct;
   return s;
 }
 
-// %Bị động theo nguyên tố (Thông Thạo Lửa...).
-export function passivePct(ch, element, data) {
+// %Bị động theo nguyên tố (Thông Thạo Lửa/Băng/Sét), theo cấp hiệu lực.
+export function passivePct(ch, element, data, stats) {
   let s = 0;
   for (const sk of data.skillList) {
-    if (sk.type !== 'passive' || !sk.fireDmgPct || element !== sk.element) continue;
-    s += (ch.skills[sk.id] || 0) * sk.fireDmgPct;
+    if (sk.type !== 'passive' || !sk.dmgPct || element !== sk.element) continue;
+    s += skillLevel(ch, sk.id, data, stats) * sk.dmgPct;
   }
   return s;
 }
 
 // Hệ số nhân sát thương: 1 + %Thuộc tính + %Synergy + %Bị động + %Đồ (cộng dồn trước rồi mới nhân).
 export function damageMult(ch, skill, stats, data) {
-  return 1 + stats.spellDmgPct + synergyPct(ch, skill) + passivePct(ch, skill.element, data) + stats.gearDmgPct;
+  return 1 + stats.spellDmgPct + synergyPct(ch, skill) + passivePct(ch, skill.element, data, stats) + (stats.elemDmgPct[skill.element] || 0);
 }
 
 export function addAttr(ch, key, n = 1) {
@@ -103,7 +145,6 @@ export function addAttr(ch, key, n = 1) {
   return k;
 }
 
-// Kiểm tra có học được (thêm 1 cấp) kỹ năng không.
 export function canLearn(ch, id, data) {
   const sk = data.skills[id];
   const cur = ch.skills[id] || 0;
@@ -115,7 +156,6 @@ export function canLearn(ch, id, data) {
 }
 
 // Học kỹ năng. Trả về 'ok' | 'needSlot' | lý do lỗi.
-// replaceSlot: chỉ số ô sẽ thay nếu ô đã đầy.
 export function learnSkill(ch, id, data, replaceSlot = null) {
   const chk = canLearn(ch, id, data);
   if (!chk.ok) return chk.reason;
@@ -132,13 +172,35 @@ export function learnSkill(ch, id, data, replaceSlot = null) {
   return 'ok';
 }
 
-// Gắn kỹ năng đã học vào ô.
 export function equipSkill(ch, id, slot) {
   if (!ch.skills[id]) return false;
   const cur = ch.slots.indexOf(id);
   if (cur >= 0) ch.slots[cur] = ch.slots[slot];
   ch.slots[slot] = id;
   return true;
+}
+
+export function hasActiveSkill(ch) {
+  return ch.slots.some((id) => id && ch.skills[id]);
+}
+
+export function respecCost(ch, data) {
+  return data.items.respecCostPerLevel * ch.level;
+}
+
+// Tẩy điểm: trả lại toàn bộ điểm thuộc tính và kỹ năng.
+export function respec(ch, data) {
+  const cost = respecCost(ch, data);
+  if (ch.gold < cost) return `Cần ${cost} vàng`;
+  const p = data.config.player;
+  ch.gold -= cost;
+  ch.attrs = { ...p.startAttributes };
+  ch.attrPoints = (p.startAttrPoints || 0) + (ch.level - 1) * p.attrPointsPerLevel;
+  ch.skills = {};
+  ch.slots = new Array(p.maxSlots).fill(null);
+  applyStartSkills(ch, data); // kỹ năng khởi đầu là miễn phí, không tính vào điểm
+  ch.skillPoints = (p.startSkillPoints || 0) + (ch.level - 1) * p.skillPointsPerLevel;
+  return 'ok';
 }
 
 export function snapshot(ch) {
@@ -148,7 +210,7 @@ export function snapshot(ch) {
   }));
 }
 
-// Hoàn tác: chỉ khôi phục phần cộng điểm (không lấy lại cấp/kinh nghiệm).
+// Hoàn tác: chỉ khôi phục phần cộng điểm (không lấy lại cấp, kinh nghiệm hay đồ).
 export function restoreAllocation(ch, snap) {
   ch.attrs = { ...snap.attrs };
   ch.attrPoints = snap.attrPoints;
@@ -157,7 +219,6 @@ export function restoreAllocation(ch, snap) {
   ch.slots = [...snap.slots];
 }
 
-// Chênh lệch điểm đã cộng giữa hai trạng thái (dùng cho log).
 export function allocationDiff(before, after) {
   const attrs = {};
   for (const k of ATTRS) {

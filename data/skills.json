@@ -1,105 +1,182 @@
 {
   "className": "Pháp sư Nguyên tố",
-  "treeName": "Lửa",
+  "trees": [
+    {
+      "id": "fire",
+      "name": "Lửa",
+      "color": "#ff7a2a"
+    },
+    {
+      "id": "cold",
+      "name": "Băng",
+      "color": "#7fd4ff"
+    },
+    {
+      "id": "lightning",
+      "name": "Sét",
+      "color": "#ffe14d"
+    }
+  ],
   "skills": [
     {
       "id": "fireball",
       "name": "Cầu Lửa",
       "short": "CL",
+      "tree": "fire",
       "type": "active",
       "kind": "projectile",
       "element": "fire",
       "unlock": 1,
       "unlockTest": 1,
       "maxLevel": 20,
-      "grid": [0, 0],
+      "grid": [
+        0,
+        0
+      ],
       "color": "#ff7a2a",
       "desc": "Bắn vào quái gần nhất. Cấp 5, 10, 15 bắn thêm 1 quả. Xuyên 1 quái.",
-      "damage": { "min": 8, "max": 12, "perLevel": 3 },
+      "damage": {
+        "min": 8,
+        "max": 12,
+        "perLevel": 3
+      },
       "cooldown": 0.8,
       "mana": 2,
       "pierce": 1,
-      "extraProjectileAt": [5, 10, 15],
+      "extraProjectileAt": [
+        5,
+        10,
+        15
+      ],
       "projectileSpeed": 460,
       "projectileRadius": 7,
       "range": 650,
       "spreadDeg": 10,
-      "synergies": [{ "from": "meteor", "pct": 0.06 }]
+      "synergies": [
+        {
+          "from": "meteor",
+          "pct": 0.06
+        }
+      ]
     },
     {
       "id": "ember_ring",
       "name": "Vòng Than",
       "short": "VT",
+      "tree": "fire",
       "type": "active",
       "kind": "aura",
       "element": "fire",
       "unlock": 1,
       "unlockTest": 1,
       "maxLevel": 20,
-      "grid": [2, 0],
+      "grid": [
+        2,
+        0
+      ],
       "color": "#ffb347",
       "desc": "Vòng lửa quanh người, đốt quái mỗi 0,5 giây. Luôn bật, tốn mana liên tục.",
-      "damage": { "min": 3, "max": 3, "perLevel": 1.2 },
-      "radius": { "base": 80, "perLevel": 3 },
+      "damage": {
+        "min": 3,
+        "max": 3,
+        "perLevel": 1.2
+      },
+      "radius": {
+        "base": 80,
+        "perLevel": 3
+      },
       "tickInterval": 0.5,
       "manaPerSecond": 1,
-      "synergies": [{ "from": "firewall", "pct": 0.04 }]
+      "synergies": [
+        {
+          "from": "firewall",
+          "pct": 0.04
+        }
+      ]
     },
     {
       "id": "fire_mastery",
       "name": "Thông Thạo Lửa",
       "short": "TT",
+      "tree": "fire",
       "type": "passive",
       "element": "fire",
       "unlock": 6,
       "unlockTest": 2,
       "maxLevel": 20,
-      "grid": [1, 1],
+      "grid": [
+        1,
+        1
+      ],
       "color": "#e0503a",
       "desc": "Bị động: tăng sát thương lửa.",
-      "fireDmgPct": 0.08
+      "dmgPct": 0.08
     },
     {
       "id": "meteor",
       "name": "Mưa Thiên Thạch",
       "short": "MT",
+      "tree": "fire",
       "type": "active",
       "kind": "meteor",
       "element": "fire",
       "unlock": 12,
       "unlockTest": 4,
       "maxLevel": 20,
-      "grid": [0, 2],
+      "grid": [
+        0,
+        2
+      ],
       "color": "#ff4d2e",
       "desc": "Rơi vào cụm quái đông nhất sau 0,8 giây, để lại vết cháy 3 giây.",
-      "damage": { "min": 40, "max": 60, "perLevel": 12 },
+      "damage": {
+        "min": 40,
+        "max": 60,
+        "perLevel": 12
+      },
       "delay": 0.8,
       "radius": 90,
       "burnDuration": 3,
-      "burnDps": { "base": 10, "perLevel": 3 },
+      "burnDps": {
+        "base": 6,
+        "perLevel": 2
+      },
       "burnTick": 0.5,
       "cooldown": 4,
       "mana": 12,
       "searchRange": 520,
       "synergies": [
-        { "from": "fireball", "pct": 0.05 },
-        { "from": "firewall", "pct": 0.05 }
+        {
+          "from": "fireball",
+          "pct": 0.05
+        },
+        {
+          "from": "firewall",
+          "pct": 0.05
+        }
       ]
     },
     {
       "id": "firewall",
       "name": "Tường Lửa",
       "short": "TL",
+      "tree": "fire",
       "type": "active",
       "kind": "wall",
       "element": "fire",
       "unlock": 18,
       "unlockTest": 6,
       "maxLevel": 20,
-      "grid": [2, 2],
+      "grid": [
+        2,
+        2
+      ],
       "color": "#ff9a1f",
       "desc": "Dựng tường lửa chắn hướng đàn quái đông nhất, làm chậm quái đi qua.",
-      "dps": { "base": 10, "perLevel": 4 },
+      "dps": {
+        "base": 10,
+        "perLevel": 4
+      },
       "length": 240,
       "thickness": 26,
       "duration": 4,
@@ -116,17 +193,425 @@
       "id": "inferno_burst",
       "name": "Hoả Ngục Bùng Nổ",
       "short": "HN",
+      "tree": "fire",
       "type": "passive",
       "element": "fire",
       "unlock": 24,
       "unlockTest": 8,
       "maxLevel": 20,
-      "grid": [1, 3],
+      "grid": [
+        1,
+        3
+      ],
       "color": "#ffd23f",
       "desc": "Bị động: quái chết vì lửa có tỉ lệ nổ tung, gây sát thương bằng % máu của nó cho quái xung quanh.",
-      "chance": { "base": 0.1, "perLevel": 0.01 },
+      "chance": {
+        "base": 0.1,
+        "perLevel": 0.01
+      },
       "hpPct": 0.3,
       "radius": 90
+    },
+    {
+      "id": "ice_bolt",
+      "name": "Tia Băng",
+      "short": "TB",
+      "tree": "cold",
+      "type": "active",
+      "kind": "projectile",
+      "element": "cold",
+      "unlock": 1,
+      "unlockTest": 1,
+      "maxLevel": 20,
+      "grid": [
+        0,
+        0
+      ],
+      "color": "#9fe3ff",
+      "desc": "Bắn vào quái gần nhất, làm chậm 40% trong 2 giây. Từ cấp 10 xuyên qua 1 quái.",
+      "damage": {
+        "min": 6,
+        "max": 9,
+        "perLevel": 3.8
+      },
+      "cooldown": 0.7,
+      "mana": 2,
+      "pierce": 0,
+      "pierceFromLevel": 10,
+      "pierceBonus": 1,
+      "slow": {
+        "pct": 0.4,
+        "duration": 2
+      },
+      "projectileSpeed": 520,
+      "projectileRadius": 6,
+      "range": 650,
+      "synergies": [
+        {
+          "from": "frozen_orb",
+          "pct": 0.05
+        }
+      ]
+    },
+    {
+      "id": "frost_nova",
+      "name": "Vòng Sương Giá",
+      "short": "SG",
+      "tree": "cold",
+      "type": "active",
+      "kind": "nova",
+      "element": "cold",
+      "unlock": 6,
+      "unlockTest": 2,
+      "maxLevel": 20,
+      "grid": [
+        2,
+        0
+      ],
+      "color": "#c8f0ff",
+      "desc": "Nổ vòng băng quanh người (bán kính 140 px), làm chậm 50% trong 3 giây.",
+      "damage": {
+        "min": 13,
+        "max": 17,
+        "perLevel": 3
+      },
+      "radius": 140,
+      "slow": {
+        "pct": 0.5,
+        "duration": 3
+      },
+      "cooldown": 1.8,
+      "mana": 4,
+      "synergies": [
+        {
+          "from": "blizzard",
+          "pct": 0.04
+        }
+      ]
+    },
+    {
+      "id": "cold_mastery",
+      "name": "Thông Thạo Băng",
+      "short": "TB",
+      "tree": "cold",
+      "type": "passive",
+      "element": "cold",
+      "unlock": 12,
+      "unlockTest": 4,
+      "maxLevel": 20,
+      "grid": [
+        1,
+        1
+      ],
+      "color": "#5fb8e8",
+      "desc": "Bị động: tăng sát thương băng.",
+      "dmgPct": 0.07
+    },
+    {
+      "id": "blizzard",
+      "name": "Bão Tuyết",
+      "short": "BT",
+      "tree": "cold",
+      "type": "active",
+      "kind": "storm",
+      "element": "cold",
+      "unlock": 12,
+      "unlockTest": 4,
+      "maxLevel": 20,
+      "grid": [
+        2,
+        2
+      ],
+      "color": "#b0e6ff",
+      "desc": "Bão băng phủ vùng quái đông nhất trong 4 giây, gây sát thương liên tục và làm chậm.",
+      "dps": {
+        "base": 24,
+        "perLevel": 7
+      },
+      "radius": 115,
+      "duration": 4,
+      "tick": 0.5,
+      "slow": {
+        "pct": 0.4,
+        "duration": 0.6
+      },
+      "cooldown": 5,
+      "mana": 12,
+      "searchRange": 520,
+      "synergies": [
+        {
+          "from": "frost_nova",
+          "pct": 0.05
+        },
+        {
+          "from": "frozen_orb",
+          "pct": 0.05
+        }
+      ]
+    },
+    {
+      "id": "frozen_orb",
+      "name": "Cầu Băng Xoay",
+      "short": "CB",
+      "tree": "cold",
+      "type": "active",
+      "kind": "orb",
+      "element": "cold",
+      "unlock": 18,
+      "unlockTest": 6,
+      "maxLevel": 20,
+      "grid": [
+        0,
+        2
+      ],
+      "color": "#e0f7ff",
+      "desc": "Quả cầu bay chậm, liên tục bắn mảnh băng ra xung quanh. Kỹ năng diện rộng chính của nhánh.",
+      "damage": {
+        "min": 2,
+        "max": 4,
+        "perLevel": 2
+      },
+      "orbSpeed": 140,
+      "orbLife": 2.4,
+      "shardInterval": 0.065,
+      "shardAngleStep": 2.4,
+      "shardSpeed": 320,
+      "shardRange": 230,
+      "shardRadius": 5,
+      "slow": {
+        "pct": 0.25,
+        "duration": 1
+      },
+      "cooldown": 4,
+      "mana": 12,
+      "range": 600,
+      "synergies": [
+        {
+          "from": "ice_bolt",
+          "pct": 0.05
+        }
+      ]
+    },
+    {
+      "id": "shatter",
+      "name": "Vỡ Vụn",
+      "short": "VV",
+      "tree": "cold",
+      "type": "passive",
+      "element": "cold",
+      "unlock": 24,
+      "unlockTest": 8,
+      "maxLevel": 20,
+      "grid": [
+        1,
+        3
+      ],
+      "color": "#ffffff",
+      "desc": "Bị động: quái đang bị đóng băng nhận thêm sát thương; chết khi đang đóng băng thì vỡ ra mảnh băng.",
+      "frozenDmgBonus": {
+        "base": 0.2,
+        "perLevel": 0.03
+      },
+      "shardCount": 6,
+      "shardHpPct": 0.1,
+      "shardSpeed": 320,
+      "shardRange": 170,
+      "shardRadius": 5
+    },
+    {
+      "id": "charged_bolt",
+      "name": "Tia Điện Tích",
+      "short": "ĐT",
+      "tree": "lightning",
+      "type": "active",
+      "kind": "sparks",
+      "element": "lightning",
+      "unlock": 1,
+      "unlockTest": 1,
+      "maxLevel": 20,
+      "grid": [
+        0,
+        0
+      ],
+      "color": "#fff27a",
+      "desc": "Bắn 3 tia điện chạy lung tung, sát thương dao động lớn.",
+      "damage": {
+        "min": 1,
+        "max": 14,
+        "perLevelMin": 1,
+        "perLevelMax": 3.5
+      },
+      "count": 3,
+      "speed": 260,
+      "life": 1.4,
+      "radius": 6,
+      "spread": 1.3,
+      "jitter": 7,
+      "cooldown": 0.8,
+      "mana": 2,
+      "range": 500,
+      "synergies": [
+        {
+          "from": "chain_lightning",
+          "pct": 0.06
+        }
+      ]
+    },
+    {
+      "id": "lightning",
+      "name": "Tia Chớp",
+      "short": "TC",
+      "tree": "lightning",
+      "type": "active",
+      "kind": "beam",
+      "element": "lightning",
+      "unlock": 6,
+      "unlockTest": 2,
+      "maxLevel": 20,
+      "grid": [
+        2,
+        0
+      ],
+      "color": "#d9f0ff",
+      "desc": "Tia sét thẳng 400 px xuyên qua mọi quái trên đường.",
+      "damage": {
+        "min": 1,
+        "max": 32,
+        "perLevelMin": 1,
+        "perLevelMax": 9
+      },
+      "length": 400,
+      "width": 22,
+      "cooldown": 1.2,
+      "mana": 3,
+      "synergies": [
+        {
+          "from": "charged_bolt",
+          "pct": 0.05
+        },
+        {
+          "from": "chain_lightning",
+          "pct": 0.05
+        }
+      ]
+    },
+    {
+      "id": "chain_lightning",
+      "name": "Sét Lan",
+      "short": "SL",
+      "tree": "lightning",
+      "type": "active",
+      "kind": "chain",
+      "element": "lightning",
+      "unlock": 12,
+      "unlockTest": 4,
+      "maxLevel": 20,
+      "grid": [
+        1,
+        1
+      ],
+      "color": "#a8d8ff",
+      "desc": "Đánh 1 quái rồi lan sang 4 quái khác, cứ 5 cấp lan thêm 1.",
+      "damage": {
+        "min": 2,
+        "max": 30,
+        "perLevelMin": 1.5,
+        "perLevelMax": 10.5
+      },
+      "jumps": 4,
+      "jumpEveryLevels": 5,
+      "range": 450,
+      "jumpRange": 180,
+      "cooldown": 1.4,
+      "mana": 5,
+      "synergies": [
+        {
+          "from": "charged_bolt",
+          "pct": 0.05
+        },
+        {
+          "from": "lightning",
+          "pct": 0.05
+        }
+      ]
+    },
+    {
+      "id": "lightning_mastery",
+      "name": "Thông Thạo Sét",
+      "short": "TS",
+      "tree": "lightning",
+      "type": "passive",
+      "element": "lightning",
+      "unlock": 12,
+      "unlockTest": 4,
+      "maxLevel": 20,
+      "grid": [
+        0,
+        2
+      ],
+      "color": "#ffd23f",
+      "desc": "Bị động: tăng sát thương sét.",
+      "dmgPct": 0.08
+    },
+    {
+      "id": "static_field",
+      "name": "Trường Tĩnh Điện",
+      "short": "TĐ",
+      "tree": "lightning",
+      "type": "active",
+      "kind": "static",
+      "element": "lightning",
+      "unlock": 18,
+      "unlockTest": 6,
+      "maxLevel": 20,
+      "grid": [
+        2,
+        2
+      ],
+      "color": "#8fb8ff",
+      "desc": "Mỗi 3 giây trừ 15% máu hiện tại của quái quanh người (boss chỉ 5%). Không chí mạng, không tăng theo hệ số sát thương.",
+      "radius": {
+        "base": 180,
+        "perLevel": 6
+      },
+      "pct": 0.15,
+      "bossPct": 0.05,
+      "cooldown": 3,
+      "mana": 4,
+      "synergies": []
+    },
+    {
+      "id": "thunder_storm",
+      "name": "Bão Sấm",
+      "short": "BS",
+      "tree": "lightning",
+      "type": "passive",
+      "kind": "storm_passive",
+      "element": "lightning",
+      "unlock": 24,
+      "unlockTest": 8,
+      "maxLevel": 20,
+      "grid": [
+        1,
+        3
+      ],
+      "color": "#fff6b0",
+      "desc": "Bị động: cứ 2,5 giây sét tự đánh vào một quái ngẫu nhiên gần đó.",
+      "damage": {
+        "min": 8,
+        "max": 52,
+        "perLevelMin": 2,
+        "perLevelMax": 12
+      },
+      "interval": 2.5,
+      "range": 450,
+      "radius": 40,
+      "synergies": [
+        {
+          "from": "chain_lightning",
+          "pct": 0.04
+        }
+      ]
     }
   ]
 }

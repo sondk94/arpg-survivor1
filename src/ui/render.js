@@ -128,7 +128,24 @@ export class Renderer {
     const ctx = this.ctx;
     for (const z of g.zones) {
       const fade = Math.min(1, (z.dur - z.t) / 0.4);
-      if (z.kind === 'burn') {
+      if (z.kind === 'area' && z.look === 'blizzard') {
+        ctx.fillStyle = `rgba(150,210,255,${0.18 * fade})`;
+        ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill();
+        ctx.strokeStyle = `rgba(200,240,255,${0.5 * fade})`;
+        ctx.lineWidth = 2; ctx.stroke();
+        // mảnh băng rơi
+        ctx.strokeStyle = `rgba(235,250,255,${0.85 * fade})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < 14; i++) {
+          const a = i * 2.39996 + z.x * 0.01;
+          const rr = z.r * Math.sqrt(((i * 0.618 + z.t * 1.7) % 1));
+          const fx = z.x + Math.cos(a) * rr, fy = z.y + Math.sin(a) * rr;
+          const k = (z.t * 3 + i * 0.37) % 1;
+          ctx.moveTo(fx - 6, fy - 22 + k * 22); ctx.lineTo(fx, fy - 10 + k * 22);
+        }
+        ctx.stroke();
+      } else if (z.kind === 'area') {
         ctx.fillStyle = `rgba(255,110,30,${0.22 * fade})`;
         ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill();
         ctx.strokeStyle = `rgba(255,160,60,${0.5 * fade})`;
@@ -189,7 +206,42 @@ export class Renderer {
       ctx.moveTo(k.x, k.y - s); ctx.lineTo(k.x + s * 0.75, k.y); ctx.lineTo(k.x, k.y + s); ctx.lineTo(k.x - s * 0.75, k.y); ctx.closePath();
     }
     ctx.fill();
+    ctx.textAlign = 'center';
     for (const k of g.pickups) {
+      if (k.kind === 'item') {
+        if (!this.vis(k.x, k.y, 60)) continue;
+        const col = g.data.items.rarities[k.item.rarity].color;
+        if (k.item.rarity === 'rare' || k.item.rarity === 'unique') {
+          const grd = ctx.createLinearGradient(0, k.y - 70, 0, k.y);
+          grd.addColorStop(0, 'rgba(0,0,0,0)');
+          grd.addColorStop(1, col);
+          ctx.globalAlpha = 0.45;
+          ctx.fillStyle = grd;
+          ctx.fillRect(k.x - 3, k.y - 70, 6, 70);
+          ctx.globalAlpha = 1;
+        }
+        ctx.fillStyle = '#1a1712';
+        ctx.fillRect(k.x - 7, k.y - 7, 14, 14);
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(k.x - 7, k.y - 7, 14, 14);
+        if (k.item.rarity !== 'normal') {
+          ctx.font = '600 11px system-ui, sans-serif';
+          ctx.fillStyle = 'rgba(0,0,0,0.65)';
+          const tw = ctx.measureText(k.item.name).width + 8;
+          ctx.fillRect(k.x - tw / 2, k.y - 24, tw, 14);
+          ctx.fillStyle = col;
+          ctx.fillText(k.item.name, k.x, k.y - 13);
+        }
+        continue;
+      }
+      if (k.kind === 'gold') {
+        if (!this.vis(k.x, k.y, 10)) continue;
+        ctx.fillStyle = '#f2c94c';
+        ctx.beginPath(); ctx.arc(k.x - 3, k.y + 1, 4, 0, TAU); ctx.arc(k.x + 3, k.y - 1, 4, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#8a6a1a'; ctx.lineWidth = 1; ctx.stroke();
+        continue;
+      }
       if (k.kind === 'xp' || !this.vis(k.x, k.y, 10)) continue;
       ctx.fillStyle = k.kind === 'hp' ? '#e03b3b' : '#3b6fe0';
       ctx.beginPath(); ctx.arc(k.x, k.y + 2, 7, 0, TAU); ctx.fill();
@@ -202,10 +254,11 @@ export class Renderer {
 
   drawAura(g) {
     const id = 'ember_ring';
-    if (!g.ch.slots.includes(id) || !g.ch.skills[id]) return;
+    const lvl = g.lvl(id);
+    if (!g.ch.slots.includes(id) || !lvl) return;
     const sk = g.data.skills[id];
     const st = g.skillState[id];
-    const r = sk.radius.base + sk.radius.perLevel * (g.ch.skills[id] - 1);
+    const r = sk.radius.base + sk.radius.perLevel * (lvl - 1);
     const ctx = this.ctx;
     const p = g.player;
     const pulse = 0.5 + 0.5 * Math.sin(g.time * 8);
@@ -224,7 +277,7 @@ export class Renderer {
     for (const e of g.enemies) {
       if (e.dead || !this.vis(e.x, e.y, e.r + 10)) continue;
       if (e.elite || e.big) { special.push(e); continue; }
-      const c = e.hit > 0 ? '#ffffff' : e.color;
+      const c = e.hit > 0 ? '#ffffff' : e.frozenT > 0 ? '#bfe9ff' : e.slowT > 0 && e.slowPct >= 0.25 ? mixCold(e.color) : e.color;
       let arr = groups.get(c);
       if (!arr) groups.set(c, (arr = []));
       arr.push(e);
@@ -278,8 +331,9 @@ export class Renderer {
         ctx.restore();
       }
     }
-    ctx.fillStyle = e.color;
+    ctx.fillStyle = e.frozenT > 0 ? '#bfe9ff' : e.color;
     ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, TAU); ctx.fill();
+    if (e.slowT > 0 && !e.frozenT) { ctx.strokeStyle = 'rgba(140,210,255,0.8)'; ctx.lineWidth = 2; ctx.stroke(); }
     if (e.hit > 0) { ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 3; ctx.stroke(); }
     if (e.elite) {
       ctx.strokeStyle = e.affixes.includes('stone_skin') && e.hp > e.maxHp * 0.5 ? '#c8c8d8' : '#ffcc33';
@@ -336,20 +390,62 @@ export class Renderer {
 
   drawProjectiles(g) {
     const ctx = this.ctx;
-    ctx.fillStyle = 'rgba(255,120,40,0.35)';
-    ctx.beginPath();
+    const fire = [], ice = [], spark = [], shard = [];
     for (const pr of g.projectiles) {
-      ctx.moveTo(pr.x + pr.r * 1.8, pr.y);
-      ctx.arc(pr.x, pr.y, pr.r * 1.8, 0, TAU);
+      if (!this.vis(pr.x, pr.y, 20)) continue;
+      if (pr.look === 'spark') spark.push(pr);
+      else if (pr.look === 'shard') shard.push(pr);
+      else if (pr.element === 'cold') ice.push(pr);
+      else fire.push(pr);
     }
-    ctx.fill();
-    ctx.fillStyle = '#ffd27a';
-    ctx.beginPath();
-    for (const pr of g.projectiles) {
-      ctx.moveTo(pr.x + pr.r, pr.y);
-      ctx.arc(pr.x, pr.y, pr.r, 0, TAU);
+    const glow = (list, halo, core, k = 1.8) => {
+      if (!list.length) return;
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      for (const pr of list) { ctx.moveTo(pr.x + pr.r * k, pr.y); ctx.arc(pr.x, pr.y, pr.r * k, 0, TAU); }
+      ctx.fill();
+      ctx.fillStyle = core;
+      ctx.beginPath();
+      for (const pr of list) { ctx.moveTo(pr.x + pr.r, pr.y); ctx.arc(pr.x, pr.y, pr.r, 0, TAU); }
+      ctx.fill();
+    };
+    glow(fire, 'rgba(255,120,40,0.35)', '#ffd27a');
+    glow(ice, 'rgba(120,200,255,0.35)', '#e6f7ff');
+    if (shard.length) {
+      ctx.strokeStyle = '#dff5ff';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for (const pr of shard) {
+        const l = Math.hypot(pr.vx, pr.vy) || 1;
+        ctx.moveTo(pr.x - (pr.vx / l) * 8, pr.y - (pr.vy / l) * 8); ctx.lineTo(pr.x + (pr.vx / l) * 4, pr.y + (pr.vy / l) * 4);
+      }
+      ctx.stroke();
     }
-    ctx.fill();
+    if (spark.length) {
+      ctx.strokeStyle = '#fff27a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (const pr of spark) {
+        for (let i = 0; i < 3; i++) {
+          const a = Math.random() * TAU;
+          ctx.moveTo(pr.x, pr.y); ctx.lineTo(pr.x + Math.cos(a) * 9, pr.y + Math.sin(a) * 9);
+        }
+      }
+      ctx.stroke();
+      glow(spark, 'rgba(255,240,120,0.3)', '#ffffff', 1.6);
+    }
+    // Cầu Băng Xoay
+    for (const o of g.orbs) {
+      ctx.fillStyle = 'rgba(150,220,255,0.35)';
+      ctx.beginPath(); ctx.arc(o.x, o.y, 18, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#f0fbff';
+      ctx.beginPath(); ctx.arc(o.x, o.y, 9, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#9fe3ff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) { const a = o.ang + i * 2.09; ctx.moveTo(o.x, o.y); ctx.lineTo(o.x + Math.cos(a) * 16, o.y + Math.sin(a) * 16); }
+      ctx.stroke();
+    }
     ctx.fillStyle = '#efe8d0';
     ctx.strokeStyle = '#8a7f60';
     ctx.lineWidth = 1.5;
@@ -399,6 +495,41 @@ export class Renderer {
         ctx.globalAlpha = 1 - k;
         ctx.fillStyle = f.color;
         ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.5 + 0.5 * k), 0, TAU); ctx.fill();
+        ctx.globalAlpha = 1;
+      } else if (f.kind === 'nova') {
+        ctx.strokeStyle = f.color;
+        ctx.globalAlpha = 1 - k;
+        ctx.lineWidth = 6 * (1 - k) + 1;
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.3 + 0.7 * k), 0, TAU); ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else if (f.kind === 'bolt') {
+        ctx.globalAlpha = 1 - k;
+        ctx.strokeStyle = f.color;
+        ctx.lineWidth = f.w || 2;
+        ctx.beginPath();
+        for (let i = 0; i < f.pts.length - 1; i++) {
+          const [x1, y1] = f.pts[i], [x2, y2] = f.pts[i + 1];
+          ctx.moveTo(x1, y1);
+          const n = Math.max(2, Math.round(Math.hypot(x2 - x1, y2 - y1) / 25));
+          for (let j = 1; j < n; j++) {
+            const t = j / n;
+            ctx.lineTo(x1 + (x2 - x1) * t + (Math.random() - 0.5) * 16, y1 + (y2 - y1) * t + (Math.random() - 0.5) * 16);
+          }
+          ctx.lineTo(x2, y2);
+        }
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else if (f.kind === 'strike') {
+        ctx.globalAlpha = 1 - k;
+        ctx.strokeStyle = f.color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        let x = f.x + 30, y = f.y - 300;
+        ctx.moveTo(x, y);
+        while (y < f.y) { y += 30; x += (Math.random() - 0.5) * 30; ctx.lineTo(y >= f.y ? f.x : x, Math.min(y, f.y)); }
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(255,250,200,0.5)';
+        ctx.beginPath(); ctx.arc(f.x, f.y, 40 * (1 - k), 0, TAU); ctx.fill();
         ctx.globalAlpha = 1;
       } else if (f.kind === 'death') {
         if (!this.vis(f.x, f.y, 20)) continue;
@@ -609,8 +740,14 @@ export class Renderer {
     ctx.font = '700 11px system-ui, sans-serif';
     ctx.textAlign = 'right';
     ctx.fillStyle = '#fff';
-    ctx.fillText(String(g.ch.skills[id] || 0), x + s - 4, y + s - 4);
+    ctx.fillText(String(g.lvl(id)), x + s - 4, y + s - 4);
   }
+}
+
+function mixCold(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, gg = (n >> 8) & 255, b = n & 255;
+  return `rgb(${Math.round(r * 0.6 + 90)},${Math.round(gg * 0.6 + 110)},${Math.round(b * 0.6 + 120)})`;
 }
 
 // Biểu tượng kỹ năng dùng chung cho HUD và bảng cộng điểm.
@@ -650,6 +787,49 @@ export function drawSkillIcon(ctx, sk, cx, cy, r) {
         const a = (i / 8) * TAU;
         ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a - 0.2) * r, cy + Math.sin(a - 0.2) * r); ctx.lineTo(cx + Math.cos(a + 0.2) * r, cy + Math.sin(a + 0.2) * r); ctx.closePath(); ctx.fill();
       }
+      break;
+    case 'ice_bolt':
+      ctx.beginPath(); ctx.moveTo(cx - r, cy + r * 0.5); ctx.lineTo(cx + r, cy - r * 0.5); ctx.lineTo(cx + r * 0.2, cy + r * 0.1); ctx.closePath(); ctx.fill();
+      break;
+    case 'frost_nova':
+      ctx.lineWidth = r * 0.18;
+      for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r * 0.35, cy + Math.sin(a) * r * 0.35); ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); ctx.stroke(); }
+      break;
+    case 'cold_mastery':
+    case 'lightning_mastery':
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) { const a = (i / 6) * TAU - Math.PI / 2; ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+      ctx.closePath(); ctx.fill();
+      break;
+    case 'blizzard':
+      ctx.lineWidth = r * 0.14;
+      for (let i = 0; i < 5; i++) { const x = cx - r + i * r * 0.5; ctx.beginPath(); ctx.moveTo(x, cy - r); ctx.lineTo(x - r * 0.3, cy + r); ctx.stroke(); }
+      break;
+    case 'frozen_orb':
+      ctx.beginPath(); ctx.arc(cx, cy, r * 0.45, 0, TAU); ctx.fill();
+      ctx.lineWidth = r * 0.14;
+      for (let i = 0; i < 6; i++) { const a = (i / 6) * TAU; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); ctx.stroke(); }
+      break;
+    case 'shatter':
+      for (let i = 0; i < 5; i++) { const a = (i / 5) * TAU; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r * 0.2, cy + Math.sin(a) * r * 0.2); ctx.lineTo(cx + Math.cos(a - 0.25) * r, cy + Math.sin(a - 0.25) * r); ctx.lineTo(cx + Math.cos(a + 0.25) * r, cy + Math.sin(a + 0.25) * r); ctx.closePath(); ctx.fill(); }
+      break;
+    case 'charged_bolt':
+      for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(cx - r * 0.5 + i * r * 0.5, cy + (i % 2 ? -r * 0.3 : r * 0.3), r * 0.25, 0, TAU); ctx.fill(); }
+      break;
+    case 'lightning':
+    case 'thunder_storm':
+      ctx.beginPath(); ctx.moveTo(cx + r * 0.3, cy - r); ctx.lineTo(cx - r * 0.5, cy + r * 0.1); ctx.lineTo(cx, cy + r * 0.1); ctx.lineTo(cx - r * 0.3, cy + r); ctx.lineTo(cx + r * 0.5, cy - r * 0.15); ctx.lineTo(cx, cy - r * 0.15); ctx.closePath(); ctx.fill();
+      break;
+    case 'chain_lightning':
+      ctx.lineWidth = r * 0.16;
+      ctx.beginPath(); ctx.moveTo(cx - r, cy + r * 0.6); ctx.lineTo(cx - r * 0.3, cy - r * 0.5); ctx.lineTo(cx + r * 0.2, cy + r * 0.4); ctx.lineTo(cx + r, cy - r * 0.6); ctx.stroke();
+      break;
+    case 'static_field':
+      ctx.lineWidth = r * 0.14;
+      ctx.setLineDash([r * 0.25, r * 0.18]);
+      ctx.beginPath(); ctx.arc(cx, cy, r * 0.85, 0, TAU); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(cx, cy, r * 0.3, 0, TAU); ctx.fill();
       break;
     default:
       ctx.font = `700 ${r}px system-ui`;

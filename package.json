@@ -1,11 +1,13 @@
 {
   "name": "arpg-survivor",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "ARPG Survivor – Giai đoạn 0 (prototype trình duyệt)",
+  "description": "ARPG Survivor – Giai đoạn 1 (lõi ARPG, prototype trình duyệt)",
   "scripts": {
     "start": "node tools/serve.mjs 8080",
-    "sim": "node tools/sim.mjs --runs 4 --verbose"
+    "test": "node tools/test.mjs",
+    "sim": "node tools/sim.mjs --runs 4 --items --verbose",
+    "balance": "node tools/balance.mjs --level 10"
   }
 }
