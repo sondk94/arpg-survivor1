@@ -314,3 +314,78 @@ export function drawSwampLord(ctx, e, face, phase, opts = {}) {
   ctx.beginPath(); ctx.ellipse(0.55 * r, -0.18 * r + bob, 0.22 * r, 0.08 * r + Math.abs(s) * 0.05 * r, 0, 0, TAU); ctx.fill();
   ctx.restore();
 }
+
+// ---------- Chiến Binh: giáp, mũ sừng, kiếm lớn; vung kiếm khi chém ----------
+export function drawWarrior(ctx, x, y, r, face, phase, moving, opts = {}) {
+  const a = phase * TAU, s = moving ? Math.sin(a) : 0, c = Math.cos(a);
+  const bob = moving ? -Math.abs(c) * 0.08 * r : 0;
+  ctx.save();
+  ctx.translate(x, y);
+  if (face < 0) ctx.scale(-1, 1);
+  const plate = opts.hurt ? '#d08080' : '#8e959e', plateDark = opts.hurt ? '#a05a5a' : '#5d636b', cloth = '#8a2f2a';
+  const hipY = 0.3 * r + bob, L = 0.95 * r;
+  leg(ctx, -0.12 * r, hipY, L, -s * 0.6, 0.3 * r, '#3a3330', '#2a2522');
+  // áo choàng đỏ sau lưng
+  ctx.fillStyle = cloth;
+  ctx.beginPath();
+  ctx.moveTo(-0.3 * r, -0.55 * r + bob); ctx.lineTo(-0.75 * r - s * 0.08 * r, 0.55 * r + bob); ctx.lineTo(-0.1 * r, 0.4 * r + bob); ctx.closePath();
+  ctx.fill();
+  // thân giáp
+  ctx.fillStyle = plate;
+  ctx.beginPath(); ctx.roundRect(-0.42 * r, -0.62 * r + bob, 0.84 * r, 0.98 * r, 0.2 * r); ctx.fill();
+  ctx.fillStyle = plateDark;
+  ctx.fillRect(-0.42 * r, 0.05 * r + bob, 0.84 * r, 0.12 * r);
+  ctx.beginPath(); ctx.arc(-0.38 * r, -0.5 * r + bob, 0.2 * r, 0, TAU); ctx.fill(); // vai sau
+  leg(ctx, 0.12 * r, hipY, L, s * 0.6, 0.3 * r, '#4a423d', '#2e2824');
+  // đầu + mũ sừng
+  ctx.fillStyle = '#e8b890';
+  ctx.beginPath(); ctx.arc(0.08 * r, -0.85 * r + bob, 0.3 * r, 0, TAU); ctx.fill();
+  ctx.fillStyle = plateDark;
+  ctx.beginPath(); ctx.arc(0.08 * r, -0.92 * r + bob, 0.33 * r, Math.PI, TAU); ctx.fill();
+  ctx.fillRect(0.2 * r, -0.95 * r + bob, 0.16 * r, 0.3 * r);
+  ctx.fillStyle = '#efe6cf';
+  for (const sx of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(0.08 * r + sx * 0.25 * r, -1.0 * r + bob);
+    ctx.quadraticCurveTo(0.08 * r + sx * 0.55 * r, -1.1 * r + bob, 0.08 * r + sx * 0.5 * r, -1.45 * r + bob);
+    ctx.lineTo(0.08 * r + sx * 0.18 * r, -1.08 * r + bob);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.fillStyle = '#2a2a2a';
+  ctx.beginPath(); ctx.arc(0.22 * r, -0.83 * r + bob, 0.05 * r, 0, TAU); ctx.fill();
+  // kiếm lớn: giơ cao rồi chém xuống khi đang chém (opts.swing 0..1)
+  const sw = opts.swing || 0;
+  const ang = sw > 0 ? -1.9 + (1 - sw) * 2.6 : -0.5 + s * 0.15;
+  const hx = 0.35 * r, hy = -0.25 * r + bob;
+  ctx.save();
+  ctx.translate(hx, hy);
+  ctx.rotate(ang);
+  ctx.fillStyle = '#d9dde3';
+  ctx.beginPath(); ctx.moveTo(0.15 * r, -0.1 * r); ctx.lineTo(1.45 * r, -0.07 * r); ctx.lineTo(1.6 * r, 0); ctx.lineTo(1.45 * r, 0.07 * r); ctx.lineTo(0.15 * r, 0.1 * r); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#b08a3a';
+  ctx.fillRect(0.08 * r, -0.25 * r, 0.1 * r, 0.5 * r);
+  ctx.fillStyle = '#5a3d22';
+  ctx.fillRect(-0.25 * r, -0.06 * r, 0.33 * r, 0.12 * r);
+  ctx.restore();
+  limb(ctx, 0.05 * r, -0.4 * r + bob, hx, hy, 0.22 * r, plate);
+  ctx.fillStyle = plateDark;
+  ctx.beginPath(); ctx.arc(0.32 * r, -0.48 * r + bob, 0.19 * r, 0, TAU); ctx.fill(); // vai trước
+  ctx.restore();
+}
+
+// Ảnh chân dung cho màn chọn nhân vật.
+export function drawPortrait(canvas, look) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  const g = ctx.createRadialGradient(w / 2, h * 0.55, 4, w / 2, h * 0.55, w * 0.6);
+  g.addColorStop(0, 'rgba(255,220,150,0.25)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+  const r = h * 0.2;
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath(); ctx.ellipse(w / 2, h * 0.58 + r * 1.3, r * 0.9, r * 0.25, 0, 0, TAU); ctx.fill();
+  if (look === 'warrior') drawWarrior(ctx, w / 2 - r * 0.2, h * 0.58, r, 1, 0.15, true, { swing: 0 });
+  else drawMage(ctx, w / 2 - r * 0.2, h * 0.58, r, 1, 0.15, true, {});
+}

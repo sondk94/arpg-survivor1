@@ -8,7 +8,7 @@ import path from 'node:path';
 import { loadData } from '../src/core/data.js';
 import { Game, fmtTime } from '../src/core/game.js';
 import { createCharacter } from '../src/core/progression.js';
-import { botInput, botAllocate, botManageItems } from '../src/core/bot.js';
+import { botInput, botAllocate, botManageItems, BUILDS } from '../src/core/bot.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -33,13 +33,13 @@ const maxRuns = Number(arg('max-runs', 120));
 
 const data = await loadData(async (p) => JSON.parse(await readFile(path.join(root, p), 'utf8')));
 const DT = 1 / 60;
-let ch = createCharacter(data);
+let ch = createCharacter(data, (BUILDS[build] || {}).class);
 const results = [];
 
 const totalRuns = campaign ? maxRuns : runs;
 const attempts = {};
 for (let r = 0; r < totalRuns; r++) {
-  if (!persist && !campaign) ch = createCharacter(data);
+  if (!persist && !campaign) ch = createCharacter(data, (BUILDS[build] || {}).class);
   botAllocate(ch, data, build);
   const mapId = campaign ? data.mapOrder[Math.min(ch.mapProgress || 0, data.mapOrder.length - 1)] : mapArg || data.mapOrder[0];
   if (campaign && (ch.mapClears?.[data.mapOrder[data.mapOrder.length - 1]] || 0) > 0) break;

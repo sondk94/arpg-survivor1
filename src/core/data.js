@@ -4,6 +4,7 @@ export const DATA_FILES = {
   skills: 'data/skills.json',
   monsters: 'data/monsters.json',
   items: 'data/items.json',
+  classes: 'data/classes.json',
   campaign: 'data/maps/campaign.json',
   mapDir: 'data/maps/',
 };
@@ -39,13 +40,16 @@ export function buildCampaign(campaign, templates) {
 }
 
 export async function loadData(readJson) {
-  const [config, skillsFile, monsters, items, campaign] = await Promise.all([
+  const [config, skillsFile, monsters, items, campaign, classesFile] = await Promise.all([
     readJson(DATA_FILES.config),
     readJson(DATA_FILES.skills),
     readJson(DATA_FILES.monsters),
     readJson(DATA_FILES.items),
     readJson(DATA_FILES.campaign),
+    readJson(DATA_FILES.classes),
   ]);
+  const classes = {};
+  for (const c of classesFile.classes) classes[c.id] = c;
   // Nạp các màn gốc được tham chiếu (base + "template" riêng của từng màn nếu có).
   const names = new Set([campaign.base, ...campaign.maps.map((m) => m.template).filter(Boolean)]);
   const templates = {};
@@ -66,6 +70,9 @@ export async function loadData(readJson) {
     skills,
     skillList: skillsFile.skills,
     trees: skillsFile.trees,
+    treesById: Object.fromEntries(skillsFile.trees.map((t) => [t.id, t])),
+    classes,
+    classList: classesFile.classes,
     tree: { className: skillsFile.className },
     items: { ...items, basesById: bases, uniquesById: uniques },
   };

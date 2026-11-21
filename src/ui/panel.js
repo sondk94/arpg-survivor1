@@ -193,7 +193,13 @@ export class Panel {
   // ---------- Vẽ ----------
   render() {
     const ch = this.ch;
-    this.titleEl.textContent = `${this.data.tree.className} — Cấp ${ch.level}`;
+    const clsName = P.getClass(ch, this.data).name;
+    this.titleEl.textContent = `${ch.name && !clsName.startsWith(ch.name) ? `${ch.name} · ` : ''}${clsName} — Cấp ${ch.level}`;
+    const myTrees = P.classTrees(ch, this.data);
+    if (!myTrees.includes(this.tree)) {
+      this.tree = myTrees[0];
+      this.selected = this.data.skillList.find((x) => x.tree === this.tree).id;
+    }
     const tabs = [['char', 'Nhân vật'], ['items', 'Đồ đạc']];
     if (this.village) tabs.push(['stash', 'Rương chung']);
     const pts = ch.attrPoints + ch.skillPoints;
@@ -219,6 +225,7 @@ export class Panel {
     const ch = this.ch;
     const cfg = this.data.config;
     const st = this.stats();
+    const pc = P.playerCfg(ch, this.data);
     const rows = P.ATTRS.map((k) => {
       const a = cfg.attributes[k];
       const added = ch.attrs[k] - this.snap.attrs[k];
@@ -227,7 +234,7 @@ export class Panel {
         <div class="attr-name"><span class="key">${a.key}</span>${esc(a.name)}</div>
         <div class="attr-val">${st.attrs[k]}${bonus ? `<span class="gear" title="từ đồ">(${ch.attrs[k]}+${bonus})</span>` : ''}${added ? `<span class="added">+${added}</span>` : ''}</div>
         <button class="plus" data-attr="${k}" ${ch.attrPoints ? '' : 'disabled'} title="Giữ Shift để cộng 5">+</button>
-        <div class="attr-desc">${esc(a.desc)}</div>
+        <div class="attr-desc">${esc(k === 'vit' ? `+${pc.hpPerVit ?? a.hp} máu tối đa` : k === 'ene' ? a.desc.replace(/\+\d+(,\d+)? mana/, `+${String(pc.manaPerEne ?? a.mana).replace('.', ',')} mana`) : a.desc)}</div>
       </div>`;
     }).join('');
     const p = this.game?.player;
@@ -244,9 +251,9 @@ export class Panel {
         <div><span>Hồi mana</span><b>${st.manaRegen.toFixed(1)}/giây</b></div>
         <div><span>Tốc độ hồi chiêu</span><b>+${pctStr(st.cdSpeed - 1)}</b></div>
         <div><span>Né</span><b>${pctStr(st.dodge)}</b></div>
-        <div><span>Sát thương phép</span><b>+${pctStr(st.spellDmgPct)}</b></div>
-        <div><span>Lửa / Băng / Sét</span><b>+${pctStr(st.elemDmgPct.fire)} / +${pctStr(st.elemDmgPct.cold)} / +${pctStr(st.elemDmgPct.lightning)}</b></div>
-        <div><span>Sét lên tinh anh</span><b>+${pctStr(st.eliteDmgPct.lightning)}</b></div>
+        <div><span>${P.getClass(ch, this.data).mainStat === 'str' ? 'Sát thương vật lý' : 'Sát thương phép'}</span><b>+${pctStr(P.getClass(ch, this.data).mainStat === 'str' ? st.physDmgPct : st.spellDmgPct)}</b></div>
+        ${P.getClass(ch, this.data).mainStat === 'str' ? '' : `<div><span>Lửa / Băng / Sét</span><b>+${pctStr(st.elemDmgPct.fire)} / +${pctStr(st.elemDmgPct.cold)} / +${pctStr(st.elemDmgPct.lightning)}</b></div>`}
+        ${P.getClass(ch, this.data).mainStat === 'str' ? `<div><span>Hút máu</span><b>${pctStr(st.leech || 0)}</b></div><div><span>Hồi máu</span><b>${st.hpRegen.toFixed(1)}/giây</b></div>` : `<div><span>Sét lên tinh anh</span><b>+${pctStr(st.eliteDmgPct.lightning)}</b></div>`}
         <div><span>Chí mạng</span><b>${pctStr(st.critChance)} ×${st.critMult}</b></div>
         <div><span>Giáp</span><b>${st.armor} (−${pctStr(red)} vs cấp 1)</b></div>
         <div><span>Kháng L/B/S/Độc</span><b>${res('fire')} ${res('cold')} ${res('lightning')} ${res('poison')}</b></div>
@@ -262,7 +269,7 @@ export class Panel {
       const sk = data.skills[id];
       return `<div class="slot" title="Ô ${i + 1}">${sk ? `<canvas data-icon="${sk.id}" width="56" height="56"></canvas><span>${esc(sk.name)}</span>` : '<span class="empty">Trống</span>'}</div>`;
     }).join('');
-    const treeTabs = data.trees.map((t) => {
+    const treeTabs = data.trees.filter((t) => P.classTrees(ch, data).includes(t.id)).map((t) => {
       const spent = data.skillList.filter((s) => s.tree === t.id).reduce((n, s) => n + (ch.skills[s.id] || 0), 0);
       return `<button class="tab tree ${this.tree === t.id ? 'on' : ''}" data-tree="${t.id}" style="--tc:${t.color}">${esc(t.name)} <small>${spent}</small></button>`;
     }).join('');

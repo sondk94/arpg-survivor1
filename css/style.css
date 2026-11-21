@@ -236,3 +236,22 @@ body:has(#panel:not(.hidden)) #debug { display: none; }
 .map.on { background: #6b4a1a; border-color: var(--gold); }
 .map.locked { opacity: .45; }
 @media (max-width: 600px) { .maps { grid-template-columns: repeat(3, 1fr); } }
+
+/* Chọn nhân vật */
+.sec-title { margin: 0 0 8px; color: var(--gold); font-size: 15px; }
+.charlist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.charcard { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 1px solid var(--line); border-left: 4px solid var(--cc); border-radius: 8px; background: #12110e; }
+.charcard.on { box-shadow: 0 0 0 2px rgba(217,179,92,.5); }
+.charcard canvas { width: 48px; height: 60px; flex: none; }
+.cc-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.cc-info b { font-size: 16px; }
+.cc-info small { color: var(--muted); }
+.cc-btns { display: flex; gap: 6px; }
+.classgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; margin-bottom: 10px; }
+.classcard { display: flex; gap: 10px; align-items: center; padding: 10px; border: 2px solid var(--line); border-radius: 10px; background: #12110e; cursor: pointer; }
+.classcard:has(input:checked) { border-color: var(--cc); background: #1d1914; }
+.classcard input { display: none; }
+.classcard canvas { width: 80px; height: 100px; flex: none; }
+.classcard b { font-size: 16px; color: var(--cc); }
+.classcard p { margin: 4px 0; font-size: 13px; }
+.classcard small { color: var(--muted); }

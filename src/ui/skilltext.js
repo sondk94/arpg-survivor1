@@ -10,7 +10,7 @@ export function describeSkill(sk, lvl, ch, data, stats) {
   const lines = [];
   if (lvl <= 0) return lines;
   const tmp = { ...ch, skills: { ...ch.skills } };
-  const mult = sk.damage || sk.dps || sk.burnDps ? P.damageMult(tmp, sk, stats, data) : 1;
+  const mult = (sk.damage || sk.dps || sk.burnDps) && !sk.deathBurst ? P.damageMult(tmp, sk, stats, data) : 1;
   const cd = () => lines.push(['Hồi chiêu', `${num(sk.cooldown / stats.cdSpeed)} giây`]);
   const mana = () => lines.push(['Mana', sk.mana]);
   const slow = () => sk.slow && lines.push(['Làm chậm', `${pct(sk.slow.pct)} trong ${num(sk.slow.duration)} giây`]);
@@ -79,6 +79,72 @@ export function describeSkill(sk, lvl, ch, data, stats) {
       break;
     case 'thunder_storm':
       lines.push(['Sát thương', range(P.damageRange(sk, lvl), mult)], ['Đánh mỗi', `${num(sk.interval)} giây`], ['Tầm', `${sk.range} px`]);
+      break;
+    // ---- Chiến Binh
+    case 'cleave':
+      lines.push(['Sát thương', range(P.damageRange(sk, lvl), mult)], ['Tầm', `${sk.range} px, vòng cung ${sk.arcDeg}°`]);
+      cd();
+      break;
+    case 'whirlwind':
+      lines.push(['Sát thương mỗi nhát', range(P.damageRange(sk, lvl), mult)], ['Bán kính', `${num(P.lv(sk.radius, lvl))} px`],
+        ['Chém mỗi', `${num(sk.tickInterval)} giây`], ['Mana', `${num(sk.manaPerSecond)} mỗi giây`]);
+      break;
+    case 'weapon_mastery':
+      lines.push(['Sát thương vật lý', `+${pct(sk.dmgPct * lvl)}`], ['Tỉ lệ chí mạng', `+${pct(sk.critPerLevel * lvl)}`]);
+      break;
+    case 'leap_slam':
+      lines.push(['Sát thương', range(P.damageRange(sk, lvl), mult)], ['Bán kính', `${sk.radius} px`], ['Tầm nhảy', `${sk.range} px`]);
+      cd(); mana();
+      break;
+    case 'throwing_axe': {
+      const n = 1 + sk.extraProjectileAt.filter((l) => lvl >= l).length;
+      lines.push(['Sát thương', range(P.damageRange(sk, lvl), mult)], ['Số rìu', n], ['Xuyên', `${sk.pierce} quái`]);
+      cd(); mana();
+      break;
+    }
+    case 'frenzy':
+      lines.push(['Mỗi tầng', `+${pct(P.lv(sk.stackDmg, lvl))} sát thương`], ['Tối đa', `${sk.maxStacks} tầng, giữ ${sk.stackDuration} giây`]);
+      break;
+    case 'howl':
+      lines.push(['Sát thương', range(P.damageRange(sk, lvl), mult)], ['Hoảng sợ', `${num(P.lv(sk.fear, lvl))} giây`], ['Bán kính', `${sk.radius} px`], ['Tự dùng khi', `≥${sk.minCrowd} quái sát người hoặc máu < ${pct(sk.lowHpPct)}`]);
+      cd(); mana();
+      break;
+    case 'battle_cry':
+    case 'berserk':
+      lines.push(['Tăng sát thương', `+${pct(P.lv(sk.buff.dmgPct, lvl))}`], ['Thời gian', `${sk.duration} giây`]);
+      if (sk.buff.armorMult) lines.push(['Giáp', `còn ${pct(sk.buff.armorMult)}`]);
+      cd(); mana();
+      break;
+    case 'iron_skin':
+      lines.push(['Giáp', `+${num(P.lv(sk.armor, lvl))}`], ['Kháng mọi nguyên tố', `+${pct(sk.resAllPerLevel * lvl)}`]);
+      break;
+    case 'stomp':
+      lines.push(['Sát thương', range(P.damageRange(sk, lvl), mult)], ['Bán kính', `${sk.radius} px`], ['Choáng', `${num(sk.slow.duration)} giây`]);
+      cd(); mana();
+      break;
+    case 'earthquake':
+      lines.push(['Sát thương', `${num(P.lv(sk.dps, lvl) * mult)}/giây trong ${num(sk.duration)} giây`], ['Bán kính', `${sk.radius} px`], ['Làm chậm', pct(sk.slow.pct)]);
+      cd(); mana();
+      break;
+    case 'unbroken':
+      lines.push(['Hồi máu', `${pct(P.lv(sk.hpRegen, lvl))} máu tối đa mỗi giây`]);
+      break;
+    case 'thrust':
+      lines.push(['Sát thương', range(P.damageRange(sk, lvl), mult)], ['Độ dài', `${sk.length} px, xuyên mọi quái`]);
+      cd();
+      break;
+    case 'life_leech':
+      lines.push(['Hút máu', `${pct(P.lv(sk.leech, lvl))} sát thương gây ra`]);
+      break;
+    case 'chain_cleave':
+      lines.push(['Sát thương', range(P.damageRange(sk, lvl), mult)], ['Số lần lướt', sk.jumps + Math.floor(lvl / sk.jumpEveryLevels)], ['Tầm lướt', `${sk.jumpRange} px`]);
+      cd(); mana();
+      break;
+    case 'blood_mastery':
+      lines.push(['Tỉ lệ chí mạng', `+${pct(sk.critPerLevel * lvl)}`], ['Sát thương chí mạng', `+${pct(sk.critMultPerLevel * lvl)}`]);
+      break;
+    case 'blood_burst':
+      lines.push(['Tỉ lệ nổ', pct(P.lv(sk.chance, lvl))], ['Sát thương nổ', `${pct(sk.hpPct)} máu tối đa của quái`], ['Bán kính', `${sk.radius} px`]);
       break;
   }
   if (mult !== 1) lines.push(['Hệ số sát thương', `×${num(mult)}`]);

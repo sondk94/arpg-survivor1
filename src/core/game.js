@@ -69,7 +69,8 @@ export class Game {
     this.obstacles = buildObstacles(this.map, this.W, this.H, this.seed);
     this.obGrid = buildObstacleGrid(this.obstacles, this.W, this.H, 128);
 
-    const pc = this.cfg.player;
+    const pc = P.playerCfg(ch, data);
+    this.cls = P.getClass(ch, data);
     this.player = { x: this.W / 2, y: this.H / 2, r: pc.radius, hp: 0, mana: 0, invuln: 0, faceX: 1, faceY: 0, glow: 0, hurt: 0, moving: false };
     this.stats = P.computeStats(ch, data);
     this.player.hp = this.stats.maxHp;
@@ -135,6 +136,8 @@ export class Game {
       gold: 0,
     };
     this.invFullT = 0;
+    this.buffs = []; // { id, dmgPct, armorMult, t }
+    this.frenzy = { stacks: 0, t: 0 };
   }
 
   // ---------- Tiện ích ----------
@@ -170,6 +173,7 @@ export class Game {
     this.updateSpawner(dt);
     this.updatePlayer(dt);
     this.grid.rebuild(this.enemies);
+    this.updateBuffs(dt);
     this.updateSkills(dt);
     this.updateOrbs(dt);
     this.updateProjectiles(dt);
@@ -390,6 +394,7 @@ export class Game {
     p.y = clamp(o.y, p.r, this.H - p.r);
     p.invuln = Math.max(0, p.invuln - dt);
     p.glow = Math.max(0, p.glow - dt);
+    p.swing = Math.max(0, (p.swing || 0) - dt);
     p.hurt = Math.max(0, p.hurt - dt);
     p.mana = Math.min(this.stats.maxMana, p.mana + this.stats.manaRegen * dt);
     p.hp = Math.min(this.stats.maxHp, p.hp + this.stats.hpRegen * dt);
@@ -425,7 +430,7 @@ export class Game {
     let dmg = amount;
     if (type === 'physical') {
       const lvl = opts.level || this.map.level;
-      const a = this.stats.armor;
+      const a = this.stats.armor * this.armorMult();
       const red = Math.min(this.cfg.caps.armorReduction, a / (a + this.cfg.armor.base + this.cfg.armor.perMonsterLevel * lvl));
       dmg *= 1 - red;
     } else {
@@ -555,7 +560,33 @@ export class Game {
   }
 
   skillMult(skill) {
-    return P.damageMult(this.ch, skill, this.stats, this.data);
+    return P.damageMult(this.ch, skill, this.stats, this.data) + this.buffDmgPct();
+  }
+
+  // ---------- Buff (Thét Xung Trận, Cuồng Huyết) và Cuồng Sát ----------
+  buffDmgPct() {
+    let s = 0;
+    for (const b of this.buffs) s += b.dmgPct || 0;
+    const fz = this.data.skills.frenzy;
+    if (fz && this.frenzy.stacks > 0) s += this.frenzy.stacks * P.lv(fz.stackDmg, Math.max(1, this.lvl('frenzy')));
+    return s;
+  }
+
+  armorMult() {
+    let m = 1;
+    for (const b of this.buffs) if (b.armorMult) m *= b.armorMult;
+    return m;
+  }
+
+  updateBuffs(dt) {
+    if (this.buffs.length) {
+      for (const b of this.buffs) b.t -= dt;
+      this.buffs = this.buffs.filter((b) => b.t > 0);
+    }
+    if (this.frenzy.stacks > 0) {
+      this.frenzy.t -= dt;
+      if (this.frenzy.t <= 0) this.frenzy.stacks = 0;
+    }
   }
 
   rollSkill(skill, lvl, mult) {
@@ -619,6 +650,10 @@ export class Game {
       case 'beam': return this.castBeam(sk, lvl);
       case 'chain': return this.castChain(sk, lvl);
       case 'static': return this.castStatic(sk, lvl);
+      case 'melee': return this.castMelee(sk, lvl);
+      case 'leap': return this.castLeap(sk, lvl);
+      case 'howl': return this.castHowl(sk, lvl);
+      case 'buff': return this.castBuff(sk, lvl);
     }
     return false;
   }
@@ -851,6 +886,87 @@ export class Game {
     return true;
   }
 
+  // Chém cận chiến hình vòng cung về phía quái gần nhất.
+  castMelee(sk, lvl) {
+    const p = this.player;
+    const t = this.nearestEnemy(sk.range + 45);
+    if (!t || Math.hypot(t.x - p.x, t.y - p.y) > sk.range + t.r + p.r) return false;
+    const a0 = Math.atan2(t.y - p.y, t.x - p.x);
+    const half = ((sk.arcDeg || 120) * Math.PI) / 360;
+    const mult = this.skillMult(sk);
+    const hits = [];
+    this.grid.query(p.x, p.y, sk.range + p.r + 45, (e) => {
+      if (e.flee && e !== this.boss) return;
+      const dx = e.x - p.x, dy = e.y - p.y;
+      const d = Math.hypot(dx, dy);
+      if (d > sk.range + e.r + p.r) return;
+      let da = Math.atan2(dy, dx) - a0;
+      while (da > Math.PI) da -= TAU;
+      while (da < -Math.PI) da += TAU;
+      if (Math.abs(da) <= half + Math.atan2(e.r, Math.max(d, 1))) hits.push(e);
+    });
+    for (const e of hits) this.damageEnemy(e, this.rollSkill(sk, lvl, mult), sk.element);
+    p.faceX = Math.cos(a0); p.faceY = Math.sin(a0);
+    p.swing = 0.22;
+    this.addFx({ kind: 'slash', x: p.x, y: p.y, a: a0, half, r: sk.range + p.r, dur: 0.18, color: sk.color });
+    return true;
+  }
+
+  // Nhảy vào cụm quái đông nhất rồi đập xuống.
+  castLeap(sk, lvl) {
+    const t = this.densestPoint(sk.range, sk.radius);
+    if (!t) return false;
+    const p = this.player;
+    const from = { x: p.x, y: p.y };
+    const o = this.pushOutObstacles(clamp(t.x, p.r, this.W - p.r), clamp(t.y, p.r, this.H - p.r), p.r);
+    p.x = o.x; p.y = o.y;
+    p.invuln = Math.max(p.invuln, sk.invuln);
+    const mult = this.skillMult(sk);
+    this.grid.rebuild(this.enemies);
+    this.areaDamage(p.x, p.y, sk.radius, () => this.rollSkill(sk, lvl, mult), sk.element);
+    this.addFx({ kind: 'leap', x1: from.x, y1: from.y, x: p.x, y: p.y, dur: 0.3 });
+    this.addFx({ kind: 'burst', x: p.x, y: p.y, dur: 0.35, r: sk.radius, color: '#b0a090' });
+    this.emit({ type: 'shake', amount: 5 });
+    return true;
+  }
+
+  // Gầm: sát thương nhỏ, đẩy lùi, làm quái sợ bỏ chạy.
+  castHowl(sk, lvl) {
+    const p = this.player;
+    // Đòn thoát thân: chỉ tự dùng khi bị vây (đủ minCrowd quái sát người) hoặc máu thấp.
+    let close = 0;
+    this.grid.query(p.x, p.y, sk.closeRadius + 45, (e) => {
+      if (!e.flee && Math.hypot(e.x - p.x, e.y - p.y) < sk.closeRadius + e.r) close++;
+    });
+    if (close < sk.minCrowd && !(close > 0 && p.hp < this.stats.maxHp * sk.lowHpPct)) return false;
+    const mult = this.skillMult(sk);
+    const fear = P.lv(sk.fear, lvl);
+    const list = [];
+    this.grid.query(p.x, p.y, sk.radius + 45, (e) => {
+      const d = Math.hypot(e.x - p.x, e.y - p.y);
+      if (d < sk.radius + e.r) list.push([e, d]);
+    });
+    for (const [e, d] of list) {
+      this.damageEnemy(e, this.rollSkill(sk, lvl, mult), sk.element);
+      if (e.dead || e.big) continue;
+      const ux = (e.x - p.x) / (d || 1), uy = (e.y - p.y) / (d || 1);
+      const kb = sk.knockback * (e.elite ? 0.3 : 1); // tinh anh nặng hơn, bị đẩy ít
+      e.kx += ux * kb; e.ky += uy * kb;
+      e.fearT = Math.max(e.fearT || 0, fear * (e.elite ? 0.5 : 1));
+    }
+    this.addFx({ kind: 'nova', x: p.x, y: p.y, dur: 0.4, r: sk.radius, color: sk.color });
+    return true;
+  }
+
+  // Buff bản thân: chỉ dùng khi có quái trong tầm 400 px để không phí.
+  castBuff(sk, lvl) {
+    if (!this.nearestEnemy(400)) return false;
+    this.buffs = this.buffs.filter((b) => b.id !== sk.id);
+    this.buffs.push({ id: sk.id, dmgPct: sk.buff.dmgPct ? P.lv(sk.buff.dmgPct, lvl) : 0, armorMult: sk.buff.armorMult || 0, t: sk.duration, dur: sk.duration, color: sk.color });
+    this.addFx({ kind: 'nova', x: this.player.x, y: this.player.y, dur: 0.5, r: 70, color: sk.color });
+    return true;
+  }
+
   castStatic(sk, lvl) {
     const p = this.player;
     const r = P.lv(sk.radius, lvl);
@@ -885,6 +1001,10 @@ export class Game {
     }
     const before = e.hp;
     e.hp -= dmg;
+    if (this.stats.leech && before > 0) {
+      const p = this.player;
+      p.hp = Math.min(this.stats.maxHp, p.hp + Math.min(dmg, before) * this.stats.leech);
+    }
     e.hit = 0.08;
     this.dpsBuckets[this.dpsIdx] += dmg;
     this.totalDamage += dmg;
@@ -945,10 +1065,18 @@ export class Game {
       const ex = this.data.monsters.elite.affixes.fire_enchanted.deathExplosion;
       this.pending.push({ kind: 'eliteBlast', t: ex.delay, dur: ex.delay, x: e.x, y: e.y, r: ex.radius, dmg: ex.damage * e.dmgMult, name: e.name });
     }
-    const ib = this.data.skills.inferno_burst;
-    const ibl = this.lvl('inferno_burst');
-    if (element === 'fire' && ibl > 0 && this.rng.next() < P.lv(ib.chance, ibl)) {
-      this.pending.push({ kind: 'inferno', t: 0.05, dur: 0.05, x: e.x, y: e.y, r: ib.radius, dmg: e.maxHp * ib.hpPct, src: e.id });
+    // Bị động nổ khi giết (Hoả Ngục Bùng Nổ với lửa, Huyết Bạo với vật lý).
+    for (const id of this.deathBursts || (this.deathBursts = this.data.skillList.filter((x) => x.deathBurst).map((x) => x.id))) {
+      const ib = this.data.skills[id];
+      const ibl = this.lvl(id);
+      if (element === ib.element && ibl > 0 && this.rng.next() < P.lv(ib.chance, ibl)) {
+        this.pending.push({ kind: 'inferno', t: 0.05, dur: 0.05, x: e.x, y: e.y, r: ib.radius, dmg: e.maxHp * ib.hpPct, src: e.id, element: ib.element, color: ib.color });
+      }
+    }
+    const fz = this.data.skills.frenzy;
+    if (fz && this.lvl('frenzy') > 0) {
+      this.frenzy.stacks = Math.min(fz.maxStacks, this.frenzy.stacks + 1);
+      this.frenzy.t = fz.stackDuration;
     }
     const sh = this.data.skills.shatter;
     if (e.frozenT > 0 && this.lvl('shatter') > 0) {
@@ -1075,8 +1203,8 @@ export class Game {
         break;
       }
       case 'inferno':
-        this.areaDamage(pd.x, pd.y, pd.r, () => pd.dmg, 'fire', { noCrit: true });
-        this.addFx({ kind: 'burst', x: pd.x, y: pd.y, dur: 0.35, r: pd.r, color: '#ffd23f' });
+        this.areaDamage(pd.x, pd.y, pd.r, () => pd.dmg, pd.element || 'fire', { noCrit: true });
+        this.addFx({ kind: 'burst', x: pd.x, y: pd.y, dur: 0.35, r: pd.r, color: pd.element === 'physical' ? '#c0392b' : '#ffd23f' });
         break;
       case 'eliteBlast':
         if (Math.hypot(p.x - pd.x, p.y - pd.y) < pd.r + p.r) this.hurtPlayer(pd.dmg, 'fire', `Nổ: ${pd.name}`);
@@ -1169,6 +1297,10 @@ export class Game {
         e.fleeT += dt;
         vx = -ux * spd * 1.6; vy = -uy * spd * 1.6;
         if (d > 950 || e.fleeT > 6) { e.dead = true; if (!e.big) this.aliveNormal--; if (e === this.miniboss) this.miniboss = null; continue; }
+      } else if (e.fearT > 0) {
+        // Hoảng sợ (Gầm Chiến): chạy ra xa, không tấn công.
+        e.fearT -= dt;
+        vx = -ux * spd * 1.2; vy = -uy * spd * 1.2;
       } else {
         // Quái bị bỏ quá xa: đưa lại gần người chơi.
         if (!e.big && d > relocate) {
@@ -1247,7 +1379,7 @@ export class Game {
       e.y = clamp(e.y, e.r, this.H - e.r);
 
       // Chạm người chơi.
-      if (!e.flee) {
+      if (!e.flee && !(e.fearT > 0)) {
         const cx = p.x - e.x, cy = p.y - e.y;
         const rr = e.r + p.r;
         if (cx * cx + cy * cy < rr * rr) {

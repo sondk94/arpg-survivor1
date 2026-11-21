@@ -8,7 +8,7 @@ import { loadData } from '../src/core/data.js';
 import { Game } from '../src/core/game.js';
 import * as P from '../src/core/progression.js';
 import * as I from '../src/core/items.js';
-import { exportCode, importCode, newStash } from '../src/core/save.js';
+import { exportCode, importCode, newStash, normalizeCharacter } from '../src/core/save.js';
 import { RNG } from '../src/core/rng.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -77,7 +77,8 @@ t('Mốc mở kỹ năng chế độ thử nghiệm: Lửa 1/1/2/4/6/8, Băng v�
   assert.deepEqual(by('fire'), [1, 1, 2, 4, 6, 8]);
   assert.deepEqual(by('cold'), [1, 2, 4, 4, 6, 8]);
   assert.deepEqual(by('lightning'), [1, 2, 4, 4, 6, 8]);
-  assert.equal(data.skillList.length, 18);
+  assert.equal(data.skillList.length, 36);
+  for (const t of ['weapon', 'shout', 'blood']) assert.deepEqual(by(t), [1, 2, 4, 4, 6, 8], t);
 });
 
 t('Hoàn tác không hồi máu (cộng Thể lực rồi hoàn tác nhiều lần)', () => {
@@ -299,6 +300,83 @@ t('Chướng ngại vật ngẫu nhiên mỗi lượt chơi', () => {
   assert.deepEqual(a.map((o) => [o.x, o.y]), a2.map((o) => [o.x, o.y])); // cùng seed thì giống nhau (tái lập mô phỏng)
   // vùng xuất phát luôn trống
   for (const o of b) assert.ok(Math.hypot(o.x - 1500, o.y - 1500) > 260);
+});
+
+t('Chiến Binh: chỉ số riêng của lớp, Sức mạnh tăng sát thương vật lý, chỉ học kỹ năng của lớp mình', () => {
+  const w = P.createCharacter(data, 'warrior', 'Test');
+  assert.equal(w.classId, 'warrior');
+  assert.deepEqual(w.attrs, data.classes.warrior.startAttributes);
+  const st = P.computeStats(w, data);
+  assert.equal(st.maxHp, 60 + 25 * 4 + 1 * 3);
+  assert.equal(st.armor, 15);
+  assert.ok(Math.abs(P.damageMult(w, data.skills.cleave, st, data) - (1 + 30 * 0.01)) < 1e-9);
+  assert.equal(P.learnSkill(w, 'fireball', data), 'Kỹ năng của lớp khác');
+  assert.equal(P.learnSkill(w, 'cleave', data), 'ok');
+  const m = P.createCharacter(data, 'mage');
+  assert.equal(P.learnSkill(m, 'cleave', data), 'Kỹ năng của lớp khác');
+});
+
+t('Chiến Binh: chém cận chiến chỉ trúng quái trong tầm và trong vòng cung phía trước', () => {
+  const w = P.createCharacter(data, 'warrior');
+  w.skills = { cleave: 1 }; w.slots = ['cleave', null, null, null];
+  const g = new Game(data, w, { seed: 1, headless: true });
+  g.stats.critChance = 0;
+  const p = g.player;
+  const front = g.spawnEnemy('zombie', p.x + 50, p.y); front.hp = front.maxHp = 1000;
+  const back = g.spawnEnemy('zombie', p.x - 50, p.y); back.hp = back.maxHp = 1000;
+  const far = g.spawnEnemy('zombie', p.x + 250, p.y); far.hp = far.maxHp = 1000;
+  g.grid.rebuild(g.enemies);
+  assert.equal(g.castMelee(data.skills.cleave, 1), true);
+  assert.ok(front.hp < 1000);
+  assert.equal(far.hp, 1000);
+  // phía sau: nằm ngoài vòng cung 130° hướng về quái gần nhất (bằng khoảng cách thì lấy con đầu tiên)
+  assert.ok(back.hp === 1000 || front.hp === 1000);
+});
+
+t('Chiến Binh: buff, cuồng sát, hút máu, nhảy đập, gầm làm quái sợ', () => {
+  const w = P.createCharacter(data, 'warrior');
+  w.level = 10;
+  w.skills = { battle_cry: 1, frenzy: 1, life_leech: 5, leap_slam: 1, howl: 1 };
+  const g = new Game(data, w, { seed: 1, headless: true });
+  const p = g.player;
+  const e = g.spawnEnemy('zombie', p.x + 60, p.y); e.hp = e.maxHp = 1e4;
+  g.grid.rebuild(g.enemies);
+  const before = g.skillMult(data.skills.cleave);
+  g.castBuff(data.skills.battle_cry, 1);
+  assert.ok(Math.abs(g.skillMult(data.skills.cleave) - before - 0.25) < 1e-9);
+  const z = g.spawnEnemy('zombie', p.x + 30, p.y); g.killEnemy(z, 'physical');
+  assert.equal(g.frenzy.stacks, 1);
+  p.hp = 10; g.stats.critChance = 0;
+  g.damageEnemy(e, 100, 'physical');
+  assert.ok(Math.abs(p.hp - (10 + 100 * g.stats.leech)) < 1e-9);
+  const x0 = p.x;
+  assert.equal(g.castLeap(data.skills.leap_slam, 1), true);
+  assert.ok(p.x !== x0 && p.invuln >= 0.4);
+  // gầm chỉ tự dùng khi bị vây (hoặc máu thấp)
+  p.hp = g.stats.maxHp;
+  g.grid.rebuild(g.enemies);
+  assert.equal(g.castHowl(data.skills.howl, 1), false);
+  p.hp = g.stats.maxHp * 0.3;
+  assert.equal(g.castHowl(data.skills.howl, 1), true);
+  p.hp = g.stats.maxHp;
+  for (const x of g.enemies) x.fearT = 0;
+  for (let i = 0; i < 6; i++) g.spawnEnemy('zombie', p.x + Math.cos(i) * 40, p.y + Math.sin(i) * 40);
+  g.grid.rebuild(g.enemies);
+  assert.equal(g.castHowl(data.skills.howl, 1), true);
+  assert.ok(g.enemies.some((x) => x.fearT > 0));
+});
+
+t('Nhân vật cũ (chưa có lớp) được đọc thành Pháp sư; mã của Chiến Binh giữ đúng lớp', () => {
+  const old = normalizeCharacter({ level: 7, skills: { fireball: 2 }, slots: ['fireball', null, null, null] }, data);
+  assert.equal(old.classId, 'mage');
+  assert.equal(old.skills.fireball, 2);
+  const w = P.createCharacter(data, 'warrior', 'Thiết Hùng');
+  w.skills = { cleave: 3, fireball: 2 }; // kỹ năng lớp khác bị loại khi đọc lại
+  const back = importCode(exportCode(w, newStash(data), data), data).ch;
+  assert.equal(back.classId, 'warrior');
+  assert.equal(back.name, 'Thiết Hùng');
+  assert.equal(back.uid, w.uid);
+  assert.deepEqual(back.skills, { cleave: 3 });
 });
 
 console.log(`\n${n} kiểm tra đều qua.`);

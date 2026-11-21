@@ -1,7 +1,7 @@
 // Lưu nhân vật + rương chung, và mã sao lưu để chuyển sang máy khác.
-import { createCharacter } from './progression.js';
+import { createCharacter, getClass } from './progression.js';
 
-const FIELDS = ['level', 'xp', 'attrs', 'attrPoints', 'skillPoints', 'skills', 'slots', 'gold', 'inventory', 'equipment', 'runs', 'deaths', 'clears', 'mapDeaths', 'mapProgress', 'mapClears'];
+const FIELDS = ['uid', 'name', 'classId', 'level', 'xp', 'attrs', 'attrPoints', 'skillPoints', 'skills', 'slots', 'gold', 'inventory', 'equipment', 'runs', 'deaths', 'clears', 'mapDeaths', 'mapProgress', 'mapClears'];
 
 function b64encode(str) {
   const bytes = new TextEncoder().encode(str);
@@ -29,8 +29,10 @@ function validItem(it, data) {
 
 // Chuẩn hoá dữ liệu nhân vật đọc từ ngoài: điền giá trị thiếu, bỏ đồ/kỹ năng không hợp lệ.
 export function normalizeCharacter(raw, data) {
-  const ch = createCharacter(data);
   if (!raw || typeof raw !== 'object') throw new Error('Dữ liệu nhân vật không hợp lệ');
+  const classId = data.classes[raw.classId] ? raw.classId : data.classList[0].id; // nhân vật cũ (trước khi có lớp) là Pháp sư
+  const ch = createCharacter(data, classId);
+  const freshUid = ch.uid;
   for (const k of FIELDS) if (raw[k] !== undefined) ch[k] = JSON.parse(JSON.stringify(raw[k]));
   const num = (v, d) => (Number.isFinite(v) ? v : d);
   ch.level = Math.max(1, Math.min(data.config.xp.maxLevel, Math.floor(num(ch.level, 1))));
@@ -38,10 +40,14 @@ export function normalizeCharacter(raw, data) {
   ch.gold = Math.max(0, Math.floor(num(ch.gold, 0)));
   ch.attrPoints = Math.max(0, Math.floor(num(ch.attrPoints, 0)));
   ch.skillPoints = Math.max(0, Math.floor(num(ch.skillPoints, 0)));
-  const start = data.config.player.startAttributes;
+  ch.classId = classId;
+  ch.uid = typeof ch.uid === 'string' && ch.uid ? ch.uid.slice(0, 40) : freshUid;
+  ch.name = String(ch.name || getClass(ch, data).short).slice(0, 24);
+  const start = getClass(ch, data).startAttributes;
   ch.attrs = Object.fromEntries(Object.keys(start).map((k) => [k, Math.max(start[k], Math.floor(num(ch.attrs?.[k], start[k])))]));
   const skills = {};
-  for (const [id, l] of Object.entries(ch.skills || {})) if (data.skills[id] && l > 0) skills[id] = Math.min(data.skills[id].maxLevel, Math.floor(l));
+  const trees = getClass(ch, data).trees;
+  for (const [id, l] of Object.entries(ch.skills || {})) if (data.skills[id] && trees.includes(data.skills[id].tree) && l > 0) skills[id] = Math.min(data.skills[id].maxLevel, Math.floor(l));
   ch.skills = skills;
   const maxSlots = data.config.player.maxSlots;
   ch.slots = Array.from({ length: maxSlots }, (_, i) => {
@@ -119,4 +125,44 @@ export function importCode(code, data) {
   let obj;
   try { obj = JSON.parse(b64decode(parts[1])); } catch { throw new Error('Không đọc được mã'); }
   return { ch: normalizeCharacter(obj.ch, data), stash: normalizeStash(obj.stash, data) };
+}
+
+// ---------- Nhiều nhân vật ----------
+// roster = { active: uid | null, chars: [nhân vật] }. Rương chung dùng chung cho mọi nhân vật.
+export function loadRoster(data) {
+  const ls = storage();
+  const roster = { active: null, chars: [] };
+  let stash = newStash(data);
+  if (!ls) return { roster, stash };
+  try {
+    const raw = JSON.parse(ls.getItem(data.config.save.rosterKey) || 'null');
+    if (raw && Array.isArray(raw.chars)) {
+      for (const c of raw.chars) { try { roster.chars.push(normalizeCharacter(c, data)); } catch { /* bỏ nhân vật hỏng */ } }
+      roster.active = raw.active;
+    } else {
+      // Chuyển dữ liệu kiểu cũ (một nhân vật) sang danh sách.
+      const old = ls.getItem(data.config.save.charKey);
+      if (old) roster.chars.push(normalizeCharacter(JSON.parse(old), data));
+      if (roster.chars[0]) roster.active = roster.chars[0].uid;
+    }
+  } catch { /* giữ danh sách trống */ }
+  try {
+    const st = ls.getItem(data.config.save.stashKey);
+    if (st) stash = normalizeStash(JSON.parse(st), data);
+  } catch { /* giữ rương trống */ }
+  if (!roster.chars.some((c) => c.uid === roster.active)) roster.active = roster.chars[0]?.uid || null;
+  return { roster, stash };
+}
+
+export function saveRoster(roster, stash, data) {
+  const ls = storage();
+  if (!ls) return false;
+  try {
+    const plain = { active: roster.active, chars: roster.chars.map((ch) => Object.fromEntries(FIELDS.map((k) => [k, ch[k]]))) };
+    ls.setItem(data.config.save.rosterKey, JSON.stringify(plain));
+    ls.setItem(data.config.save.stashKey, JSON.stringify(stash));
+    return true;
+  } catch {
+    return false;
+  }
 }

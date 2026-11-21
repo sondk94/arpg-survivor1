@@ -4,17 +4,38 @@
     {
       "id": "fire",
       "name": "Lửa",
-      "color": "#ff7a2a"
+      "color": "#ff7a2a",
+      "class": "mage"
     },
     {
       "id": "cold",
       "name": "Băng",
-      "color": "#7fd4ff"
+      "color": "#7fd4ff",
+      "class": "mage"
     },
     {
       "id": "lightning",
       "name": "Sét",
-      "color": "#ffe14d"
+      "color": "#ffe14d",
+      "class": "mage"
+    },
+    {
+      "id": "weapon",
+      "name": "Vũ Khí",
+      "color": "#d8d8d8",
+      "class": "warrior"
+    },
+    {
+      "id": "shout",
+      "name": "Tiếng Thét",
+      "color": "#e0a050",
+      "class": "warrior"
+    },
+    {
+      "id": "blood",
+      "name": "Huyết Chiến",
+      "color": "#e0504a",
+      "class": "warrior"
     }
   ],
   "skills": [
@@ -210,7 +231,8 @@
         "perLevel": 0.01
       },
       "hpPct": 0.3,
-      "radius": 90
+      "radius": 90,
+      "deathBurst": true
     },
     {
       "id": "ice_bolt",
@@ -612,6 +634,532 @@
           "pct": 0.04
         }
       ]
+    },
+    {
+      "id": "cleave",
+      "name": "Chém Bổ",
+      "short": "CB",
+      "tree": "weapon",
+      "type": "active",
+      "kind": "melee",
+      "element": "physical",
+      "unlock": 1,
+      "unlockTest": 1,
+      "maxLevel": 20,
+      "grid": [
+        0,
+        0
+      ],
+      "color": "#e8e8e8",
+      "desc": "Chém một nhát hình vòng cung trước mặt, trúng mọi quái trong tầm. Phải áp sát quái.",
+      "damage": {
+        "min": 9,
+        "max": 13,
+        "perLevel": 3
+      },
+      "range": 80,
+      "arcDeg": 130,
+      "cooldown": 0.55,
+      "mana": 0,
+      "synergies": [
+        {
+          "from": "leap_slam",
+          "pct": 0.05
+        }
+      ]
+    },
+    {
+      "id": "whirlwind",
+      "name": "Lốc Xoáy",
+      "short": "LX",
+      "tree": "weapon",
+      "type": "active",
+      "kind": "aura",
+      "element": "physical",
+      "unlock": 6,
+      "unlockTest": 2,
+      "maxLevel": 20,
+      "grid": [
+        2,
+        0
+      ],
+      "color": "#c8c8c8",
+      "desc": "Xoay vũ khí liên tục quanh người, chém mọi quái xung quanh. Luôn bật, tốn mana liên tục.",
+      "damage": {
+        "min": 9,
+        "max": 12,
+        "perLevel": 3
+      },
+      "radius": {
+        "base": 90,
+        "perLevel": 2
+      },
+      "tickInterval": 0.35,
+      "manaPerSecond": 1,
+      "synergies": [
+        {
+          "from": "cleave",
+          "pct": 0.04
+        }
+      ]
+    },
+    {
+      "id": "weapon_mastery",
+      "name": "Thông Thạo Vũ Khí",
+      "short": "TV",
+      "tree": "weapon",
+      "type": "passive",
+      "element": "physical",
+      "unlock": 12,
+      "unlockTest": 4,
+      "maxLevel": 20,
+      "grid": [
+        1,
+        1
+      ],
+      "color": "#b0b0b0",
+      "desc": "Bị động: tăng sát thương vật lý và tỉ lệ chí mạng.",
+      "dmgPct": 0.08,
+      "critPerLevel": 0.01
+    },
+    {
+      "id": "leap_slam",
+      "name": "Nhảy Đập",
+      "short": "NĐ",
+      "tree": "weapon",
+      "type": "active",
+      "kind": "leap",
+      "element": "physical",
+      "unlock": 12,
+      "unlockTest": 4,
+      "maxLevel": 20,
+      "grid": [
+        0,
+        2
+      ],
+      "color": "#a0a0a0",
+      "desc": "Nhảy vào giữa cụm quái đông nhất và đập xuống đất. Bất tử trong lúc nhảy.",
+      "damage": {
+        "min": 40,
+        "max": 60,
+        "perLevel": 12
+      },
+      "radius": 130,
+      "range": 320,
+      "invuln": 0.4,
+      "cooldown": 4,
+      "mana": 6,
+      "synergies": [
+        {
+          "from": "cleave",
+          "pct": 0.06
+        }
+      ]
+    },
+    {
+      "id": "throwing_axe",
+      "name": "Ném Rìu",
+      "short": "NR",
+      "tree": "weapon",
+      "type": "active",
+      "kind": "projectile",
+      "element": "physical",
+      "unlock": 18,
+      "unlockTest": 6,
+      "maxLevel": 20,
+      "grid": [
+        2,
+        2
+      ],
+      "color": "#bfbfbf",
+      "desc": "Ném rìu xuyên qua 2 quái. Cấp 5, 10, 15 ném thêm 1 lưỡi.",
+      "damage": {
+        "min": 18,
+        "max": 26,
+        "perLevel": 5
+      },
+      "pierce": 2,
+      "extraProjectileAt": [
+        5,
+        10,
+        15
+      ],
+      "projectileSpeed": 430,
+      "projectileRadius": 8,
+      "range": 480,
+      "spreadDeg": 14,
+      "cooldown": 1.0,
+      "mana": 2,
+      "synergies": [
+        {
+          "from": "whirlwind",
+          "pct": 0.05
+        }
+      ]
+    },
+    {
+      "id": "frenzy",
+      "name": "Cuồng Sát",
+      "short": "CS",
+      "tree": "weapon",
+      "type": "passive",
+      "element": "physical",
+      "unlock": 24,
+      "unlockTest": 8,
+      "maxLevel": 20,
+      "grid": [
+        1,
+        3
+      ],
+      "color": "#ff8a5a",
+      "desc": "Bị động: mỗi lần giết quái được 1 tầng Cuồng Sát (tối đa 10 tầng, mất sau 3 giây không giết), mỗi tầng tăng sát thương.",
+      "stackDmg": {
+        "base": 0.02,
+        "perLevel": 0.002
+      },
+      "maxStacks": 10,
+      "stackDuration": 3
+    },
+    {
+      "id": "howl",
+      "name": "Gầm Chiến",
+      "short": "GC",
+      "tree": "shout",
+      "type": "active",
+      "kind": "howl",
+      "element": "physical",
+      "unlock": 1,
+      "unlockTest": 1,
+      "maxLevel": 20,
+      "grid": [
+        0,
+        0
+      ],
+      "color": "#f0c070",
+      "desc": "Gầm lên đẩy lùi và làm quái xung quanh hoảng sợ bỏ chạy. Tự dùng khi bị vây (6 quái trở lên sát người) hoặc máu dưới 50%. Tinh anh sợ nửa thời gian, trùm và boss không sợ.",
+      "damage": {
+        "min": 10,
+        "max": 15,
+        "perLevel": 3
+      },
+      "radius": 160,
+      "fear": {
+        "base": 2,
+        "perLevel": 0.1
+      },
+      "knockback": 420,
+      "cooldown": 5,
+      "mana": 4,
+      "synergies": [],
+      "minCrowd": 6,
+      "closeRadius": 90,
+      "lowHpPct": 0.5
+    },
+    {
+      "id": "battle_cry",
+      "name": "Thét Xung Trận",
+      "short": "XT",
+      "tree": "shout",
+      "type": "active",
+      "kind": "buff",
+      "element": "physical",
+      "unlock": 6,
+      "unlockTest": 2,
+      "maxLevel": 20,
+      "grid": [
+        2,
+        0
+      ],
+      "color": "#ffd27a",
+      "desc": "Thét lên tăng sát thương của mọi kỹ năng trong một thời gian.",
+      "buff": {
+        "dmgPct": {
+          "base": 0.25,
+          "perLevel": 0.03
+        }
+      },
+      "duration": 8,
+      "cooldown": 14,
+      "mana": 6,
+      "synergies": []
+    },
+    {
+      "id": "iron_skin",
+      "name": "Da Thép",
+      "short": "DT",
+      "tree": "shout",
+      "type": "passive",
+      "element": "physical",
+      "unlock": 12,
+      "unlockTest": 4,
+      "maxLevel": 20,
+      "grid": [
+        1,
+        1
+      ],
+      "color": "#9aa0a8",
+      "desc": "Bị động: tăng giáp và kháng mọi nguyên tố.",
+      "armor": {
+        "base": 15,
+        "perLevel": 8
+      },
+      "resAllPerLevel": 0.02
+    },
+    {
+      "id": "stomp",
+      "name": "Dậm Đất",
+      "short": "DĐ",
+      "tree": "shout",
+      "type": "active",
+      "kind": "nova",
+      "element": "physical",
+      "unlock": 12,
+      "unlockTest": 4,
+      "maxLevel": 20,
+      "grid": [
+        0,
+        2
+      ],
+      "color": "#c09060",
+      "desc": "Dậm mạnh xuống đất, gây sát thương và làm quái xung quanh choáng gần như đứng yên.",
+      "damage": {
+        "min": 36,
+        "max": 52,
+        "perLevel": 11
+      },
+      "radius": 130,
+      "slow": {
+        "pct": 0.9,
+        "duration": 0.8
+      },
+      "cooldown": 2.5,
+      "mana": 5,
+      "synergies": [
+        {
+          "from": "howl",
+          "pct": 0.05
+        }
+      ]
+    },
+    {
+      "id": "earthquake",
+      "name": "Động Đất",
+      "short": "ĐĐ",
+      "tree": "shout",
+      "type": "active",
+      "kind": "storm",
+      "element": "physical",
+      "unlock": 18,
+      "unlockTest": 6,
+      "maxLevel": 20,
+      "grid": [
+        2,
+        2
+      ],
+      "color": "#a07040",
+      "desc": "Làm rung chuyển vùng quái đông nhất trong 3 giây, gây sát thương liên tục và làm chậm.",
+      "dps": {
+        "base": 60,
+        "perLevel": 15
+      },
+      "radius": 120,
+      "duration": 3,
+      "tick": 0.5,
+      "slow": {
+        "pct": 0.3,
+        "duration": 0.6
+      },
+      "cooldown": 5,
+      "mana": 7,
+      "searchRange": 450,
+      "synergies": [
+        {
+          "from": "stomp",
+          "pct": 0.05
+        }
+      ]
+    },
+    {
+      "id": "unbroken",
+      "name": "Ý Chí Bất Khuất",
+      "short": "YC",
+      "tree": "shout",
+      "type": "passive",
+      "element": "physical",
+      "unlock": 24,
+      "unlockTest": 8,
+      "maxLevel": 20,
+      "grid": [
+        1,
+        3
+      ],
+      "color": "#7fe08a",
+      "desc": "Bị động: hồi máu liên tục theo % máu tối đa.",
+      "hpRegen": {
+        "base": 0.01,
+        "perLevel": 0.002
+      }
+    },
+    {
+      "id": "thrust",
+      "name": "Đâm Xuyên",
+      "short": "ĐX",
+      "tree": "blood",
+      "type": "active",
+      "kind": "beam",
+      "element": "physical",
+      "unlock": 1,
+      "unlockTest": 1,
+      "maxLevel": 20,
+      "grid": [
+        0,
+        0
+      ],
+      "color": "#ff7a6a",
+      "desc": "Đâm một đường thẳng 200 px xuyên qua mọi quái.",
+      "damage": {
+        "min": 18,
+        "max": 32,
+        "perLevel": 7
+      },
+      "length": 200,
+      "width": 30,
+      "cooldown": 0.8,
+      "mana": 0,
+      "synergies": [
+        {
+          "from": "chain_cleave",
+          "pct": 0.05
+        }
+      ]
+    },
+    {
+      "id": "life_leech",
+      "name": "Hút Máu",
+      "short": "HM",
+      "tree": "blood",
+      "type": "passive",
+      "element": "physical",
+      "unlock": 6,
+      "unlockTest": 2,
+      "maxLevel": 20,
+      "grid": [
+        2,
+        0
+      ],
+      "color": "#c0392b",
+      "desc": "Bị động: hồi máu bằng một phần sát thương gây ra.",
+      "leech": {
+        "base": 0.02,
+        "perLevel": 0.004
+      }
+    },
+    {
+      "id": "chain_cleave",
+      "name": "Chém Liên Hoàn",
+      "short": "LH",
+      "tree": "blood",
+      "type": "active",
+      "kind": "chain",
+      "element": "physical",
+      "unlock": 12,
+      "unlockTest": 4,
+      "maxLevel": 20,
+      "grid": [
+        1,
+        1
+      ],
+      "color": "#ff9a8a",
+      "desc": "Chém quái gần nhất rồi lướt sang chém tiếp 3 quái gần đó, cứ 5 cấp thêm 1 quái.",
+      "damage": {
+        "min": 16,
+        "max": 32,
+        "perLevel": 8
+      },
+      "jumps": 4,
+      "jumpEveryLevels": 5,
+      "range": 170,
+      "jumpRange": 150,
+      "cooldown": 1.2,
+      "mana": 4,
+      "synergies": [
+        {
+          "from": "thrust",
+          "pct": 0.05
+        }
+      ]
+    },
+    {
+      "id": "berserk",
+      "name": "Cuồng Huyết",
+      "short": "CH",
+      "tree": "blood",
+      "type": "active",
+      "kind": "buff",
+      "element": "physical",
+      "unlock": 12,
+      "unlockTest": 4,
+      "maxLevel": 20,
+      "grid": [
+        0,
+        2
+      ],
+      "color": "#ff3b3b",
+      "desc": "Nổi cuồng: tăng mạnh sát thương nhưng mất một nửa giáp trong thời gian hiệu lực.",
+      "buff": {
+        "dmgPct": {
+          "base": 0.4,
+          "perLevel": 0.04
+        },
+        "armorMult": 0.5
+      },
+      "duration": 6,
+      "cooldown": 12,
+      "mana": 5,
+      "synergies": []
+    },
+    {
+      "id": "blood_mastery",
+      "name": "Thông Thạo Huyết",
+      "short": "TH",
+      "tree": "blood",
+      "type": "passive",
+      "element": "physical",
+      "unlock": 18,
+      "unlockTest": 6,
+      "maxLevel": 20,
+      "grid": [
+        2,
+        2
+      ],
+      "color": "#e05050",
+      "desc": "Bị động: tăng tỉ lệ chí mạng và sát thương chí mạng.",
+      "critPerLevel": 0.01,
+      "critMultPerLevel": 0.05
+    },
+    {
+      "id": "blood_burst",
+      "name": "Huyết Bạo",
+      "short": "HB",
+      "tree": "blood",
+      "type": "passive",
+      "element": "physical",
+      "unlock": 24,
+      "unlockTest": 8,
+      "maxLevel": 20,
+      "grid": [
+        1,
+        3
+      ],
+      "color": "#ff6060",
+      "desc": "Bị động: quái chết vì sát thương vật lý có tỉ lệ nổ tung, gây sát thương bằng % máu của nó cho quái xung quanh.",
+      "chance": {
+        "base": 0.12,
+        "perLevel": 0.01
+      },
+      "hpPct": 0.3,
+      "radius": 90,
+      "deathBurst": true
     }
   ]
 }

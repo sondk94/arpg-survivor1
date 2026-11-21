@@ -1,11 +1,12 @@
 import { loadData } from './core/data.js';
 import { Game, fmtTime } from './core/game.js';
 import * as P from './core/progression.js';
-import { botInput, botAllocate, botManageItems } from './core/bot.js';
+import { botInput, botAllocate, botManageItems, BUILDS } from './core/bot.js';
 import * as I from './core/items.js';
 import { RNG } from './core/rng.js';
-import { saveGame, loadGame, exportCode, importCode, newStash } from './core/save.js';
+import { saveRoster, loadRoster, exportCode, importCode } from './core/save.js';
 import { Renderer } from './ui/render.js';
+import { drawPortrait } from './ui/sprites.js';
 import { Panel } from './ui/panel.js';
 import { Input } from './ui/input.js';
 import { setupDebug } from './ui/debug.js';
@@ -23,10 +24,10 @@ class App {
       if (!r.ok) throw new Error(`Không tải được ${p}`);
       return r.json();
     });
-    const saved = loadGame(this.data);
-    this.ch = saved.ch || P.createCharacter(this.data);
-    this.stash = saved.stash || newStash(this.data);
-    this.loadedFromSave = !!saved.ch;
+    const saved = loadRoster(this.data);
+    this.roster = saved.roster;
+    this.stash = saved.stash;
+    this.ch = this.roster.chars.find((c) => c.uid === this.roster.active) || null;
     this.game = null;
     this.state = 'village';
     this.lastResult = null;
@@ -57,7 +58,8 @@ class App {
       if (document.hidden && this.state === 'run' && this.game && !this.game.over) this.panel.open();
     });
     window.addEventListener('beforeunload', () => this.save());
-    this.renderVillage();
+    // Mở game: luôn bắt đầu ở màn chọn nhân vật.
+    this.renderSelect();
     this.last = performance.now();
     this.acc = 0;
     requestAnimationFrame((t) => this.frame(t));
@@ -87,7 +89,7 @@ class App {
           steps++;
           if (this.ui.bot && (this.ch.attrPoints || this.ch.skillPoints)) {
             g.beginEdit();
-            g.recordAllocation(botAllocate(this.ch, this.data, this.ui.botBuild || 'fire'));
+            g.recordAllocation(botAllocate(this.ch, this.data, this.botBuild()));
             g.refreshStats();
             g.endEdit();
           }
@@ -106,7 +108,7 @@ class App {
 
   handleEvents(g) {
     for (const ev of g.out) {
-      if (ev.type === 'item' && this.ui.bot && botManageItems(this.ch, this.data, this.ui.botBuild || 'fire')) g.refreshStats();
+      if (ev.type === 'item' && this.ui.bot && botManageItems(this.ch, this.data, this.botBuild())) g.refreshStats();
       if (ev.type === 'item' || ev.type === 'levelup') this.saveSoon();
       if (ev.type === 'shake') this.renderer.shake = Math.max(this.renderer.shake, ev.amount);
       if (ev.type === 'death' || ev.type === 'victory') {
@@ -125,6 +127,7 @@ class App {
       $('#debug').classList.toggle('hidden', !this.ui.debugVisible);
       return;
     }
+    if (this.state === 'select') return;
     if (this.state !== 'run') {
       if ((k === 'Escape' || k === 'Tab' || k === 'c' || k === 'C') && this.panel.isOpen) this.panel.close();
       else if ((k === 'i' || k === 'I') && document.activeElement?.tagName !== 'TEXTAREA') this.togglePanel('items');
@@ -139,6 +142,13 @@ class App {
     }
   }
 
+  // Kiểu cộng điểm của bot: theo lựa chọn ở bảng debug nếu đúng lớp, không thì kiểu mặc định của lớp.
+  botBuild() {
+    const b = this.ui.botBuild;
+    if (b && BUILDS[b] && BUILDS[b].class === this.ch.classId) return b;
+    return this.ch.classId === 'warrior' ? 'weapon' : 'fire';
+  }
+
   togglePanel(tab) {
     if (this.state === 'run' && this.game?.over) return;
     if (this.panel.isOpen && (!tab || this.panel.tab === tab)) this.panel.close();
@@ -148,7 +158,12 @@ class App {
   save() {
     clearTimeout(this.saveTimer);
     this.saveTimer = null;
-    saveGame(this.ch, this.stash, this.data);
+    if (this.ch) {
+      const i = this.roster.chars.findIndex((c) => c.uid === this.ch.uid);
+      if (i >= 0) this.roster.chars[i] = this.ch; else this.roster.chars.push(this.ch);
+      this.roster.active = this.ch.uid;
+    }
+    saveRoster(this.roster, this.stash, this.data);
   }
 
   saveSoon() {
@@ -251,6 +266,8 @@ class App {
       tester: this.tester || '(chưa đặt tên)',
       date: new Date().toISOString(),
       version: this.data.config.version,
+      classId: this.ch.classId,
+      charName: this.ch.name,
       map: g.map.id,
       difficulty: Math.round(g.map.difficulty * 1000) / 1000,
       nextMapUnlocked: r.nextMap || null,
@@ -297,6 +314,83 @@ class App {
   }
 
   // ---------- Làng ----------
+  // ---------- Màn chọn nhân vật ----------
+  renderSelect(creating = false) {
+    this.state = 'select';
+    if (this.panel?.isOpen) this.panel.close();
+    const v = $('#village');
+    v.classList.remove('hidden');
+    $('#btn-plus').classList.add('hidden');
+    const data = this.data;
+    const chars = this.roster.chars;
+    const list = chars.length ? chars.map((c) => {
+      const cls = P.getClass(c, data);
+      const prog = Math.min(c.mapProgress || 0, data.mapOrder.length);
+      const cur = data.maps[data.mapOrder[Math.min(c.mapProgress || 0, data.mapOrder.length - 1)]];
+      return `<div class="charcard ${c.uid === this.roster.active ? 'on' : ''}" style="--cc:${cls.color}">
+        <canvas data-portrait="${cls.look}" width="96" height="120"></canvas>
+        <div class="cc-info"><b>${esc(c.name)}</b><span>${esc(cls.name)} · cấp ${c.level}</span>
+          <small>${prog}/${data.mapOrder.length} màn đã qua · đang ở ${esc(cur.id)} ${esc(cur.name)} · ${c.gold.toLocaleString('vi-VN')} vàng</small></div>
+        <div class="cc-btns"><button class="primary" data-play="${c.uid}">Chơi</button><button class="ghost" data-del="${c.uid}">Xoá</button></div>
+      </div>`;
+    }).join('') : '<p class="muted">Chưa có nhân vật nào. Hãy tạo nhân vật đầu tiên.</p>';
+    const classCards = data.classList.map((c, i) => {
+      const st = P.computeStats(P.createCharacter(data, c.id), data);
+      return `<label class="classcard" style="--cc:${c.color}">
+        <input type="radio" name="cls" value="${c.id}" ${i === 0 ? 'checked' : ''}>
+        <canvas data-portrait="${c.look}" width="120" height="150"></canvas>
+        <div><b>${esc(c.name)}</b><p>${esc(c.desc)}</p>
+        <small>Máu ${Math.round(st.maxHp)} · Mana ${Math.round(st.maxMana)} · Giáp ${st.armor} · Nhánh: ${c.trees.map((t) => esc(data.treesById[t].name)).join(', ')}</small></div>
+      </label>`;
+    }).join('');
+    v.innerHTML = `<div class="village-box">
+      <header><h1>ARPG Survivor <small>Chọn nhân vật</small></h1></header>
+      <section class="tests"><h3 class="sec-title">Nhân vật của bạn</h3><div class="charlist">${list}</div>
+        <button id="s-new" class="primary" ${creating ? 'disabled' : ''}>+ Tạo nhân vật mới</button></section>
+      <section class="tests ${creating || !chars.length ? '' : 'hidden'}" id="s-create">
+        <h3 class="sec-title">Tạo nhân vật mới</h3>
+        <div class="classgrid">${classCards}</div>
+        <div class="row"><label>Tên nhân vật <input id="s-name" maxlength="24" placeholder="VD: Lửa Hồng"></label>
+        <button id="s-make" class="primary">Tạo và vào làng</button></div>
+      </section>
+      <p class="muted">Mỗi nhân vật có cấp, kỹ năng, đồ và tiến độ 20 màn riêng. Rương chung dùng chung cho mọi nhân vật.</p>
+    </div>`;
+    v.querySelectorAll('canvas[data-portrait]').forEach((c) => drawPortrait(c, c.dataset.portrait));
+    v.querySelectorAll('[data-play]').forEach((b) => (b.onclick = () => this.selectChar(b.dataset.play)));
+    v.querySelectorAll('[data-del]').forEach((b) => (b.onclick = () => {
+      const c = chars.find((x) => x.uid === b.dataset.del);
+      if (!confirm(`Xoá vĩnh viễn nhân vật "${c.name}" (cấp ${c.level})? Đồ trên người và trong kho đồ sẽ mất (rương chung vẫn giữ). Nên xuất mã trước.`)) return;
+      this.roster.chars = chars.filter((x) => x.uid !== c.uid);
+      if (this.ch?.uid === c.uid) this.ch = null;
+      if (this.roster.active === c.uid) this.roster.active = this.roster.chars[0]?.uid || null;
+      saveRoster(this.roster, this.stash, data);
+      this.renderSelect();
+    }));
+    $('#s-new').onclick = () => this.renderSelect(true);
+    $('#s-make').onclick = () => {
+      const cls = v.querySelector('input[name=cls]:checked').value;
+      const ch = P.createCharacter(data, cls, $('#s-name').value.trim().slice(0, 24));
+      this.ch = ch;
+      this.lastResult = null;
+      this.selectedMap = null;
+      this.save();
+      this.state = 'village';
+      this.renderVillage();
+      this.panel.open('char');
+      this.panel.flash('Chọn kỹ năng đầu tiên rồi vào màn 1-1');
+    };
+  }
+
+  selectChar(uid) {
+    this.ch = this.roster.chars.find((c) => c.uid === uid);
+    this.roster.active = uid;
+    this.lastResult = null;
+    this.selectedMap = null;
+    this.save();
+    this.state = 'village';
+    this.renderVillage();
+  }
+
   currentMap() {
     const u = P.unlockedMaps(this.ch, this.data);
     if (!u.includes(this.selectedMap)) this.selectedMap = u[u.length - 1];
@@ -365,7 +459,7 @@ class App {
     const invUsed = ch.inventory.filter(Boolean).length;
     const sellable = ch.inventory.filter((it) => it && it.rarity === 'normal');
     const cost = P.respecCost(ch, data);
-    const trees = data.trees.map((t) => `${t.name} ${data.skillList.filter((s) => s.tree === t.id).reduce((n, s) => n + (ch.skills[s.id] || 0), 0)}`).join(' · ');
+    const trees = data.trees.filter((t) => P.classTrees(ch, data).includes(t.id)).map((t) => `${t.name} ${data.skillList.filter((s) => s.tree === t.id).reduce((n, s) => n + (ch.skills[s.id] || 0), 0)}`).join(' · ');
 
     v.innerHTML = `
       <div class="village-box">
@@ -376,7 +470,7 @@ class App {
         ${this.mapPickerHtml()}
         <div class="char">
           <div class="char-main">
-            <div class="cls">${esc(data.config.player.className)} · điểm kỹ năng: ${trees}</div>
+            <div class="cls"><b>${esc(ch.name)}</b> · ${esc(P.getClass(ch, data).name)} · điểm kỹ năng: ${trees}</div>
             <div class="lvl">Cấp ${ch.level} <span class="gold">${ch.gold.toLocaleString('vi-VN')} vàng</span></div>
             <div class="xpbar"><div style="width:${Math.min(100, (ch.xp / need) * 100)}%"></div></div>
             <div class="muted">${Math.floor(ch.xp)} / ${need} kinh nghiệm · ${ch.runs} lượt · ${ch.clears} lần hoàn thành · ${ch.deaths} lần chết</div>
@@ -398,7 +492,7 @@ class App {
             <button id="v-respec" ${ch.gold >= cost ? '' : 'disabled'}>Tẩy điểm (${cost} vàng)</button>
             <button id="v-export">Xuất mã nhân vật</button>
             <button id="v-import">Nhập mã</button>
-            <button id="v-new" class="ghost">Nhân vật mới</button>
+            <button id="v-switch" class="ghost">Đổi / tạo nhân vật</button>
           </div>
           <div id="v-codebox" class="code-box hidden"></div>
           <p class="muted" style="margin:8px 0 0;font-size:12px">Nhân vật và rương tự lưu trên trình duyệt này. Xoá dữ liệu trình duyệt sẽ mất nhân vật: hãy "Xuất mã nhân vật" và cất mã ở nơi khác. Mã gồm cả rương chung.</p>
@@ -467,13 +561,15 @@ class App {
     };
     $('#v-import').onclick = () => {
       box.classList.remove('hidden');
-      box.innerHTML = '<p>Dán mã nhân vật vào đây. Nhân vật và rương hiện tại sẽ bị thay thế.</p><textarea id="v-code-in" placeholder="ARPG1.…"></textarea><button id="v-do-import" class="primary">Nhập</button> <span id="v-imp-msg" class="bad"></span>';
+      box.innerHTML = '<p>Dán mã nhân vật vào đây. Nhân vật trong mã được thêm vào danh sách (trùng nhân vật thì ghi đè); đồ trong rương của mã được thêm vào các ô trống của rương chung.</p><textarea id="v-code-in" placeholder="ARPG1.…"></textarea><button id="v-do-import" class="primary">Nhập</button> <span id="v-imp-msg" class="bad"></span>';
       $('#v-do-import').onclick = () => {
         try {
           const res = importCode($('#v-code-in').value, data);
-          if (!confirm(`Nhập nhân vật cấp ${res.ch.level}? Nhân vật hiện tại (cấp ${ch.level}) sẽ bị thay thế.`)) return;
+          const dup = this.roster.chars.find((c) => c.uid === res.ch.uid);
+          if (!confirm(dup ? `Ghi đè nhân vật "${dup.name}" (cấp ${dup.level}) bằng bản trong mã (cấp ${res.ch.level})?` : `Thêm nhân vật "${res.ch.name}" cấp ${res.ch.level}?`)) return;
           this.ch = res.ch;
-          this.stash = res.stash;
+          const have = new Set(this.stash.filter(Boolean).map((x) => x.uid));
+          for (const it of res.stash) if (it && !have.has(it.uid)) { const j = this.stash.indexOf(null); if (j >= 0) this.stash[j] = it; }
           this.lastResult = null;
           this.save();
           this.renderVillage();
@@ -482,13 +578,7 @@ class App {
         }
       };
     };
-    $('#v-new').onclick = () => {
-      if (!confirm('Tạo nhân vật mới? Cấp, điểm và đồ của nhân vật hiện tại sẽ mất (rương chung và log vẫn giữ). Nên xuất mã trước.')) return;
-      this.ch = P.createCharacter(data);
-      this.lastResult = null;
-      this.save();
-      this.renderVillage();
-    };
+    $('#v-switch').onclick = () => { this.save(); this.renderSelect(); };
     $('#v-tester').onchange = (e) => {
       this.tester = e.target.value.trim();
       try { localStorage.setItem('arpg_s0_tester', this.tester); } catch { /* bỏ qua */ }

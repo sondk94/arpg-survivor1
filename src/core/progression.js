@@ -26,13 +26,29 @@ export function unlockLevel(skill, cfg) {
   return cfg.testMode ? skill.unlockTest : skill.unlock;
 }
 
-export function createCharacter(data) {
+// Lớp nhân vật và thông số cơ bản (config.player, ghi đè bởi classes.json).
+export function getClass(ch, data) {
+  return data.classes[ch.classId] || data.classList[0];
+}
+export function playerCfg(ch, data) {
+  return { ...data.config.player, ...(getClass(ch, data).player || {}) };
+}
+export function classTrees(ch, data) {
+  return getClass(ch, data).trees;
+}
+
+let charSeq = 0;
+export function createCharacter(data, classId = data.classList[0].id, name = '') {
   const p = data.config.player;
+  const cls = data.classes[classId] || data.classList[0];
   const ch = {
     version: 1,
+    uid: `c${Date.now().toString(36)}${(charSeq++).toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`,
+    name: name || cls.short,
+    classId: cls.id,
     level: 1,
     xp: 0,
-    attrs: { ...p.startAttributes },
+    attrs: { ...(cls.startAttributes || p.startAttributes) },
     attrPoints: p.startAttrPoints || 0,
     skillPoints: p.startSkillPoints || 0,
     skills: {},
@@ -68,36 +84,57 @@ export function totalAttrs(ch, gear) {
   return o;
 }
 
+// Chỉ số cộng thêm từ kỹ năng bị động (theo cấp hiệu lực).
+function passiveBonuses(ch, data, skillBonus) {
+  const o = { crit: 0, critMult: 0, armor: 0, resAll: 0, hpRegen: 0, leech: 0 };
+  for (const [id, base] of Object.entries(ch.skills)) {
+    const sk = data.skills[id];
+    if (!sk || sk.type !== 'passive' || !base) continue;
+    const l = Math.min(sk.maxLevel + 10, base + (skillBonus[sk.tree] || 0) + (skillBonus.all || 0));
+    if (sk.critPerLevel) o.crit += sk.critPerLevel * l;
+    if (sk.critMultPerLevel) o.critMult += sk.critMultPerLevel * l;
+    if (sk.armor) o.armor += lv(sk.armor, l);
+    if (sk.resAllPerLevel) o.resAll += sk.resAllPerLevel * l;
+    if (sk.hpRegen) o.hpRegen += lv(sk.hpRegen, l);
+    if (sk.leech) o.leech += lv(sk.leech, l);
+  }
+  return o;
+}
+
 export function computeStats(ch, data) {
   const c = data.config;
-  const p = c.player;
+  const p = playerCfg(ch, data);
   const a = c.attributes;
   const gear = sumGear(ch);
   const g = gear.stats;
   const at = totalAttrs(ch, g);
   const pct = (k) => (g[k] || 0) / 100;
-  const maxHp = p.baseHp + at.vit * a.vit.hp + ch.level * p.hpPerLevel + (g.maxHp || 0);
-  const maxMana = p.baseMana + at.ene * a.ene.mana + ch.level * p.manaPerLevel + (g.maxMana || 0);
-  const resAll = pct('resAll');
+  const maxHp = p.baseHp + at.vit * (p.hpPerVit ?? a.vit.hp) + ch.level * p.hpPerLevel + (g.maxHp || 0);
+  const maxMana = p.baseMana + at.ene * (p.manaPerEne ?? a.ene.mana) + ch.level * p.manaPerLevel + (g.maxMana || 0);
+  const skillBonus = { all: g.allSkills || 0 };
+  for (const t of data.trees) skillBonus[t.id] = g[`${t.id}Skills`] || 0;
+  const pb = passiveBonuses(ch, data, skillBonus);
+  const resAll = pct('resAll') + pb.resAll;
   return {
     attrs: at,
     maxHp,
     maxMana,
     manaRegen: maxMana * p.manaRegenPct * (1 + pct('manaRegenPct')),
-    hpRegen: maxHp * p.hpRegenPct,
+    hpRegen: maxHp * (p.hpRegenPct + pb.hpRegen),
     cdSpeed: 1 + at.dex * a.dex.cdSpeedPct + pct('cdSpeedPct'),
     dodge: Math.min(c.caps.dodge, at.dex * a.dex.dodgePct),
-    physDmgPct: at.str * a.str.physDmgPct,
+    physDmgPct: at.str * a.str.physDmgPct + pct('physDmgPct'),
     spellDmgPct: at.ene * a.ene.spellDmgPct + pct('spellDmgPct'),
     elemDmgPct: { fire: pct('fireDmgPct'), cold: pct('coldDmgPct'), lightning: pct('lightningDmgPct') },
     // +% sát thương lên tinh anh và trùm nhỏ theo nguyên tố (mặc định của nhánh + từ đồ).
     eliteDmgPct: { lightning: (c.eliteDmgBonus?.lightning || 0) + pct('lightningEliteDmgPct') },
-    skillBonus: { fire: g.fireSkills || 0, cold: g.coldSkills || 0, lightning: g.lightningSkills || 0, all: g.allSkills || 0 },
+    skillBonus,
     moveSpeed: p.moveSpeed * (1 + pct('moveSpeedPct')),
     pickupRadius: p.pickupRadius * (1 + pct('pickupPct')),
-    critChance: p.critChance + pct('critChance'),
-    critMult: p.critMult,
-    armor: g.armor || 0,
+    critChance: p.critChance + pct('critChance') + pb.crit,
+    critMult: p.critMult + pb.critMult,
+    armor: (p.baseArmor || 0) + (g.armor || 0) + pb.armor,
+    leech: pb.leech,
     resist: {
       fire: pct('resFire') + resAll,
       cold: pct('resCold') + resAll,
@@ -138,7 +175,9 @@ export function passivePct(ch, element, data, stats) {
 
 // Hệ số nhân sát thương: 1 + %Thuộc tính + %Synergy + %Bị động + %Đồ (cộng dồn trước rồi mới nhân).
 export function damageMult(ch, skill, stats, data) {
-  return 1 + stats.spellDmgPct + synergyPct(ch, skill) + passivePct(ch, skill.element, data, stats) + (stats.elemDmgPct[skill.element] || 0);
+  // Vật lý tăng theo Sức mạnh (+% sát thương vật lý), phép tăng theo Năng lượng (+% sát thương phép).
+  const base = skill.element === 'physical' ? stats.physDmgPct : stats.spellDmgPct;
+  return 1 + base + synergyPct(ch, skill) + passivePct(ch, skill.element, data, stats) + (stats.elemDmgPct[skill.element] || 0);
 }
 
 export function addAttr(ch, key, n = 1) {
@@ -154,6 +193,7 @@ export function canLearn(ch, id, data) {
   const cur = ch.skills[id] || 0;
   if (ch.skillPoints <= 0) return { ok: false, reason: 'Hết điểm kỹ năng' };
   if (cur >= sk.maxLevel) return { ok: false, reason: 'Đã tối đa' };
+  if (!classTrees(ch, data).includes(sk.tree)) return { ok: false, reason: 'Kỹ năng của lớp khác' };
   const need = unlockLevel(sk, data.config);
   if (ch.level < need) return { ok: false, reason: `Cần cấp ${need}` };
   return { ok: true };
@@ -203,7 +243,7 @@ export function respec(ch, data) {
   if (ch.gold < cost) return `Cần ${cost} vàng`;
   const p = data.config.player;
   ch.gold -= cost;
-  ch.attrs = { ...p.startAttributes };
+  ch.attrs = { ...(getClass(ch, data).startAttributes || p.startAttributes) };
   ch.attrPoints = (p.startAttrPoints || 0) + (ch.level - 1) * p.attrPointsPerLevel;
   ch.skills = {};
   ch.slots = new Array(p.maxSlots).fill(null);

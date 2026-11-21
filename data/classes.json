@@ -1,0 +1,39 @@
+{
+  "classes": [
+    {
+      "id": "mage",
+      "name": "Pháp sư Nguyên tố",
+      "short": "Pháp sư",
+      "look": "mage",
+      "color": "#7f6bff",
+      "desc": "Đánh từ xa bằng phép Lửa, Băng, Sét. Máu mỏng, sát thương diện rộng, khống chế tốt.",
+      "trees": ["fire", "cold", "lightning"],
+      "mainStat": "ene",
+      "startAttributes": { "str": 10, "dex": 20, "vit": 15, "ene": 30 },
+      "player": {}
+    },
+    {
+      "id": "warrior",
+      "name": "Chiến Binh",
+      "short": "Chiến Binh",
+      "look": "warrior",
+      "color": "#d9534f",
+      "desc": "Cận chiến, sát thương vật lý cao, trâu máu, giáp dày. Phải áp sát quái để đánh. Sức mạnh tăng sát thương.",
+      "trees": ["weapon", "shout", "blood"],
+      "mainStat": "str",
+      "startAttributes": { "str": 30, "dex": 20, "vit": 25, "ene": 10 },
+      "player": {
+        "baseHp": 60,
+        "hpPerVit": 4,
+        "hpPerLevel": 3,
+        "baseMana": 20,
+        "manaPerEne": 1.5,
+        "manaPerLevel": 1,
+        "manaRegenPct": 0.1,
+        "moveSpeed": 165,
+        "radius": 15,
+        "baseArmor": 15
+      }
+    }
+  ]
+}
