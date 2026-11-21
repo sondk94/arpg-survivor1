@@ -1,6 +1,6 @@
 # ARPG Survivor – Giai đoạn 1 (Lõi ARPG)
 
-Bản đồ 1-1 *Đồng hoang Mục rữa*, 10 phút, lớp Pháp sư Nguyên tố với đủ 3 nhánh **Lửa / Băng / Sét**. Có đồ đạc 4 bậc, kho đồ, làng, rương chung, lưu game, xuất/nhập mã nhân vật. Chạy trên trình duyệt, HTML5 Canvas + JavaScript thuần, không cần build, không có thư viện ngoài. Đồ hoạ là hình khối đơn giản.
+Bản đồ 1-1 *Đồng hoang Mục rữa*, 10 phút, lớp Pháp sư Nguyên tố với đủ 3 nhánh **Lửa / Băng / Sét**. Có đồ đạc 4 bậc, kho đồ, làng, rương chung, lưu game, xuất/nhập mã nhân vật. Chạy trên trình duyệt, HTML5 Canvas + JavaScript thuần, không cần build, không có thư viện ngoài. Đồ hoạ vẽ bằng hình khối: nhân vật có thân, tay, đầu và chân chạy theo nhịp bước.
 
 ## Chạy game
 
@@ -52,6 +52,7 @@ src/core/             lõi, không dùng DOM (chạy được trong Node)
   items.js            sinh đồ ngẫu nhiên, yêu cầu để mặc, kho đồ / trang bị / rương
   save.js             lưu trên trình duyệt, mã sao lưu (xuất/nhập)
   bot.js              bot di chuyển, tự cộng điểm theo nhánh, tự mặc đồ
+src/ui/sprites.js     hình nhân vật có chân chạy (quái vẽ sẵn thành sprite 8 khung × 2 hướng × 4 màu)
 src/ui/               vẽ canvas, HUD, bảng nhân vật/đồ đạc/rương, cần ảo, debug, ghi log
 tools/
   serve.mjs           máy chủ tĩnh
