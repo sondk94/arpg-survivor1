@@ -1,8 +1,10 @@
 // Vẽ thế giới và HUD bằng Canvas 2D, hình khối đơn giản.
 import { fmtTime } from '../core/game.js';
 import { xpToNext } from '../core/progression.js';
+import { buildSprites, drawMage, drawGravedigger, drawSwampLord } from './sprites.js';
 
 const TAU = Math.PI * 2;
+const VIS = 1.3; // hình vẽ quái to hơn vùng va chạm một chút cho dễ nhìn
 
 export class Renderer {
   constructor(canvas) {
@@ -271,49 +273,83 @@ export class Renderer {
 
   drawEnemies(g) {
     const ctx = this.ctx;
-    // Gom theo màu để vẽ nhanh.
-    const groups = new Map();
-    const special = [];
+    const ppu = VIS * this.dpr;
+    if (!this.sprites || this.sprites.pxPerUnit !== ppu) this.sprites = buildSprites(g.data.monsters, ppu);
+    const dpr = this.dpr;
+    const p = g.player;
+    const vis = [];
     for (const e of g.enemies) {
-      if (e.dead || !this.vis(e.x, e.y, e.r + 10)) continue;
-      if (e.elite || e.big) { special.push(e); continue; }
-      const c = e.hit > 0 ? '#ffffff' : e.frozenT > 0 ? '#bfe9ff' : e.slowT > 0 && e.slowPct >= 0.25 ? mixCold(e.color) : e.color;
-      let arr = groups.get(c);
-      if (!arr) groups.set(c, (arr = []));
-      arr.push(e);
+      if (e.dead || !this.vis(e.x, e.y, e.r * 2.5)) continue;
+      vis.push(e);
     }
-    for (const [c, arr] of groups) {
-      ctx.fillStyle = c;
-      ctx.beginPath();
-      for (const e of arr) {
-        if (e.type === 'bat') {
-          const f = Math.sin(e.t * 18) * 0.5 + 0.5;
-          ctx.moveTo(e.x - e.r * 1.6, e.y - f * 5);
-          ctx.lineTo(e.x, e.y + e.r * 0.6);
-          ctx.lineTo(e.x + e.r * 1.6, e.y - f * 5);
-          ctx.lineTo(e.x, e.y - e.r * 0.5);
-          ctx.closePath();
-        } else {
-          ctx.moveTo(e.x + e.r, e.y);
-          ctx.arc(e.x, e.y, e.r, 0, TAU);
-        }
-      }
-      ctx.fill();
-    }
-    // Mắt / chi tiết cho kẻ ném xương
-    ctx.fillStyle = '#2a2a2a';
+    // Vẽ từ trên xuống dưới để con đứng trước che con đứng sau.
+    vis.sort((a, b) => a.y - b.y);
+    // Bóng dưới chân (một lần vẽ cho tất cả).
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
     ctx.beginPath();
-    for (const arr of groups.values()) for (const e of arr) {
-      if (e.type === 'bat') continue;
-      ctx.moveTo(e.x - 3, e.y - 3); ctx.arc(e.x - 4, e.y - 3, 2, 0, TAU);
-      ctx.moveTo(e.x + 6, e.y - 3); ctx.arc(e.x + 4, e.y - 3, 2, 0, TAU);
+    for (const e of vis) {
+      const fy = e.flying ? e.y + e.r * 1.9 : e.y + e.r * 1.08 * VIS;
+      const rx = e.r * (e.flying ? 0.8 : 0.75 * VIS);
+      ctx.moveTo(e.x + rx, fy);
+      ctx.ellipse(e.x, fy, rx, rx * 0.3, 0, 0, TAU);
     }
     ctx.fill();
-    for (const e of special) this.drawSpecial(g, e);
+    for (const e of vis) {
+      if (e.big) { this.drawSpecial(g, e); continue; }
+      if (e.elite) this.drawEliteMark(e);
+      const face = e.flee ? (e.x > p.x ? 1 : -1) : (p.x >= e.x ? 1 : -1);
+      const tint = e.hit > 0 ? 'hit' : e.frozenT > 0 ? 'frozen' : e.slowT > 0 && e.slowPct >= 0.25 ? 'slow' : 'normal';
+      let frame = 0;
+      if (!(e.frozenT > 0)) {
+        const fps = e.flying ? 16 : Math.max(5, (e.speed * (1 - e.slowPct)) / (e.def.radius * 2.6) * 8);
+        frame = Math.floor(e.t * fps + e.phase * 4) % 8;
+      }
+      const sp = this.sprites.get(e.type, tint, frame, face < 0);
+      const k = e.r / sp.r; // tinh anh to hơn: co giãn (ít con nên không tốn)
+      if (k === 1) {
+        // Sao chép 1:1 đúng lưới điểm ảnh: nhanh nhất.
+        const x = Math.round((e.x + sp.x0 * VIS) * dpr) / dpr, y = Math.round((e.y + sp.y0 * VIS) * dpr) / dpr;
+        ctx.drawImage(sp.img, x, y, sp.w * VIS, sp.h * VIS);
+      } else {
+        ctx.drawImage(sp.img, e.x + sp.x0 * VIS * k, e.y + sp.y0 * VIS * k, sp.w * VIS * k, sp.h * VIS * k);
+      }
+      if (e.elite) this.drawBar(e, e.elite ? '#ffcc33' : '#e0a050', e.elite ? '#ffd966' : '#f0c890');
+    }
+  }
+
+  drawEliteMark(e) {
+    const ctx = this.ctx;
+    const fy = e.y + e.r * 1.05 * VIS;
+    const stone = e.affixes.includes('stone_skin') && e.hp > e.maxHp * 0.5;
+    ctx.strokeStyle = stone ? '#c8c8d8' : '#ffcc33';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(e.x, fy, e.r * 1.0, e.r * 0.34, 0, 0, TAU); ctx.stroke();
+    if (e.affixes.includes('fire_enchanted')) {
+      ctx.fillStyle = `rgba(255,80,30,${0.25 + 0.15 * Math.sin(e.t * 10)})`;
+      ctx.beginPath(); ctx.ellipse(e.x, e.y, e.r * 1.25, e.r * 1.5, 0, 0, TAU); ctx.fill();
+    }
+  }
+
+  drawBar(e, col, nameCol) {
+    const ctx = this.ctx;
+    const bw = Math.max(40, e.r * 2.4);
+    const y = e.y - e.r * 1.9 * (e.big ? 1 : VIS) - 8;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(e.x - bw / 2, y, bw, 5);
+    ctx.fillStyle = col;
+    ctx.fillRect(e.x - bw / 2, y, bw * Math.max(0, e.hp / e.maxHp), 5);
+    ctx.font = '600 11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = nameCol;
+    ctx.fillText(e.name, e.x, y - 4);
   }
 
   drawSpecial(g, e) {
     const ctx = this.ctx;
+    const p = g.player;
+    const face = p.x >= e.x ? 1 : -1;
+    const moving = !(e.frozenT > 0) && !(e.b && e.b.state !== 'chase' && e.b.state !== 'dash');
+    const phase = moving ? (e.t * (e.b && e.b.state === 'dash' ? 3 : 1.1)) % 1 : 0;
     if (e.ai === 'boss') {
       const b = e.b;
       if (b.state === 'tele') {
@@ -330,54 +366,20 @@ export class Renderer {
         ctx.strokeRect(0, -e.r, len, e.r * 2);
         ctx.restore();
       }
-    }
-    ctx.fillStyle = e.frozenT > 0 ? '#bfe9ff' : e.color;
-    ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, TAU); ctx.fill();
-    if (e.slowT > 0 && !e.frozenT) { ctx.strokeStyle = 'rgba(140,210,255,0.8)'; ctx.lineWidth = 2; ctx.stroke(); }
-    if (e.hit > 0) { ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 3; ctx.stroke(); }
-    if (e.elite) {
-      ctx.strokeStyle = e.affixes.includes('stone_skin') && e.hp > e.maxHp * 0.5 ? '#c8c8d8' : '#ffcc33';
-      ctx.lineWidth = 3;
-      ctx.stroke();
-      if (e.affixes.includes('fire_enchanted')) {
-        ctx.strokeStyle = 'rgba(255,80,30,0.7)';
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 4 + Math.sin(e.t * 10) * 2, 0, TAU); ctx.stroke();
-      }
-    }
-    if (e.ai === 'miniboss') {
-      ctx.fillStyle = '#5c4630';
-      ctx.fillRect(e.x - 4, e.y - e.r - 14, 8, 30); // xẻng
-      ctx.fillRect(e.x - 10, e.y + 12, 20, 10);
-    }
-    if (e.ai === 'boss') {
-      ctx.fillStyle = '#1e3a26';
-      ctx.beginPath(); ctx.arc(e.x, e.y, e.r * 0.6, 0, TAU); ctx.fill();
-      ctx.fillStyle = g.enraged ? '#ff3030' : '#d8ff5a';
-      ctx.beginPath();
-      ctx.arc(e.x - 12, e.y - 10, 5, 0, TAU);
-      ctx.arc(e.x + 12, e.y - 10, 5, 0, TAU);
-      ctx.fill();
+      const bf = b.state === 'tele' || b.state === 'dash' ? (b.tx >= e.x ? 1 : -1) : face;
+      drawSwampLord(ctx, e, bf, phase, { enraged: g.enraged, tint: e.hit > 0 ? '#e8f5e0' : null });
       return;
     }
-    // Thanh máu & tên cho tinh anh / trùm nhỏ
-    const bw = Math.max(40, e.r * 2.4);
-    const y = e.y - e.r - 12;
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(e.x - bw / 2, y, bw, 5);
-    ctx.fillStyle = e.elite ? '#ffcc33' : '#e0a050';
-    ctx.fillRect(e.x - bw / 2, y, bw * Math.max(0, e.hp / e.maxHp), 5);
-    ctx.font = '600 11px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = e.elite ? '#ffd966' : '#f0c890';
-    ctx.fillText(e.name, e.x, y - 4);
+    const tint = e.hit > 0 ? '#f2eadc' : e.frozenT > 0 ? '#bfe9ff' : null;
+    drawGravedigger(ctx, e, face, phase, tint);
+    this.drawBar(e, '#e0a050', '#f0c890');
   }
 
   drawBossOverhead(g) {
     const e = g.boss;
     if (!e || e.dead) return;
     const ctx = this.ctx;
-    const bw = 180, y = e.y - e.r - 22;
+    const bw = 180, y = e.y - e.r * 1.2 - 24;
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
     ctx.fillRect(e.x - bw / 2 - 2, y - 2, bw + 4, 12);
     ctx.fillStyle = g.enraged ? '#ff3b3b' : '#c0392b';
@@ -470,16 +472,19 @@ export class Renderer {
       ctx.fillStyle = grd;
       ctx.beginPath(); ctx.arc(p.x, p.y, 70, 0, TAU); ctx.fill();
     }
+    // Nhịp bước theo quãng đường đã đi, nên dừng thì đứng yên và tạm dừng game không làm chân chạy.
+    if (this.lastP && this.lastG === g) {
+      const d = Math.hypot(p.x - this.lastP.x, p.y - this.lastP.y);
+      if (d < 50) this.walk = (this.walk + d / (p.r * 3.4)) % 1;
+    } else this.walk = 0;
+    this.lastP = { x: p.x, y: p.y };
+    this.lastG = g;
+    if (Math.abs(p.faceX) > 0.1) this.face = p.faceX > 0 ? 1 : -1;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath(); ctx.ellipse(p.x, p.y + p.r * 1.45, p.r * 0.95, p.r * 0.3, 0, 0, TAU); ctx.fill();
     const blink = p.invuln > 0 && Math.floor(g.time * 20) % 2 === 0;
     ctx.globalAlpha = blink ? 0.45 : 1;
-    ctx.fillStyle = p.hurt > 0 ? '#ff8080' : '#6a5acd';
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, TAU); ctx.fill();
-    ctx.strokeStyle = '#d8d0ff';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    // hướng nhìn
-    ctx.fillStyle = '#ffb060';
-    ctx.beginPath(); ctx.arc(p.x + p.faceX * (p.r - 3), p.y + p.faceY * (p.r - 3), 4, 0, TAU); ctx.fill();
+    drawMage(ctx, p.x, p.y, p.r * 1.3, this.face || 1, this.walk, p.moving, { hurt: p.hurt > 0 });
     ctx.globalAlpha = 1;
   }
 
@@ -742,12 +747,6 @@ export class Renderer {
     ctx.fillStyle = '#fff';
     ctx.fillText(String(g.lvl(id)), x + s - 4, y + s - 4);
   }
-}
-
-function mixCold(hex) {
-  const n = parseInt(hex.slice(1), 16);
-  const r = (n >> 16) & 255, gg = (n >> 8) & 255, b = n & 255;
-  return `rgb(${Math.round(r * 0.6 + 90)},${Math.round(gg * 0.6 + 110)},${Math.round(b * 0.6 + 120)})`;
 }
 
 // Biểu tượng kỹ năng dùng chung cho HUD và bảng cộng điểm.
