@@ -31,6 +31,24 @@ export const BUILDS = {
   },
 };
 BUILDS.fireball = BUILDS.fire;
+for (const b of Object.values(BUILDS)) b.class = b.class || 'mage';
+Object.assign(BUILDS, {
+  weapon: {
+    class: 'warrior', tree: 'weapon',
+    attrs: { str: 2, vit: 2, dex: 1 },
+    skills: [['cleave', 1], ['whirlwind', 1], ['weapon_mastery', 1], ['leap_slam', 1], ['throwing_axe', 1], ['frenzy', 1], ['cleave', 20]],
+  },
+  shout: {
+    class: 'warrior', tree: 'shout',
+    attrs: { str: 2, vit: 2, dex: 1 },
+    skills: [['howl', 1], ['battle_cry', 1], ['iron_skin', 1], ['stomp', 1], ['earthquake', 1], ['unbroken', 1], ['stomp', 20]],
+  },
+  blood: {
+    class: 'warrior', tree: 'blood',
+    attrs: { str: 2, vit: 2, dex: 1 },
+    skills: [['thrust', 1], ['life_leech', 1], ['chain_cleave', 1], ['berserk', 1], ['blood_mastery', 1], ['blood_burst', 1], ['chain_cleave', 20]],
+  },
+});
 
 export function botAllocate(ch, data, buildName = 'fireball') {
   const b = BUILDS[buildName] || BUILDS.fireball;
@@ -65,11 +83,30 @@ export function botInput(game, opts = {}) {
   const p = game.player;
   let fx = 0, fy = 0;
   let danger = 0;
+  // Cận chiến: áp sát quái gần nhất, chỉ lùi khi máu thấp.
+  const melee = game.cls?.look === 'warrior' && p.hp > game.stats.maxHp * 0.35;
+  if (melee) {
+    let best = null, bd = 600;
+    for (const e of game.enemies) {
+      if (e.dead || e.flee) continue;
+      const d = Math.hypot(e.x - p.x, e.y - p.y) - e.r;
+      const w = d - (e.elite ? 80 : 0) - (e.big ? 120 : 0);
+      if (w < bd) { bd = w; best = e; }
+    }
+    if (best) {
+      const dx = best.x - p.x, dy = best.y - p.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const stand = best.r + p.r + (best.big ? 40 : 25);
+      const k = d > stand ? 1.2 : -0.6;
+      fx += (dx / d) * k; fy += (dy / d) * k;
+    }
+  }
   for (const e of game.enemies) {
     if (e.dead || e.flee) continue;
     const dx = p.x - e.x, dy = p.y - e.y;
     const d = Math.hypot(dx, dy) || 1;
-    const reach = e.big ? 260 : 170;
+    const reach = melee ? (e.big ? 90 : 0) : e.big ? 260 : 170;
+    if (!reach) continue;
     if (d < reach) {
       const w = ((reach - d) / reach) ** 2 * (e.big ? 3 : 1) * (e.elite ? 1.5 : 1);
       fx += (dx / d) * w; fy += (dy / d) * w;
@@ -142,6 +179,7 @@ export function botInput(game, opts = {}) {
 // Bot tự mặc món tốt hơn trong kho (theo điểm đánh giá đơn giản).
 export function botManageItems(ch, data, buildName = 'fire') {
   const tree = (BUILDS[buildName] || BUILDS.fire).tree;
+  const physical = (BUILDS[buildName] || {}).class === 'warrior';
   let changed = false;
   for (let i = 0; i < ch.inventory.length; i++) {
     const it = ch.inventory[i];
@@ -150,10 +188,10 @@ export function botManageItems(ch, data, buildName = 'fire') {
     let target = null, worst = Infinity;
     for (const s of slots) {
       const cur = ch.equipment[s];
-      const sc = cur ? itemScore(cur, tree) : -1;
+      const sc = cur ? itemScore(cur, tree, physical) : -1;
       if (sc < worst) { worst = sc; target = s; }
     }
-    if (target && itemScore(it, tree) > worst && equipFromInventory(ch, i, data, target) === 'ok') changed = true;
+    if (target && itemScore(it, tree, physical) > worst && equipFromInventory(ch, i, data, target) === 'ok') changed = true;
   }
   return changed;
 }

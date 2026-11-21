@@ -1,7 +1,7 @@
 // Vẽ thế giới và HUD bằng Canvas 2D, hình khối đơn giản.
 import { fmtTime } from '../core/game.js';
 import { xpToNext } from '../core/progression.js';
-import { buildSprites, drawMage, drawGravedigger, drawSwampLord } from './sprites.js';
+import { buildSprites, drawMage, drawWarrior, drawGravedigger, drawSwampLord } from './sprites.js';
 
 const TAU = Math.PI * 2;
 const VIS = 1.3; // hình vẽ quái to hơn vùng va chạm một chút cho dễ nhìn
@@ -68,7 +68,7 @@ export class Renderer {
 
   drawGround(g, camX, camY) {
     const ctx = this.ctx;
-    ctx.fillStyle = '#23261c';
+    ctx.fillStyle = g.map.theme?.ground || '#23261c';
     ctx.fillRect(0, 0, g.W, g.H);
     ctx.strokeStyle = 'rgba(255,255,255,0.035)';
     ctx.lineWidth = 1;
@@ -255,20 +255,33 @@ export class Renderer {
   }
 
   drawAura(g) {
-    const id = 'ember_ring';
-    const lvl = g.lvl(id);
-    if (!g.ch.slots.includes(id) || !lvl) return;
-    const sk = g.data.skills[id];
-    const st = g.skillState[id];
-    const r = sk.radius.base + sk.radius.perLevel * (lvl - 1);
     const ctx = this.ctx;
     const p = g.player;
-    const pulse = 0.5 + 0.5 * Math.sin(g.time * 8);
-    ctx.fillStyle = st.active ? `rgba(255,120,40,${0.08 + 0.04 * pulse})` : 'rgba(120,120,120,0.05)';
-    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, TAU); ctx.fill();
-    ctx.strokeStyle = st.active ? `rgba(255,150,60,${0.5 + 0.3 * pulse})` : 'rgba(150,150,150,0.35)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    for (const id of g.ch.slots) {
+      if (!id) continue;
+      const sk = g.data.skills[id];
+      const lvl = g.lvl(id);
+      if (sk.kind !== 'aura' || !lvl) continue;
+      const st = g.skillState[id];
+      const r = sk.radius.base + sk.radius.perLevel * (lvl - 1);
+      const pulse = 0.5 + 0.5 * Math.sin(g.time * 8);
+      if (sk.element === 'physical') {
+        // Lốc Xoáy: các vệt chém xoay quanh người
+        if (!st.active) continue;
+        ctx.strokeStyle = 'rgba(230,230,235,0.55)';
+        ctx.lineWidth = 3;
+        for (let i = 0; i < 3; i++) {
+          const a = g.time * 14 + (i * TAU) / 3;
+          ctx.beginPath(); ctx.arc(p.x, p.y, r * (0.7 + 0.1 * i), a, a + 1.2); ctx.stroke();
+        }
+        continue;
+      }
+      ctx.fillStyle = st.active ? `rgba(255,120,40,${0.08 + 0.04 * pulse})` : 'rgba(120,120,120,0.05)';
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, TAU); ctx.fill();
+      ctx.strokeStyle = st.active ? `rgba(255,150,60,${0.5 + 0.3 * pulse})` : 'rgba(150,150,150,0.35)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
   }
 
   drawEnemies(g) {
@@ -484,7 +497,16 @@ export class Renderer {
     ctx.beginPath(); ctx.ellipse(p.x, p.y + p.r * 1.45, p.r * 0.95, p.r * 0.3, 0, 0, TAU); ctx.fill();
     const blink = p.invuln > 0 && Math.floor(g.time * 20) % 2 === 0;
     ctx.globalAlpha = blink ? 0.45 : 1;
-    drawMage(ctx, p.x, p.y, p.r * 1.3, this.face || 1, this.walk, p.moving, { hurt: p.hurt > 0 });
+    if (g.cls?.look === 'warrior') drawWarrior(ctx, p.x, p.y, p.r * 1.3, this.face || 1, this.walk, p.moving, { hurt: p.hurt > 0, swing: (p.swing || 0) / 0.22 });
+    else drawMage(ctx, p.x, p.y, p.r * 1.3, this.face || 1, this.walk, p.moving, { hurt: p.hurt > 0 });
+    // Buff đang có: vòng sáng dưới chân
+    for (const b of g.buffs || []) {
+      ctx.strokeStyle = b.color || '#ffd27a';
+      ctx.globalAlpha = 0.35 + 0.25 * Math.sin(g.time * 6);
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(p.x, p.y + p.r * 1.45, p.r * 1.4, p.r * 0.45, 0, 0, TAU); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
     ctx.globalAlpha = 1;
   }
 
@@ -500,6 +522,26 @@ export class Renderer {
         ctx.globalAlpha = 1 - k;
         ctx.fillStyle = f.color;
         ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.5 + 0.5 * k), 0, TAU); ctx.fill();
+        ctx.globalAlpha = 1;
+      } else if (f.kind === 'slash') {
+        ctx.globalAlpha = 1 - k;
+        ctx.strokeStyle = f.color || '#fff';
+        ctx.lineWidth = 10 * (1 - k) + 2;
+        ctx.lineCap = 'round';
+        const a1 = f.a - f.half, a2 = f.a - f.half + 2 * f.half * Math.min(1, k * 2.5);
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r * 0.85, a1, a2); ctx.stroke();
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r, a1, a2); ctx.stroke();
+        ctx.lineCap = 'butt';
+        ctx.globalAlpha = 1;
+      } else if (f.kind === 'leap') {
+        ctx.globalAlpha = (1 - k) * 0.6;
+        ctx.strokeStyle = '#d0c8b8';
+        ctx.lineWidth = 6;
+        ctx.setLineDash([10, 8]);
+        const mx = (f.x1 + f.x) / 2, my = (f.y1 + f.y) / 2 - 80;
+        ctx.beginPath(); ctx.moveTo(f.x1, f.y1); ctx.quadraticCurveTo(mx, my, f.x, f.y); ctx.stroke();
+        ctx.setLineDash([]);
         ctx.globalAlpha = 1;
       } else if (f.kind === 'nova') {
         ctx.strokeStyle = f.color;
@@ -603,6 +645,10 @@ export class Renderer {
     ctx.font = '600 14px system-ui, sans-serif';
     ctx.fillStyle = '#c8c2b0';
     ctx.fillText(`Đã giết: ${g.kills}`, w / 2, 60);
+    ctx.textAlign = 'right';
+    ctx.font = '600 13px system-ui, sans-serif';
+    ctx.fillStyle = '#bdb6a2';
+    ctx.fillText(`Màn ${g.map.id}: ${g.map.name}${g.map.difficulty > 1.0001 ? ` · +${Math.round((g.map.difficulty - 1) * 100)}%` : ''}`, w - 14, 22);
 
     if (g.banner) {
       const k = g.banner.t < 0.3 ? g.banner.t / 0.3 : Math.min(1, (g.banner.dur - g.banner.t) / 0.5);
@@ -829,6 +875,64 @@ export function drawSkillIcon(ctx, sk, cx, cy, r) {
       ctx.beginPath(); ctx.arc(cx, cy, r * 0.85, 0, TAU); ctx.stroke();
       ctx.setLineDash([]);
       ctx.beginPath(); ctx.arc(cx, cy, r * 0.3, 0, TAU); ctx.fill();
+      break;
+    // ---- Chiến Binh
+    case 'cleave':
+      ctx.lineWidth = r * 0.28; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(cx - r * 0.3, cy + r * 0.3, r * 0.95, -1.4, 0.2); ctx.stroke();
+      break;
+    case 'whirlwind':
+      ctx.lineWidth = r * 0.18; ctx.lineCap = 'round';
+      for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(cx, cy, r * (0.35 + i * 0.28), i * 2.1, i * 2.1 + 2.2); ctx.stroke(); }
+      break;
+    case 'leap_slam':
+      ctx.lineWidth = r * 0.16; ctx.setLineDash([r * 0.25, r * 0.18]);
+      ctx.beginPath(); ctx.moveTo(cx - r, cy + r * 0.5); ctx.quadraticCurveTo(cx, cy - r * 1.3, cx + r * 0.6, cy + r * 0.3); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath(); ctx.ellipse(cx + r * 0.6, cy + r * 0.6, r * 0.45, r * 0.15, 0, 0, TAU); ctx.fill();
+      break;
+    case 'throwing_axe':
+      ctx.lineWidth = r * 0.14;
+      ctx.beginPath(); ctx.moveTo(cx - r * 0.7, cy + r * 0.7); ctx.lineTo(cx + r * 0.4, cy - r * 0.4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + r * 0.1, cy - r * 0.9); ctx.quadraticCurveTo(cx + r * 1.1, cy - r * 0.6, cx + r * 0.9, cy + r * 0.2); ctx.lineTo(cx + r * 0.3, cy - r * 0.3); ctx.closePath(); ctx.fill();
+      break;
+    case 'howl':
+    case 'battle_cry':
+      ctx.beginPath(); ctx.moveTo(cx - r, cy - r * 0.3); ctx.lineTo(cx - r * 0.4, cy - r * 0.3); ctx.lineTo(cx, cy - r * 0.8); ctx.lineTo(cx, cy + r * 0.8); ctx.lineTo(cx - r * 0.4, cy + r * 0.3); ctx.lineTo(cx - r, cy + r * 0.3); ctx.closePath(); ctx.fill();
+      ctx.lineWidth = r * 0.12;
+      for (let i = 1; i <= 2; i++) { ctx.beginPath(); ctx.arc(cx, cy, r * 0.4 * i + r * 0.1, -0.7, 0.7); ctx.stroke(); }
+      break;
+    case 'stomp':
+    case 'earthquake':
+      ctx.lineWidth = r * 0.12;
+      ctx.beginPath(); ctx.moveTo(cx - r, cy + r * 0.2); ctx.lineTo(cx - r * 0.4, cy - r * 0.1); ctx.lineTo(cx - r * 0.1, cy + r * 0.5); ctx.lineTo(cx + r * 0.3, cy - r * 0.3); ctx.lineTo(cx + r, cy + r * 0.1); ctx.stroke();
+      if (sk.id === 'stomp') { ctx.beginPath(); ctx.ellipse(cx, cy + r * 0.7, r, r * 0.2, 0, 0, TAU); ctx.fill(); }
+      else { ctx.beginPath(); ctx.moveTo(cx - r * 0.2, cy - r); ctx.lineTo(cx, cy - r * 0.2); ctx.lineTo(cx + r * 0.25, cy - r); ctx.stroke(); }
+      break;
+    case 'thrust':
+      ctx.lineWidth = r * 0.14;
+      ctx.beginPath(); ctx.moveTo(cx - r, cy + r * 0.5); ctx.lineTo(cx + r * 0.6, cy - r * 0.3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + r, cy - r * 0.5); ctx.lineTo(cx + r * 0.4, cy - r * 0.55); ctx.lineTo(cx + r * 0.65, cy - r * 0.05); ctx.closePath(); ctx.fill();
+      break;
+    case 'chain_cleave':
+      ctx.lineWidth = r * 0.15; ctx.lineCap = 'round';
+      for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(cx - r * 0.6 + i * r * 0.6, cy + (i % 2 ? -r * 0.2 : r * 0.2), r * 0.35, -1.5, 0.3); ctx.stroke(); }
+      break;
+    case 'life_leech':
+    case 'berserk':
+    case 'blood_burst':
+      ctx.beginPath(); ctx.moveTo(cx, cy - r); ctx.quadraticCurveTo(cx + r * 0.8, cy + r * 0.1, cx, cy + r * 0.8); ctx.quadraticCurveTo(cx - r * 0.8, cy + r * 0.1, cx, cy - r); ctx.fill();
+      if (sk.id !== 'life_leech') { ctx.strokeStyle = '#fff'; ctx.lineWidth = r * 0.1; ctx.beginPath(); ctx.moveTo(cx - r * 0.25, cy + r * 0.1); ctx.lineTo(cx + r * 0.25, cy + r * 0.1); if (sk.id === 'blood_burst') { ctx.moveTo(cx, cy - r * 0.15); ctx.lineTo(cx, cy + r * 0.35); } ctx.stroke(); }
+      break;
+    case 'weapon_mastery':
+    case 'iron_skin':
+    case 'blood_mastery':
+    case 'unbroken':
+    case 'frenzy':
+      ctx.beginPath();
+      if (sk.id === 'iron_skin' || sk.id === 'unbroken') { ctx.moveTo(cx, cy - r); ctx.lineTo(cx + r * 0.8, cy - r * 0.6); ctx.lineTo(cx + r * 0.7, cy + r * 0.3); ctx.lineTo(cx, cy + r); ctx.lineTo(cx - r * 0.7, cy + r * 0.3); ctx.lineTo(cx - r * 0.8, cy - r * 0.6); }
+      else for (let i = 0; i < 6; i++) { const a = (i / 6) * TAU - Math.PI / 2; ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+      ctx.closePath(); ctx.fill();
       break;
     default:
       ctx.font = `700 ${r}px system-ui`;

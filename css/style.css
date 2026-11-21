@@ -220,3 +220,38 @@ body:has(#panel:not(.hidden)) #debug { display: none; }
   .items-wrap { padding: 10px; }
   .card { max-width: none; width: 100%; }
 }
+
+/* Chọn màn */
+.mappicker h3 { margin: 0 0 8px; color: var(--gold); font-size: 15px; }
+.mappicker h3 small { display: block; color: var(--muted); font-weight: 400; font-size: 12px; margin-top: 2px; }
+.chap { margin: 8px 0; }
+.chap-name { font-size: 12px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .04em; }
+.maps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.map { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 6px 8px; text-align: left; min-width: 0; }
+.map b { color: var(--gold); }
+.map span { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.map small { font-size: 10px; color: var(--muted); }
+.map.cleared { border-color: #4f9a5a; }
+.map.cleared small { color: #7fe08a; }
+.map.on { background: #6b4a1a; border-color: var(--gold); }
+.map.locked { opacity: .45; }
+@media (max-width: 600px) { .maps { grid-template-columns: repeat(3, 1fr); } }
+
+/* Chọn nhân vật */
+.sec-title { margin: 0 0 8px; color: var(--gold); font-size: 15px; }
+.charlist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.charcard { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 1px solid var(--line); border-left: 4px solid var(--cc); border-radius: 8px; background: #12110e; }
+.charcard.on { box-shadow: 0 0 0 2px rgba(217,179,92,.5); }
+.charcard canvas { width: 48px; height: 60px; flex: none; }
+.cc-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.cc-info b { font-size: 16px; }
+.cc-info small { color: var(--muted); }
+.cc-btns { display: flex; gap: 6px; }
+.classgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; margin-bottom: 10px; }
+.classcard { display: flex; gap: 10px; align-items: center; padding: 10px; border: 2px solid var(--line); border-radius: 10px; background: #12110e; cursor: pointer; }
+.classcard:has(input:checked) { border-color: var(--cc); background: #1d1914; }
+.classcard input { display: none; }
+.classcard canvas { width: 80px; height: 100px; flex: none; }
+.classcard b { font-size: 16px; color: var(--cc); }
+.classcard p { margin: 4px 0; font-size: 13px; }
+.classcard small { color: var(--muted); }

@@ -219,6 +219,18 @@
     },
     "lightningEliteDmgPct": {
       "fmt": "+{v}% sát thương sét lên tinh anh"
+    },
+    "physDmgPct": {
+      "fmt": "+{v}% sát thương vật lý"
+    },
+    "weaponSkills": {
+      "fmt": "+{v} cấp kỹ năng Vũ Khí"
+    },
+    "shoutSkills": {
+      "fmt": "+{v} cấp kỹ năng Tiếng Thét"
+    },
+    "bloodSkills": {
+      "fmt": "+{v} cấp kỹ năng Huyết Chiến"
     }
   },
   "bases": [
@@ -476,6 +488,44 @@
       "name": "Nhẫn",
       "req": 1,
       "implicit": {}
+    },
+    {
+      "id": "short_sword",
+      "type": "weapon",
+      "name": "Kiếm Ngắn",
+      "req": 1,
+      "implicit": {
+        "physDmgPct": [
+          8,
+          14
+        ]
+      }
+    },
+    {
+      "id": "war_axe",
+      "type": "weapon",
+      "name": "Rìu Chiến",
+      "req": 5,
+      "reqStr": 35,
+      "implicit": {
+        "physDmgPct": [
+          15,
+          22
+        ]
+      }
+    },
+    {
+      "id": "great_sword",
+      "type": "weapon",
+      "name": "Đại Kiếm",
+      "req": 10,
+      "reqStr": 50,
+      "implicit": {
+        "physDmgPct": [
+          24,
+          34
+        ]
+      }
     }
   ],
   "affixes": [
@@ -1179,6 +1229,109 @@
           35
         ]
       ]
+    },
+    {
+      "stat": "physDmgPct",
+      "name": "Tàn Bạo",
+      "slots": [
+        "weapon",
+        "gloves",
+        "amulet",
+        "ring",
+        "offhand"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          5,
+          10
+        ],
+        [
+          6,
+          6,
+          11,
+          18
+        ],
+        [
+          12,
+          12,
+          19,
+          26
+        ]
+      ]
+    },
+    {
+      "stat": "weaponSkills",
+      "name": "của Kiếm Sĩ",
+      "slots": [
+        "weapon",
+        "amulet",
+        "head",
+        "offhand"
+      ],
+      "tiers": [
+        [
+          6,
+          6,
+          1,
+          1
+        ],
+        [
+          14,
+          14,
+          2,
+          2
+        ]
+      ]
+    },
+    {
+      "stat": "shoutSkills",
+      "name": "của Thủ Lĩnh",
+      "slots": [
+        "weapon",
+        "amulet",
+        "head",
+        "offhand"
+      ],
+      "tiers": [
+        [
+          6,
+          6,
+          1,
+          1
+        ],
+        [
+          14,
+          14,
+          2,
+          2
+        ]
+      ]
+    },
+    {
+      "stat": "bloodSkills",
+      "name": "của Đồ Tể",
+      "slots": [
+        "weapon",
+        "amulet",
+        "head",
+        "offhand"
+      ],
+      "tiers": [
+        [
+          6,
+          6,
+          1,
+          1
+        ],
+        [
+          14,
+          14,
+          2,
+          2
+        ]
+      ]
     }
   ],
   "rareNames": {
@@ -1328,6 +1481,29 @@
         "lightningDmgPct": 20,
         "critChance": 5,
         "ene": 10
+      }
+    },
+    {
+      "id": "swamp_cleaver",
+      "name": "Lưỡi Rìu Đầm Lầy",
+      "base": "war_axe",
+      "req": 6,
+      "stats": {
+        "physDmgPct": 30,
+        "weaponSkills": 1,
+        "hpOnKill": 2
+      }
+    },
+    {
+      "id": "horned_rage",
+      "name": "Mũ Sừng Cuồng Nộ",
+      "base": "helm",
+      "req": 8,
+      "stats": {
+        "armor": 15,
+        "shoutSkills": 1,
+        "bloodSkills": 1,
+        "str": 10
       }
     }
   ]

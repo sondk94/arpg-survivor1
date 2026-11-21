@@ -1,6 +1,6 @@
 # ARPG Survivor – Giai đoạn 1 (Lõi ARPG)
 
-Bản đồ 1-1 *Đồng hoang Mục rữa*, 10 phút, lớp Pháp sư Nguyên tố với đủ 3 nhánh **Lửa / Băng / Sét**. Có đồ đạc 4 bậc, kho đồ, làng, rương chung, lưu game, xuất/nhập mã nhân vật. Chạy trên trình duyệt, HTML5 Canvas + JavaScript thuần, không cần build, không có thư viện ngoài. Đồ hoạ vẽ bằng hình khối: nhân vật có thân, tay, đầu và chân chạy theo nhịp bước.
+**20 màn chơi** (4 chương × 5 màn, mỗi màn 10 phút), **2 lớp nhân vật**: Pháp sư Nguyên tố (Lửa / Băng / Sét) và Chiến Binh cận chiến (Vũ Khí / Tiếng Thét / Huyết Chiến), mỗi lớp 3 nhánh × 6 kỹ năng. Có đồ đạc 4 bậc, kho đồ, làng, rương chung, lưu game, xuất/nhập mã nhân vật. Chạy trên trình duyệt, HTML5 Canvas + JavaScript thuần, không cần build, không có thư viện ngoài. Đồ hoạ vẽ bằng hình khối: nhân vật có thân, tay, đầu và chân chạy theo nhịp bước.
 
 ## Chạy game
 
@@ -42,10 +42,12 @@ Repo riêng tư chỉ dùng được GitHub Pages khi tài khoản có gói tr�
 index.html, css/style.css
 data/                 ← TOÀN BỘ số liệu, sửa không cần đụng code
   config.json         chỉ số nhân vật, thuộc tính, công thức, đóng băng, testMode, khoá lưu
-  skills.json         3 nhánh × 6 kỹ năng, synergy, mốc mở (thật + thử nghiệm)
+  classes.json        2 lớp nhân vật: chỉ số khởi đầu, máu/mana/giáp riêng, các nhánh kỹ năng
+  skills.json         6 nhánh × 6 kỹ năng (3 nhánh mỗi lớp), synergy, mốc mở (thật + thử nghiệm)
   monsters.json       quái thường, tinh anh, trùm nhỏ, boss; kháng Lửa/Băng/Sét/Độc của từng quái
   items.json          ô trang bị, bậc đồ, đồ gốc, dòng chỉ số, 10 món độc nhất, tỉ lệ rơi, giá bán, giá tẩy điểm
-  maps/1-1.json       kích thước, vật cản, nhịp sinh quái, sự kiện theo thời gian
+  maps/1-1.json       màn gốc: kích thước, vật cản, nhịp sinh quái, sự kiện theo thời gian
+  maps/campaign.json  danh sách 20 màn, chương, độ khó tăng dần, vật cản ngẫu nhiên
 src/core/             lõi, không dùng DOM (chạy được trong Node)
   game.js             một lượt chơi: sinh quái, AI, kỹ năng, sát thương, đóng băng, rơi đồ, boss
   progression.js      nhân vật: cấp, điểm, kỹ năng, chỉ số từ đồ, tẩy điểm, hoàn tác
@@ -62,6 +64,75 @@ tools/
 ```
 
 Đặt `"testMode": false` trong `config.json` để dùng mốc mở kỹ năng thật (Lửa 1/1/6/12/18/24, Băng và Sét 1/6/12/12/18/24) thay cho mốc nén (Lửa 1/1/2/4/6/8, Băng và Sét 1/2/4/4/6/8).
+
+## Chọn nhân vật và lớp Chiến Binh
+
+Mở game sẽ vào **màn chọn nhân vật** trước, sau đó mới tới làng (chọn màn, cộng điểm, đồ đạc).
+
+- **Màn chọn nhân vật:** danh sách nhân vật đã tạo (lớp, cấp, số màn đã qua, vàng), có nút Chơi và Xoá.
+- **Tạo nhân vật mới:** chọn lớp và đặt tên.
+- **Mỗi nhân vật lưu riêng** cấp, điểm, kỹ năng, đồ và tiến độ 20 màn. Rương chung dùng cho mọi nhân vật.
+- Ở làng có nút **Đổi / tạo nhân vật** để quay lại màn này.
+- Dữ liệu cũ (một nhân vật, trước khi có lớp) tự chuyển thành nhân vật Pháp sư.
+- **Nhập mã** sẽ thêm nhân vật vào danh sách (trùng nhân vật thì ghi đè); đồ trong rương của mã được thêm vào ô trống của rương chung.
+
+**Chiến Binh** đánh cận chiến, gây sát thương vật lý tăng theo Sức mạnh (+1% mỗi điểm, trong khi Năng lượng chỉ cho pháp sư +0,5%).
+
+Chỉ số cấp 1 so với pháp sư:
+
+| | Chiến Binh | Pháp sư |
+|---|---|---|
+| Máu | 163 | 87 |
+| Giáp | 15 | 0 |
+| Mana | 41 | 92 |
+| Hồi mana | 10%/giây | 5%/giây |
+| Máu mỗi điểm Thể lực | +4 | +3 |
+| Tốc độ di chuyển | 165 | 160 |
+
+| Nhánh | Kỹ năng |
+|---|---|
+| Vũ Khí | Chém Bổ (vòng cung trước mặt) · Lốc Xoáy (xoay liên tục) · Thông Thạo Vũ Khí · Nhảy Đập (nhảy vào cụm quái, bất tử khi nhảy) · Ném Rìu (xuyên 2 quái) · Cuồng Sát (giết quái tăng sát thương, tối đa 10 tầng) |
+| Tiếng Thét | Gầm Chiến (đẩy lùi, làm quái sợ; tự dùng khi bị vây hoặc máu thấp) · Thét Xung Trận (tăng sát thương) · Da Thép (giáp, kháng) · Dậm Đất (gây choáng) · Động Đất (vùng sát thương liên tục) · Ý Chí Bất Khuất (hồi máu) |
+| Huyết Chiến | Đâm Xuyên (đường thẳng xuyên quái) · Hút Máu · Chém Liên Hoàn (lướt chém nhiều quái) · Cuồng Huyết (tăng mạnh sát thương, mất nửa giáp) · Thông Thạo Huyết (chí mạng) · Huyết Bạo (quái chết có thể nổ) |
+
+Đồ có thêm: Kiếm Ngắn, Rìu Chiến, Đại Kiếm (cần Sức mạnh); các dòng "+% sát thương vật lý" và "+cấp kỹ năng Vũ Khí / Tiếng Thét / Huyết Chiến"; thêm 2 món độc nhất cho Chiến Binh (tổng 12 món).
+
+**So sánh sát thương** bằng `node tools/balance.mjs --arena close`, trong đó mọi lớp đứng cùng khoảng cách gần, cùng cấp, cùng số điểm. Số liệu là trung bình 3 nhánh của mỗi lớp:
+
+| Cấp | Đám đông (CB / PS) | Đơn mục tiêu (CB / PS) | Hạ tinh anh 600 máu (CB / PS) |
+|---|---|---|---|
+| 4 | 211 / 239 (−12%) | 75 / 50 (+50%) | 20 / 27 giây |
+| 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
+| 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
+
+## 20 màn chơi
+
+Danh sách màn nằm trong `data/maps/campaign.json`. Mỗi màn = màn gốc `1-1.json` + thay đổi của chương (màu nền, kiểu vật cản) + thay đổi riêng của màn (nếu có).
+
+- **Độ khó tăng 5% mỗi màn, cộng dồn:** máu và sát thương của mọi quái, kể cả trùm nhỏ và boss, nhân `1,05^(số thứ tự màn − 1)`. Màn 2 là ×1,05, màn 5 là ×1,22, màn 10 là ×1,55, màn 20 là ×2,53.
+  - Đổi bước tăng ở `difficultyStep`.
+  - Muốn một màn có độ khó riêng thì ghi `"difficulty"` vào màn đó.
+- **Phần thưởng tăng theo:** kinh nghiệm của quái +5% mỗi màn (`rewardStep`), cấp đồ rơi +1 mỗi màn (`itemLevelPerMap`).
+- **Mở khoá theo thứ tự:** hạ boss màn hiện tại thì mở màn sau.
+  - Màn đã mở có thể chơi lại bất kỳ lúc nào.
+  - Tiến độ lưu cùng nhân vật và đi kèm mã xuất/nhập.
+- **Vật cản ngẫu nhiên mỗi lượt:** vị trí của bia mộ, cây và đầm lầy khác nhau mỗi lần vào màn, số lượng dao động ±30% (`randomObstacles`). Vùng xuất phát luôn trống.
+- **4 chương có màu nền và tỉ lệ vật cản khác nhau:**
+  - Chương 2 nhiều bia mộ.
+  - Chương 3 nhiều cây.
+  - Chương 4 nhiều đầm lầy.
+- **Thêm hoặc sửa màn mà không cần code:** thêm một dòng vào mảng `maps`. Có thể ghi đè bất kỳ phần nào của màn gốc (`phases`, `events`, `obstacles`…), hoặc dùng `"template": "<tên file>"` để lấy một màn gốc khác trong `data/maps/`.
+
+Mô phỏng một nhân vật chơi lần lượt cả 20 màn (thua thì chơi lại; cấp và đồ giữ nguyên giữa các lượt):
+
+```bash
+node tools/sim.mjs --campaign --build cold --items
+```
+
+| Bot | Kết quả |
+|---|---|
+| Có né đòn, cả 3 nhánh | Qua 20/20 màn ngay lần đầu, kết thúc ở cấp 38–39 |
+| Không né đòn (Lửa) | Qua dễ tới hết chương 3; chương 4 bắt đầu khó (4-1 mất 14 lần thử, 4-3 mất 18 lần); sau 60 lượt vẫn chưa qua 4-4 |
 
 ## Hệ thống Giai đoạn 1
 
@@ -151,7 +222,10 @@ node tools/sim.mjs --runs 4 --build cold --items --verbose
 
 Tuỳ chọn của `sim.mjs`:
 
-- `--build fire|fire_ring|cold|lightning|hybrid`
+- `--map 2-3`: chọn màn.
+- `--campaign`: chơi lần lượt các màn.
+
+- `--build fire|fire_ring|cold|lightning|hybrid|weapon|shout|blood` (3 kiểu sau là Chiến Binh)
 - `--items`: bot nhặt và tự mặc đồ.
 - `--persist`: giữ cấp giữa các lượt.
 - `--no-dodge`: bot không né đạn, vũng độc hay cú vồ.
