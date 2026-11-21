@@ -44,6 +44,8 @@ export function createCharacter(data) {
     deaths: 0,
     clears: 0,
     mapDeaths: {},
+    mapProgress: 0, // số màn đã mở khoá thêm (hạ boss màn i thì mở màn i+1)
+    mapClears: {},
   };
   applyStartSkills(ch, data);
   return ch;
@@ -180,6 +182,11 @@ export function equipSkill(ch, id, slot) {
   if (cur >= 0) ch.slots[cur] = ch.slots[slot];
   ch.slots[slot] = id;
   return true;
+}
+
+// Các màn đã mở: màn đầu luôn mở, hạ boss màn i thì mở màn i+1.
+export function unlockedMaps(ch, data) {
+  return data.mapOrder.slice(0, Math.min(data.mapOrder.length, (ch.mapProgress || 0) + 1));
 }
 
 export function hasActiveSkill(ch) {

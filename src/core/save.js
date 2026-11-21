@@ -1,7 +1,7 @@
 // Lưu nhân vật + rương chung, và mã sao lưu để chuyển sang máy khác.
 import { createCharacter } from './progression.js';
 
-const FIELDS = ['level', 'xp', 'attrs', 'attrPoints', 'skillPoints', 'skills', 'slots', 'gold', 'inventory', 'equipment', 'runs', 'deaths', 'clears', 'mapDeaths'];
+const FIELDS = ['level', 'xp', 'attrs', 'attrPoints', 'skillPoints', 'skills', 'slots', 'gold', 'inventory', 'equipment', 'runs', 'deaths', 'clears', 'mapDeaths', 'mapProgress', 'mapClears'];
 
 function b64encode(str) {
   const bytes = new TextEncoder().encode(str);
@@ -58,6 +58,8 @@ export function normalizeCharacter(raw, data) {
   ch.equipment = eq;
   ch.mapDeaths = ch.mapDeaths && typeof ch.mapDeaths === 'object' ? ch.mapDeaths : {};
   for (const k of ['runs', 'deaths', 'clears']) ch[k] = Math.max(0, Math.floor(num(ch[k], 0)));
+  ch.mapProgress = Math.max(0, Math.min(data.mapOrder.length - 1, Math.floor(num(ch.mapProgress, 0))));
+  ch.mapClears = ch.mapClears && typeof ch.mapClears === 'object' ? ch.mapClears : {};
   return ch;
 }
 

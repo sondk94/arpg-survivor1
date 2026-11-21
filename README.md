@@ -1,6 +1,6 @@
 # ARPG Survivor – Giai đoạn 1 (Lõi ARPG)
 
-Bản đồ 1-1 *Đồng hoang Mục rữa*, 10 phút, lớp Pháp sư Nguyên tố với đủ 3 nhánh **Lửa / Băng / Sét**. Có đồ đạc 4 bậc, kho đồ, làng, rương chung, lưu game, xuất/nhập mã nhân vật. Chạy trên trình duyệt, HTML5 Canvas + JavaScript thuần, không cần build, không có thư viện ngoài. Đồ hoạ vẽ bằng hình khối: nhân vật có thân, tay, đầu và chân chạy theo nhịp bước.
+**20 màn chơi** (4 chương × 5 màn, mỗi màn 10 phút), lớp Pháp sư Nguyên tố với đủ 3 nhánh **Lửa / Băng / Sét**. Có đồ đạc 4 bậc, kho đồ, làng, rương chung, lưu game, xuất/nhập mã nhân vật. Chạy trên trình duyệt, HTML5 Canvas + JavaScript thuần, không cần build, không có thư viện ngoài. Đồ hoạ vẽ bằng hình khối: nhân vật có thân, tay, đầu và chân chạy theo nhịp bước.
 
 ## Chạy game
 
@@ -45,7 +45,8 @@ data/                 ← TOÀN BỘ số liệu, sửa không cần đụng cod
   skills.json         3 nhánh × 6 kỹ năng, synergy, mốc mở (thật + thử nghiệm)
   monsters.json       quái thường, tinh anh, trùm nhỏ, boss; kháng Lửa/Băng/Sét/Độc của từng quái
   items.json          ô trang bị, bậc đồ, đồ gốc, dòng chỉ số, 10 món độc nhất, tỉ lệ rơi, giá bán, giá tẩy điểm
-  maps/1-1.json       kích thước, vật cản, nhịp sinh quái, sự kiện theo thời gian
+  maps/1-1.json       màn gốc: kích thước, vật cản, nhịp sinh quái, sự kiện theo thời gian
+  maps/campaign.json  danh sách 20 màn, chương, độ khó tăng dần, vật cản ngẫu nhiên
 src/core/             lõi, không dùng DOM (chạy được trong Node)
   game.js             một lượt chơi: sinh quái, AI, kỹ năng, sát thương, đóng băng, rơi đồ, boss
   progression.js      nhân vật: cấp, điểm, kỹ năng, chỉ số từ đồ, tẩy điểm, hoàn tác
@@ -62,6 +63,35 @@ tools/
 ```
 
 Đặt `"testMode": false` trong `config.json` để dùng mốc mở kỹ năng thật (Lửa 1/1/6/12/18/24, Băng và Sét 1/6/12/12/18/24) thay cho mốc nén (Lửa 1/1/2/4/6/8, Băng và Sét 1/2/4/4/6/8).
+
+## 20 màn chơi
+
+Danh sách màn nằm trong `data/maps/campaign.json`. Mỗi màn = màn gốc `1-1.json` + thay đổi của chương (màu nền, kiểu vật cản) + thay đổi riêng của màn (nếu có).
+
+- **Độ khó tăng 5% mỗi màn, cộng dồn:** máu và sát thương của mọi quái, kể cả trùm nhỏ và boss, nhân `1,05^(số thứ tự màn − 1)`. Màn 2 là ×1,05, màn 5 là ×1,22, màn 10 là ×1,55, màn 20 là ×2,53.
+  - Đổi bước tăng ở `difficultyStep`.
+  - Muốn một màn có độ khó riêng thì ghi `"difficulty"` vào màn đó.
+- **Phần thưởng tăng theo:** kinh nghiệm của quái +5% mỗi màn (`rewardStep`), cấp đồ rơi +1 mỗi màn (`itemLevelPerMap`).
+- **Mở khoá theo thứ tự:** hạ boss màn hiện tại thì mở màn sau.
+  - Màn đã mở có thể chơi lại bất kỳ lúc nào.
+  - Tiến độ lưu cùng nhân vật và đi kèm mã xuất/nhập.
+- **Vật cản ngẫu nhiên mỗi lượt:** vị trí của bia mộ, cây và đầm lầy khác nhau mỗi lần vào màn, số lượng dao động ±30% (`randomObstacles`). Vùng xuất phát luôn trống.
+- **4 chương có màu nền và tỉ lệ vật cản khác nhau:**
+  - Chương 2 nhiều bia mộ.
+  - Chương 3 nhiều cây.
+  - Chương 4 nhiều đầm lầy.
+- **Thêm hoặc sửa màn mà không cần code:** thêm một dòng vào mảng `maps`. Có thể ghi đè bất kỳ phần nào của màn gốc (`phases`, `events`, `obstacles`…), hoặc dùng `"template": "<tên file>"` để lấy một màn gốc khác trong `data/maps/`.
+
+Mô phỏng một nhân vật chơi lần lượt cả 20 màn (thua thì chơi lại; cấp và đồ giữ nguyên giữa các lượt):
+
+```bash
+node tools/sim.mjs --campaign --build cold --items
+```
+
+| Bot | Kết quả |
+|---|---|
+| Có né đòn, cả 3 nhánh | Qua 20/20 màn ngay lần đầu, kết thúc ở cấp 38–39 |
+| Không né đòn (Lửa) | Qua dễ tới hết chương 3; chương 4 bắt đầu khó (4-1 mất 14 lần thử, 4-3 mất 18 lần); sau 60 lượt vẫn chưa qua 4-4 |
 
 ## Hệ thống Giai đoạn 1
 
@@ -150,6 +180,9 @@ node tools/sim.mjs --runs 4 --build cold --items --verbose
 ```
 
 Tuỳ chọn của `sim.mjs`:
+
+- `--map 2-3`: chọn màn.
+- `--campaign`: chơi lần lượt các màn.
 
 - `--build fire|fire_ring|cold|lightning|hybrid`
 - `--items`: bot nhặt và tự mặc đồ.

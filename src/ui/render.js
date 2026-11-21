@@ -68,7 +68,7 @@ export class Renderer {
 
   drawGround(g, camX, camY) {
     const ctx = this.ctx;
-    ctx.fillStyle = '#23261c';
+    ctx.fillStyle = g.map.theme?.ground || '#23261c';
     ctx.fillRect(0, 0, g.W, g.H);
     ctx.strokeStyle = 'rgba(255,255,255,0.035)';
     ctx.lineWidth = 1;
@@ -603,6 +603,10 @@ export class Renderer {
     ctx.font = '600 14px system-ui, sans-serif';
     ctx.fillStyle = '#c8c2b0';
     ctx.fillText(`Đã giết: ${g.kills}`, w / 2, 60);
+    ctx.textAlign = 'right';
+    ctx.font = '600 13px system-ui, sans-serif';
+    ctx.fillStyle = '#bdb6a2';
+    ctx.fillText(`Màn ${g.map.id}: ${g.map.name}${g.map.difficulty > 1.0001 ? ` · +${Math.round((g.map.difficulty - 1) * 100)}%` : ''}`, w - 14, 22);
 
     if (g.banner) {
       const k = g.banner.t < 0.3 ? g.banner.t / 0.3 : Math.min(1, (g.banner.dur - g.banner.t) / 0.5);

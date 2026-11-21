@@ -253,4 +253,52 @@ t('Xuất mã rồi nhập lại vẫn đủ cấp, điểm, đồ và rương',
   assert.throws(() => importCode('xyz', data), /định dạng/);
 });
 
+t('20 màn, mỗi màn khó hơn màn trước 5% (máu, sát thương), kinh nghiệm +5%', () => {
+  assert.equal(data.mapOrder.length, 20);
+  data.mapOrder.forEach((id, i) => {
+    const m = data.maps[id];
+    assert.equal(m.index, i);
+    if (i > 0) assert.ok(Math.abs(m.difficulty / data.maps[data.mapOrder[i - 1]].difficulty - 1.05) < 1e-9, id);
+  });
+  const ch = P.createCharacter(data);
+  const g1 = new Game(data, ch, { seed: 1, headless: true, mapId: '1-1' });
+  const g2 = new Game(data, ch, { seed: 1, headless: true, mapId: '1-2' });
+  const g20 = new Game(data, ch, { seed: 1, headless: true, mapId: '4-5' });
+  const z1 = g1.spawnEnemy('zombie', 100, 100), z2 = g2.spawnEnemy('zombie', 100, 100), z20 = g20.spawnEnemy('zombie', 100, 100);
+  assert.ok(Math.abs(z2.maxHp / z1.maxHp - 1.05) < 1e-9);
+  assert.ok(Math.abs(z2.contact / z1.contact - 1.05) < 1e-9);
+  assert.ok(Math.abs(z2.xp / z1.xp - 1.05) < 1e-9);
+  assert.ok(Math.abs(z20.maxHp / z1.maxHp - Math.pow(1.05, 19)) < 1e-9);
+  const b1 = g1.spawnEnemy('swamp_lord', 100, 100), b2 = g2.spawnEnemy('swamp_lord', 100, 100);
+  assert.ok(Math.abs(b2.maxHp / b1.maxHp - 1.05) < 1e-9);
+});
+
+t('Qua màn thì mở màn sau; tiến độ được lưu trong mã nhân vật', () => {
+  const ch = P.createCharacter(data);
+  assert.deepEqual(P.unlockedMaps(ch, data), ['1-1']);
+  const g = new Game(data, ch, { seed: 1, headless: true, mapId: '1-1' });
+  g.win();
+  assert.equal(g.result.nextMap, '1-2');
+  assert.deepEqual(P.unlockedMaps(ch, data), ['1-1', '1-2']);
+  // chơi lại màn cũ không mở thêm
+  const g2 = new Game(data, ch, { seed: 2, headless: true, mapId: '1-1' });
+  g2.win();
+  assert.equal(g2.result.nextMap, null);
+  assert.equal(P.unlockedMaps(ch, data).length, 2);
+  const back = importCode(exportCode(ch, newStash(data), data), data);
+  assert.equal(back.ch.mapProgress, 1);
+  assert.equal(back.ch.mapClears['1-1'], 2);
+});
+
+t('Chướng ngại vật ngẫu nhiên mỗi lượt chơi', () => {
+  const ch = P.createCharacter(data);
+  const a = new Game(data, ch, { seed: 11, headless: true }).obstacles;
+  const b = new Game(data, ch, { seed: 12, headless: true }).obstacles;
+  const a2 = new Game(data, ch, { seed: 11, headless: true }).obstacles;
+  assert.notDeepEqual(a.map((o) => [o.x, o.y]), b.map((o) => [o.x, o.y]));
+  assert.deepEqual(a.map((o) => [o.x, o.y]), a2.map((o) => [o.x, o.y])); // cùng seed thì giống nhau (tái lập mô phỏng)
+  // vùng xuất phát luôn trống
+  for (const o of b) assert.ok(Math.hypot(o.x - 1500, o.y - 1500) > 260);
+});
+
 console.log(`\n${n} kiểm tra đều qua.`);

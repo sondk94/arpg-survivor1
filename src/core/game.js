@@ -7,14 +7,18 @@ import { generateItem, addToInventory, firstFree } from './items.js';
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
-function buildObstacles(map, W, H) {
+// Vật cản: nếu màn bật "random" thì mỗi lượt chơi một bố cục khác (theo seed của lượt), số lượng dao động ±countVariation.
+function buildObstacles(map, W, H, runSeed) {
   const cfg = map.obstacles;
-  const rng = new RNG(cfg.seed);
+  const random = !!cfg.random;
+  const rng = new RNG(random ? (runSeed ^ 0x9e3779b9) >>> 0 : cfg.seed);
   const list = [];
   const cx = W / 2, cy = H / 2;
   for (const t of cfg.types) {
     let placed = 0, tries = 0;
-    while (placed < t.count && tries < t.count * 50) {
+    const v = random ? cfg.random.countVariation || 0 : 0;
+    const count = Math.round(t.count * (1 + rng.range(-v, v)));
+    while (placed < count && tries < count * 50) {
       tries++;
       const r = rng.range(t.r[0], t.r[1]);
       const x = rng.range(r + 40, W - r - 40);
@@ -49,7 +53,8 @@ export class Game {
     this.data = data;
     this.cfg = data.config;
     this.ch = ch;
-    this.map = data.maps[opts.mapId || '1-1'];
+    this.map = data.maps[opts.mapId || data.mapOrder[0]];
+    if (!this.map) throw new Error(`Không có màn ${opts.mapId}`);
     this.seed = opts.seed ?? ((Math.random() * 0xffffffff) >>> 0);
     this.rng = new RNG(this.seed);
     this.headless = !!opts.headless;
@@ -61,7 +66,7 @@ export class Game {
     this.time = 0;
     this.kills = 0;
 
-    this.obstacles = buildObstacles(this.map, this.W, this.H);
+    this.obstacles = buildObstacles(this.map, this.W, this.H, this.seed);
     this.obGrid = buildObstacleGrid(this.obstacles, this.W, this.H, 128);
 
     const pc = this.cfg.player;
@@ -322,15 +327,17 @@ export class Game {
     const def = this.data.monsters[typeId];
     const lvl = this.map.level;
     const sc = this.cfg.monsterScaling;
-    const hp = def.hp * (1 + sc.hpPerLevel * (lvl - 1));
-    const dmgMult = 1 + sc.dmgPerLevel * (lvl - 1);
+    // Độ khó của màn (×1,05 mỗi màn) nhân vào máu và sát thương của mọi quái.
+    const diff = this.map.difficulty || 1;
+    const hp = def.hp * (1 + sc.hpPerLevel * (lvl - 1)) * diff;
+    const dmgMult = (1 + sc.dmgPerLevel * (lvl - 1)) * diff;
     const e = {
       id: this.nextId++, type: typeId, def, name: def.name, ai: def.ai,
       x, y, r: def.radius, hp, maxHp: hp,
       dmg: def.damage * dmgMult, dmgMult,
       contact: (def.contactDamage ?? def.damage) * dmgMult,
       dmgType: def.damageType || 'physical',
-      speed: def.speed, xp: def.xp, color: def.color,
+      speed: def.speed, xp: def.xp * (this.map.rewardMult || 1), color: def.color,
       resist: def.resist || {}, level: lvl,
       kx: 0, ky: 0, slowT: 0, slowPct: 0, hit: 0,
       t: this.rng.next() * 10, phase: this.rng.next() * TAU,
@@ -459,7 +466,14 @@ export class Game {
     this.over = true;
     this.ch.clears++;
     const flawless = !(this.ch.mapDeaths[this.map.id] > 0);
-    this.result = { win: true, time: this.time, flawless };
+    // Mở khoá màn kế tiếp.
+    const idx = this.map.index ?? 0;
+    const firstClear = (this.ch.mapProgress || 0) <= idx;
+    this.ch.mapProgress = Math.max(this.ch.mapProgress || 0, idx + 1);
+    this.ch.mapClears = this.ch.mapClears || {};
+    this.ch.mapClears[this.map.id] = (this.ch.mapClears[this.map.id] || 0) + 1;
+    const next = this.data.mapOrder[idx + 1] || null;
+    this.result = { win: true, time: this.time, flawless, firstClear, nextMap: firstClear ? next : null };
     this.emit({ type: 'victory', flawless });
   }
 
@@ -958,7 +972,7 @@ export class Game {
 
   // Cấp đồ rơi: cấp bản đồ + số phút đã chơi + thưởng theo loại quái.
   itemLevel(bonus = 0) {
-    return this.map.level + Math.floor(this.time / 60) * this.data.items.drops.ilvlPerMinute + bonus;
+    return this.map.level + (this.map.itemLevelBonus || 0) + Math.floor(this.time / 60) * this.data.items.drops.ilvlPerMinute + bonus;
   }
 
   dropLoot(e, kind) {

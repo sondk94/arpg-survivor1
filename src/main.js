@@ -201,7 +201,15 @@ class App {
   }
 
   // ---------- Lượt chơi ----------
-  startRun() {
+  // Màn mặc định: màn đã mở xa nhất.
+  defaultMap() {
+    const u = P.unlockedMaps(this.ch, this.data);
+    return u[u.length - 1];
+  }
+
+  startRun(mapId = this.selectedMap) {
+    if (!mapId || !P.unlockedMaps(this.ch, this.data).includes(mapId)) mapId = this.defaultMap();
+    this.selectedMap = mapId;
     if (!P.hasActiveSkill(this.ch)) {
       this.panel.open('char');
       this.panel.flash('Hãy học ít nhất một kỹ năng chủ động trước khi vào bản đồ');
@@ -209,7 +217,7 @@ class App {
     }
     if (this.panel.isOpen) this.panel.close();
     this.ch.runs++;
-    this.game = new Game(this.data, this.ch, { viewW: this.renderer.w, viewH: this.renderer.h });
+    this.game = new Game(this.data, this.ch, { mapId, viewW: this.renderer.w, viewH: this.renderer.h });
     this.game.god = this.ui.god;
     this.game.showDamage = this.ui.showDamage;
     this.state = 'run';
@@ -244,6 +252,8 @@ class App {
       date: new Date().toISOString(),
       version: this.data.config.version,
       map: g.map.id,
+      difficulty: Math.round(g.map.difficulty * 1000) / 1000,
+      nextMapUnlocked: r.nextMap || null,
       seed: g.seed,
       result: r.win ? 'win' : r.quit ? 'quit' : 'death',
       timeSec: Math.round(g.time),
@@ -276,6 +286,7 @@ class App {
     };
     T.saveRun(rec);
     this.lastResult = rec;
+    if (r.nextMap) this.selectedMap = r.nextMap;
     this.save();
     this.state = 'village';
     this.game = null;
@@ -286,6 +297,37 @@ class App {
   }
 
   // ---------- Làng ----------
+  currentMap() {
+    const u = P.unlockedMaps(this.ch, this.data);
+    if (!u.includes(this.selectedMap)) this.selectedMap = u[u.length - 1];
+    return this.data.maps[this.selectedMap];
+  }
+
+  mapPickerHtml() {
+    const data = this.data;
+    const unlocked = new Set(P.unlockedMaps(this.ch, data));
+    const cur = this.currentMap();
+    const byCh = new Map();
+    for (const id of data.mapOrder) {
+      const m = data.maps[id];
+      if (!byCh.has(m.chapterName)) byCh.set(m.chapterName, []);
+      byCh.get(m.chapterName).push(m);
+    }
+    const total = data.mapOrder.length;
+    const done = Math.min(total, this.ch.mapProgress || 0);
+    let html = '';
+    for (const [name, maps] of byCh) {
+      html += `<div class="chap"><div class="chap-name">${esc(name)}</div><div class="maps">${maps.map((m) => {
+        const open = unlocked.has(m.id);
+        const cleared = (this.ch.mapClears?.[m.id] || 0) > 0 || m.index < (this.ch.mapProgress || 0);
+        const pct = Math.round((m.difficulty - 1) * 100);
+        return `<button class="map ${open ? '' : 'locked'} ${cleared ? 'cleared' : ''} ${m.id === cur.id ? 'on' : ''}" ${open ? `data-map="${m.id}"` : 'disabled'} title="${esc(m.name)} · độ khó ×${m.difficulty.toFixed(2)}">
+          <b>${esc(m.id)}</b><span>${open ? esc(m.name) : 'Chưa mở'}</span><small>${cleared ? '✓ đã qua · ' : open ? '' : '🔒 '}${pct ? `+${pct}%` : 'gốc'}</small></button>`;
+      }).join('')}</div></div>`;
+    }
+    return `<section class="tests mappicker"><h3>Chọn màn <small>${done}/${total} màn đã qua · mỗi màn khó hơn màn trước 5% (máu, sát thương; kinh nghiệm cũng +5%) · bấm đúp để vào ngay</small></h3>${html}</section>`;
+  }
+
   renderVillage() {
     const v = $('#village');
     v.classList.remove('hidden');
@@ -296,9 +338,12 @@ class App {
     const r = this.lastResult;
     let resultHtml = '';
     if (r) {
-      const title = r.result === 'win' ? 'Hoàn thành màn 1-1!' : r.result === 'quit' ? 'Đã bỏ lượt' : 'Bạn đã gục ngã';
+      const rm = data.maps[r.map];
+      const title = r.result === 'win' ? `Hoàn thành màn ${esc(r.map)}: ${esc(rm ? rm.name : '')}!` : r.result === 'quit' ? 'Đã bỏ lượt' : `Bạn đã gục ngã ở màn ${esc(r.map)}`;
+      const nm = r.nextMapUnlocked && data.maps[r.nextMapUnlocked];
       const extra = r.result === 'win'
-        ? (r.flawless ? '<div class="chest">Hòm thưởng thêm: hoàn thành mà chưa chết lần nào ở bản đồ này!</div>' : '')
+        ? (nm ? `<div class="chest">Đã mở màn mới: <b>${esc(nm.id)} ${esc(nm.name)}</b> (độ khó ×${nm.difficulty.toFixed(2)}).</div>` : '') +
+          (r.flawless ? '<div class="chest">Hòm thưởng thêm: hoàn thành mà chưa chết lần nào ở bản đồ này!</div>' : '')
         : `<div>Nguyên nhân: <b>${esc(r.cause || '-')}</b>. Kinh nghiệm, cấp và đồ đã nhặt vẫn được giữ; màn phải chơi lại từ đầu.</div>`;
       const loot = (r.itemsPicked || []).filter((x) => x.rarity !== 'normal');
       resultHtml = `<div class="result ${r.result}">
@@ -328,6 +373,7 @@ class App {
           <h1>ARPG Survivor <small>Giai đoạn 1 · bản ${esc(data.config.version)} · Làng</small></h1>
         </header>
         ${resultHtml}
+        ${this.mapPickerHtml()}
         <div class="char">
           <div class="char-main">
             <div class="cls">${esc(data.config.player.className)} · điểm kỹ năng: ${trees}</div>
@@ -339,7 +385,7 @@ class App {
             ${!P.hasActiveSkill(ch) ? '<div class="warn">Chưa có kỹ năng chủ động nào: mở bảng cộng điểm và chọn kỹ năng cấp 1 của nhánh Lửa, Băng hoặc Sét.</div>' : ''}
           </div>
           <div class="char-btns">
-            <button id="v-start" class="primary">Vào bản đồ 1-1: ${esc(data.maps['1-1'].name)}</button>
+            <button id="v-start" class="primary">Vào màn ${esc(this.currentMap().id)}: ${esc(this.currentMap().name)}</button>
             <button id="v-panel">Cộng điểm (Tab / C)</button>
             <button id="v-items">Đồ đạc (I) · ${invUsed}/${ch.inventory.length}</button>
             <button id="v-stash">Rương chung · ${this.stash.filter(Boolean).length}/${this.stash.length}</button>
@@ -385,6 +431,10 @@ class App {
         </section>
       </div>`;
     $('#v-start').onclick = () => this.startRun();
+    v.querySelectorAll('[data-map]').forEach((b) => {
+      b.onclick = () => { this.selectedMap = b.dataset.map; this.renderVillage(); };
+      b.ondblclick = () => { this.selectedMap = b.dataset.map; this.startRun(); };
+    });
     $('#v-panel').onclick = () => this.panel.open('char');
     $('#v-items').onclick = () => this.panel.open('items');
     $('#v-stash').onclick = () => this.panel.open('stash');
