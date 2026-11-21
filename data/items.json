@@ -3,134 +3,1332 @@
   "stashSize": 50,
   "respecCostPerLevel": 40,
   "slots": [
-    { "id": "head", "name": "Mũ", "type": "head" },
-    { "id": "amulet", "name": "Dây chuyền", "type": "amulet" },
-    { "id": "weapon", "name": "Vũ khí", "type": "weapon" },
-    { "id": "body", "name": "Áo", "type": "body" },
-    { "id": "offhand", "name": "Tay phụ", "type": "offhand" },
-    { "id": "gloves", "name": "Găng", "type": "gloves" },
-    { "id": "belt", "name": "Thắt lưng", "type": "belt" },
-    { "id": "boots", "name": "Giày", "type": "boots" },
-    { "id": "ring1", "name": "Nhẫn trái", "type": "ring" },
-    { "id": "ring2", "name": "Nhẫn phải", "type": "ring" }
+    {
+      "id": "head",
+      "name": "Mũ",
+      "type": "head"
+    },
+    {
+      "id": "amulet",
+      "name": "Dây chuyền",
+      "type": "amulet"
+    },
+    {
+      "id": "weapon",
+      "name": "Vũ khí",
+      "type": "weapon"
+    },
+    {
+      "id": "body",
+      "name": "Áo",
+      "type": "body"
+    },
+    {
+      "id": "offhand",
+      "name": "Tay phụ",
+      "type": "offhand"
+    },
+    {
+      "id": "gloves",
+      "name": "Găng",
+      "type": "gloves"
+    },
+    {
+      "id": "belt",
+      "name": "Thắt lưng",
+      "type": "belt"
+    },
+    {
+      "id": "boots",
+      "name": "Giày",
+      "type": "boots"
+    },
+    {
+      "id": "ring1",
+      "name": "Nhẫn trái",
+      "type": "ring"
+    },
+    {
+      "id": "ring2",
+      "name": "Nhẫn phải",
+      "type": "ring"
+    }
   ],
   "rarities": {
-    "normal": { "name": "Thường", "color": "#e6e1d3", "affixes": [0, 0], "weight": 55, "sellMult": 1 },
-    "magic": { "name": "Ma thuật", "color": "#7f9cff", "affixes": [1, 2], "weight": 32, "sellMult": 3 },
-    "rare": { "name": "Hiếm", "color": "#ffe04d", "affixes": [3, 4], "weight": 11, "sellMult": 8 },
-    "unique": { "name": "Độc nhất", "color": "#d49a4a", "affixes": [0, 0], "weight": 2, "sellMult": 15 }
+    "normal": {
+      "name": "Thường",
+      "color": "#e6e1d3",
+      "affixes": [
+        0,
+        0
+      ],
+      "weight": 55,
+      "sellMult": 1
+    },
+    "magic": {
+      "name": "Ma thuật",
+      "color": "#7f9cff",
+      "affixes": [
+        1,
+        2
+      ],
+      "weight": 32,
+      "sellMult": 3
+    },
+    "rare": {
+      "name": "Hiếm",
+      "color": "#ffe04d",
+      "affixes": [
+        3,
+        4
+      ],
+      "weight": 11,
+      "sellMult": 8
+    },
+    "unique": {
+      "name": "Độc nhất",
+      "color": "#d49a4a",
+      "affixes": [
+        0,
+        0
+      ],
+      "weight": 2,
+      "sellMult": 15
+    }
   },
   "drops": {
-    "normal": { "itemChance": 0.004, "goldChance": 0.02 },
-    "elite": { "items": 1, "minRarity": "magic", "ilvlBonus": 2, "rareMult": 2, "uniqueMult": 2, "gold": true },
-    "miniboss": { "items": 2, "minRarity": "magic", "ilvlBonus": 3, "rareMult": 2, "uniqueMult": 2, "gold": true },
-    "boss": { "items": 3, "firstMinRarity": "rare", "minRarity": "magic", "ilvlBonus": 5, "rareMult": 3, "uniqueMult": 3, "gold": true },
-    "gold": { "min": 2, "max": 6, "perIlvl": 0.6 },
+    "normal": {
+      "itemChance": 0.004,
+      "goldChance": 0.02
+    },
+    "elite": {
+      "items": 1,
+      "minRarity": "magic",
+      "ilvlBonus": 2,
+      "rareMult": 2,
+      "uniqueMult": 2,
+      "gold": true
+    },
+    "miniboss": {
+      "items": 2,
+      "minRarity": "magic",
+      "ilvlBonus": 3,
+      "rareMult": 2,
+      "uniqueMult": 2,
+      "gold": true
+    },
+    "boss": {
+      "items": 3,
+      "firstMinRarity": "rare",
+      "minRarity": "magic",
+      "ilvlBonus": 5,
+      "rareMult": 3,
+      "uniqueMult": 3,
+      "gold": true
+    },
+    "gold": {
+      "min": 2,
+      "max": 6,
+      "perIlvl": 0.6
+    },
     "ilvlPerMinute": 1,
     "sellBase": 8,
     "sellPerIlvl": 2
   },
   "stats": {
-    "str": { "fmt": "+{v} Sức mạnh" },
-    "dex": { "fmt": "+{v} Nhanh nhẹn" },
-    "vit": { "fmt": "+{v} Thể lực" },
-    "ene": { "fmt": "+{v} Năng lượng" },
-    "maxHp": { "fmt": "+{v} máu tối đa" },
-    "maxMana": { "fmt": "+{v} mana tối đa" },
-    "armor": { "fmt": "+{v} giáp" },
-    "spellDmgPct": { "fmt": "+{v}% sát thương phép" },
-    "fireDmgPct": { "fmt": "+{v}% sát thương lửa" },
-    "coldDmgPct": { "fmt": "+{v}% sát thương băng" },
-    "lightningDmgPct": { "fmt": "+{v}% sát thương sét" },
-    "fireSkills": { "fmt": "+{v} cấp kỹ năng Lửa" },
-    "coldSkills": { "fmt": "+{v} cấp kỹ năng Băng" },
-    "lightningSkills": { "fmt": "+{v} cấp kỹ năng Sét" },
-    "allSkills": { "fmt": "+{v} cấp mọi kỹ năng" },
-    "critChance": { "fmt": "+{v}% tỉ lệ chí mạng" },
-    "cdSpeedPct": { "fmt": "+{v}% tốc độ hồi chiêu" },
-    "moveSpeedPct": { "fmt": "+{v}% tốc độ di chuyển" },
-    "pickupPct": { "fmt": "+{v}% bán kính nhặt đồ" },
-    "manaRegenPct": { "fmt": "+{v}% tốc độ hồi mana" },
-    "resFire": { "fmt": "+{v}% kháng lửa" },
-    "resCold": { "fmt": "+{v}% kháng băng" },
-    "resLightning": { "fmt": "+{v}% kháng sét" },
-    "resPoison": { "fmt": "+{v}% kháng độc" },
-    "resAll": { "fmt": "+{v}% kháng mọi nguyên tố" },
-    "hpOnKill": { "fmt": "+{v} máu mỗi lần giết quái" },
-    "freezeHits": { "fmt": "Cần ít hơn {v} đòn băng để đóng băng quái" }
+    "str": {
+      "fmt": "+{v} Sức mạnh"
+    },
+    "dex": {
+      "fmt": "+{v} Nhanh nhẹn"
+    },
+    "vit": {
+      "fmt": "+{v} Thể lực"
+    },
+    "ene": {
+      "fmt": "+{v} Năng lượng"
+    },
+    "maxHp": {
+      "fmt": "+{v} máu tối đa"
+    },
+    "maxMana": {
+      "fmt": "+{v} mana tối đa"
+    },
+    "armor": {
+      "fmt": "+{v} giáp"
+    },
+    "spellDmgPct": {
+      "fmt": "+{v}% sát thương phép"
+    },
+    "fireDmgPct": {
+      "fmt": "+{v}% sát thương lửa"
+    },
+    "coldDmgPct": {
+      "fmt": "+{v}% sát thương băng"
+    },
+    "lightningDmgPct": {
+      "fmt": "+{v}% sát thương sét"
+    },
+    "fireSkills": {
+      "fmt": "+{v} cấp kỹ năng Lửa"
+    },
+    "coldSkills": {
+      "fmt": "+{v} cấp kỹ năng Băng"
+    },
+    "lightningSkills": {
+      "fmt": "+{v} cấp kỹ năng Sét"
+    },
+    "allSkills": {
+      "fmt": "+{v} cấp mọi kỹ năng"
+    },
+    "critChance": {
+      "fmt": "+{v}% tỉ lệ chí mạng"
+    },
+    "cdSpeedPct": {
+      "fmt": "+{v}% tốc độ hồi chiêu"
+    },
+    "moveSpeedPct": {
+      "fmt": "+{v}% tốc độ di chuyển"
+    },
+    "pickupPct": {
+      "fmt": "+{v}% bán kính nhặt đồ"
+    },
+    "manaRegenPct": {
+      "fmt": "+{v}% tốc độ hồi mana"
+    },
+    "resFire": {
+      "fmt": "+{v}% kháng lửa"
+    },
+    "resCold": {
+      "fmt": "+{v}% kháng băng"
+    },
+    "resLightning": {
+      "fmt": "+{v}% kháng sét"
+    },
+    "resPoison": {
+      "fmt": "+{v}% kháng độc"
+    },
+    "resAll": {
+      "fmt": "+{v}% kháng mọi nguyên tố"
+    },
+    "hpOnKill": {
+      "fmt": "+{v} máu mỗi lần giết quái"
+    },
+    "freezeHits": {
+      "fmt": "Cần ít hơn {v} đòn băng để đóng băng quái"
+    },
+    "lightningEliteDmgPct": {
+      "fmt": "+{v}% sát thương sét lên tinh anh"
+    }
   },
   "bases": [
-    { "id": "wand", "type": "weapon", "name": "Đũa Phép", "req": 1, "implicit": { "spellDmgPct": [5, 10] } },
-    { "id": "staff", "type": "weapon", "name": "Gậy Tro", "req": 5, "implicit": { "spellDmgPct": [10, 16], "maxMana": [5, 10] } },
-    { "id": "grand_staff", "type": "weapon", "name": "Trượng Cổ", "req": 10, "implicit": { "spellDmgPct": [16, 24], "maxMana": [10, 20] } },
-    { "id": "stone_orb", "type": "offhand", "name": "Quả Cầu Đá", "req": 1, "implicit": { "maxMana": [5, 10] } },
-    { "id": "crystal_orb", "type": "offhand", "name": "Quả Cầu Pha Lê", "req": 6, "implicit": { "maxMana": [10, 18], "manaRegenPct": [5, 10] } },
-    { "id": "buckler", "type": "offhand", "name": "Khiên Nhỏ", "req": 1, "reqStr": 20, "implicit": { "armor": [6, 10] } },
-    { "id": "cap", "type": "head", "name": "Mũ Vải", "req": 1, "implicit": { "armor": [3, 5] } },
-    { "id": "helm", "type": "head", "name": "Mũ Sắt", "req": 6, "reqStr": 25, "implicit": { "armor": [8, 12] } },
-    { "id": "circlet", "type": "head", "name": "Vòng Đầu", "req": 10, "implicit": { "armor": [5, 8], "maxMana": [10, 15] } },
-    { "id": "robe", "type": "body", "name": "Áo Choàng Vải", "req": 1, "implicit": { "armor": [6, 10] } },
-    { "id": "leather", "type": "body", "name": "Áo Da", "req": 4, "reqStr": 18, "implicit": { "armor": [12, 18] } },
-    { "id": "mail", "type": "body", "name": "Áo Giáp Xích", "req": 9, "reqStr": 35, "implicit": { "armor": [25, 35] } },
-    { "id": "cloth_gloves", "type": "gloves", "name": "Găng Vải", "req": 1, "implicit": { "armor": [2, 3] } },
-    { "id": "leather_gloves", "type": "gloves", "name": "Găng Da", "req": 6, "reqStr": 15, "implicit": { "armor": [4, 6] } },
-    { "id": "sash", "type": "belt", "name": "Dây Lưng Vải", "req": 1, "implicit": { "maxHp": [5, 8] } },
-    { "id": "leather_belt", "type": "belt", "name": "Đai Da", "req": 6, "implicit": { "maxHp": [10, 15] } },
-    { "id": "sandals", "type": "boots", "name": "Dép Rơm", "req": 1, "implicit": { "armor": [2, 3] } },
-    { "id": "leather_boots", "type": "boots", "name": "Ủng Da", "req": 5, "implicit": { "armor": [4, 6], "moveSpeedPct": [3, 5] } },
-    { "id": "amulet", "type": "amulet", "name": "Dây Chuyền", "req": 1, "implicit": {} },
-    { "id": "ring", "type": "ring", "name": "Nhẫn", "req": 1, "implicit": {} }
+    {
+      "id": "wand",
+      "type": "weapon",
+      "name": "Đũa Phép",
+      "req": 1,
+      "implicit": {
+        "spellDmgPct": [
+          5,
+          10
+        ]
+      }
+    },
+    {
+      "id": "staff",
+      "type": "weapon",
+      "name": "Gậy Tro",
+      "req": 5,
+      "implicit": {
+        "spellDmgPct": [
+          10,
+          16
+        ],
+        "maxMana": [
+          5,
+          10
+        ]
+      }
+    },
+    {
+      "id": "grand_staff",
+      "type": "weapon",
+      "name": "Trượng Cổ",
+      "req": 10,
+      "implicit": {
+        "spellDmgPct": [
+          16,
+          24
+        ],
+        "maxMana": [
+          10,
+          20
+        ]
+      }
+    },
+    {
+      "id": "stone_orb",
+      "type": "offhand",
+      "name": "Quả Cầu Đá",
+      "req": 1,
+      "implicit": {
+        "maxMana": [
+          5,
+          10
+        ]
+      }
+    },
+    {
+      "id": "crystal_orb",
+      "type": "offhand",
+      "name": "Quả Cầu Pha Lê",
+      "req": 6,
+      "implicit": {
+        "maxMana": [
+          10,
+          18
+        ],
+        "manaRegenPct": [
+          5,
+          10
+        ]
+      }
+    },
+    {
+      "id": "buckler",
+      "type": "offhand",
+      "name": "Khiên Nhỏ",
+      "req": 1,
+      "reqStr": 20,
+      "implicit": {
+        "armor": [
+          6,
+          10
+        ]
+      }
+    },
+    {
+      "id": "cap",
+      "type": "head",
+      "name": "Mũ Vải",
+      "req": 1,
+      "implicit": {
+        "armor": [
+          3,
+          5
+        ]
+      }
+    },
+    {
+      "id": "helm",
+      "type": "head",
+      "name": "Mũ Sắt",
+      "req": 6,
+      "reqStr": 25,
+      "implicit": {
+        "armor": [
+          8,
+          12
+        ]
+      }
+    },
+    {
+      "id": "circlet",
+      "type": "head",
+      "name": "Vòng Đầu",
+      "req": 10,
+      "implicit": {
+        "armor": [
+          5,
+          8
+        ],
+        "maxMana": [
+          10,
+          15
+        ]
+      }
+    },
+    {
+      "id": "robe",
+      "type": "body",
+      "name": "Áo Choàng Vải",
+      "req": 1,
+      "implicit": {
+        "armor": [
+          6,
+          10
+        ]
+      }
+    },
+    {
+      "id": "leather",
+      "type": "body",
+      "name": "Áo Da",
+      "req": 4,
+      "reqStr": 18,
+      "implicit": {
+        "armor": [
+          12,
+          18
+        ]
+      }
+    },
+    {
+      "id": "mail",
+      "type": "body",
+      "name": "Áo Giáp Xích",
+      "req": 9,
+      "reqStr": 35,
+      "implicit": {
+        "armor": [
+          25,
+          35
+        ]
+      }
+    },
+    {
+      "id": "cloth_gloves",
+      "type": "gloves",
+      "name": "Găng Vải",
+      "req": 1,
+      "implicit": {
+        "armor": [
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "id": "leather_gloves",
+      "type": "gloves",
+      "name": "Găng Da",
+      "req": 6,
+      "reqStr": 15,
+      "implicit": {
+        "armor": [
+          4,
+          6
+        ]
+      }
+    },
+    {
+      "id": "sash",
+      "type": "belt",
+      "name": "Dây Lưng Vải",
+      "req": 1,
+      "implicit": {
+        "maxHp": [
+          5,
+          8
+        ]
+      }
+    },
+    {
+      "id": "leather_belt",
+      "type": "belt",
+      "name": "Đai Da",
+      "req": 6,
+      "implicit": {
+        "maxHp": [
+          10,
+          15
+        ]
+      }
+    },
+    {
+      "id": "sandals",
+      "type": "boots",
+      "name": "Dép Rơm",
+      "req": 1,
+      "implicit": {
+        "armor": [
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "id": "leather_boots",
+      "type": "boots",
+      "name": "Ủng Da",
+      "req": 5,
+      "implicit": {
+        "armor": [
+          4,
+          6
+        ],
+        "moveSpeedPct": [
+          3,
+          5
+        ]
+      }
+    },
+    {
+      "id": "amulet",
+      "type": "amulet",
+      "name": "Dây Chuyền",
+      "req": 1,
+      "implicit": {}
+    },
+    {
+      "id": "ring",
+      "type": "ring",
+      "name": "Nhẫn",
+      "req": 1,
+      "implicit": {}
+    }
   ],
   "affixes": [
-    { "stat": "str", "name": "của Gấu", "slots": ["*"], "tiers": [[1, 1, 2, 4], [6, 6, 5, 8], [12, 12, 9, 12]] },
-    { "stat": "dex", "name": "của Cáo", "slots": ["*"], "tiers": [[1, 1, 2, 4], [6, 6, 5, 8], [12, 12, 9, 12]] },
-    { "stat": "vit", "name": "của Cây Sồi", "slots": ["*"], "tiers": [[1, 1, 2, 4], [6, 6, 5, 8], [12, 12, 9, 12]] },
-    { "stat": "ene", "name": "của Hiền Giả", "slots": ["*"], "tiers": [[1, 1, 2, 4], [6, 6, 5, 8], [12, 12, 9, 12]] },
-    { "stat": "maxHp", "name": "Bền Bỉ", "slots": ["body", "belt", "head", "amulet", "ring", "offhand"], "tiers": [[1, 1, 5, 10], [6, 6, 11, 20], [12, 12, 21, 30]] },
-    { "stat": "maxMana", "name": "Huyền Bí", "slots": ["weapon", "offhand", "head", "amulet", "ring"], "tiers": [[1, 1, 5, 10], [6, 6, 11, 20], [12, 12, 21, 30]] },
-    { "stat": "armor", "name": "Cứng Cáp", "slots": ["body", "head", "gloves", "boots", "belt", "offhand"], "tiers": [[1, 1, 4, 8], [6, 6, 9, 15], [12, 12, 16, 25]] },
-    { "stat": "spellDmgPct", "name": "Thần Bí", "slots": ["weapon", "amulet", "ring", "offhand"], "tiers": [[1, 1, 3, 6], [6, 6, 7, 12], [12, 12, 13, 18]] },
-    { "stat": "fireDmgPct", "name": "Rực Lửa", "slots": ["weapon", "offhand", "amulet", "ring", "gloves", "head"], "tiers": [[1, 1, 5, 10], [6, 6, 11, 18], [12, 12, 19, 26]] },
-    { "stat": "coldDmgPct", "name": "Giá Lạnh", "slots": ["weapon", "offhand", "amulet", "ring", "gloves", "head"], "tiers": [[1, 1, 5, 10], [6, 6, 11, 18], [12, 12, 19, 26]] },
-    { "stat": "lightningDmgPct", "name": "Sấm Sét", "slots": ["weapon", "offhand", "amulet", "ring", "gloves", "head"], "tiers": [[1, 1, 5, 10], [6, 6, 11, 18], [12, 12, 19, 26]] },
-    { "stat": "fireSkills", "name": "của Hoả Thần", "slots": ["weapon", "amulet", "offhand", "head"], "tiers": [[6, 6, 1, 1], [14, 14, 2, 2]] },
-    { "stat": "coldSkills", "name": "của Băng Thần", "slots": ["weapon", "amulet", "offhand", "head"], "tiers": [[6, 6, 1, 1], [14, 14, 2, 2]] },
-    { "stat": "lightningSkills", "name": "của Lôi Thần", "slots": ["weapon", "amulet", "offhand", "head"], "tiers": [[6, 6, 1, 1], [14, 14, 2, 2]] },
-    { "stat": "critChance", "name": "Sắc Bén", "slots": ["weapon", "ring", "amulet", "gloves"], "tiers": [[1, 1, 1, 2], [8, 8, 3, 5]] },
-    { "stat": "cdSpeedPct", "name": "Nhanh Nhảu", "slots": ["weapon", "gloves", "amulet", "ring"], "tiers": [[3, 3, 3, 5], [10, 10, 6, 10]] },
-    { "stat": "moveSpeedPct", "name": "của Gió", "slots": ["boots"], "tiers": [[1, 1, 4, 8], [8, 8, 9, 15]] },
-    { "stat": "pickupPct", "name": "của Kẻ Nhặt", "slots": ["boots", "belt", "ring", "amulet"], "tiers": [[1, 1, 10, 20], [6, 6, 21, 35]] },
-    { "stat": "manaRegenPct", "name": "Thông Tuệ", "slots": ["offhand", "ring", "amulet", "head"], "tiers": [[1, 1, 10, 20], [8, 8, 21, 35]] },
-    { "stat": "resFire", "name": "Chịu Lửa", "slots": ["body", "head", "gloves", "boots", "belt", "offhand", "amulet", "ring"], "tiers": [[1, 1, 5, 10], [6, 6, 11, 20], [12, 12, 21, 30]] },
-    { "stat": "resCold", "name": "Chịu Lạnh", "slots": ["body", "head", "gloves", "boots", "belt", "offhand", "amulet", "ring"], "tiers": [[1, 1, 5, 10], [6, 6, 11, 20], [12, 12, 21, 30]] },
-    { "stat": "resLightning", "name": "Cách Điện", "slots": ["body", "head", "gloves", "boots", "belt", "offhand", "amulet", "ring"], "tiers": [[1, 1, 5, 10], [6, 6, 11, 20], [12, 12, 21, 30]] },
-    { "stat": "resPoison", "name": "Kháng Độc", "slots": ["body", "head", "gloves", "boots", "belt", "offhand", "amulet", "ring"], "tiers": [[1, 1, 5, 10], [6, 6, 11, 20], [12, 12, 21, 30]] },
-    { "stat": "hpOnKill", "name": "Hút Hồn", "slots": ["weapon", "gloves", "ring"], "tiers": [[3, 3, 1, 1], [10, 10, 2, 3]] }
+    {
+      "stat": "str",
+      "name": "của Gấu",
+      "slots": [
+        "*"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          2,
+          4
+        ],
+        [
+          6,
+          6,
+          5,
+          8
+        ],
+        [
+          12,
+          12,
+          9,
+          12
+        ]
+      ]
+    },
+    {
+      "stat": "dex",
+      "name": "của Cáo",
+      "slots": [
+        "*"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          2,
+          4
+        ],
+        [
+          6,
+          6,
+          5,
+          8
+        ],
+        [
+          12,
+          12,
+          9,
+          12
+        ]
+      ]
+    },
+    {
+      "stat": "vit",
+      "name": "của Cây Sồi",
+      "slots": [
+        "*"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          2,
+          4
+        ],
+        [
+          6,
+          6,
+          5,
+          8
+        ],
+        [
+          12,
+          12,
+          9,
+          12
+        ]
+      ]
+    },
+    {
+      "stat": "ene",
+      "name": "của Hiền Giả",
+      "slots": [
+        "*"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          2,
+          4
+        ],
+        [
+          6,
+          6,
+          5,
+          8
+        ],
+        [
+          12,
+          12,
+          9,
+          12
+        ]
+      ]
+    },
+    {
+      "stat": "maxHp",
+      "name": "Bền Bỉ",
+      "slots": [
+        "body",
+        "belt",
+        "head",
+        "amulet",
+        "ring",
+        "offhand"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          5,
+          10
+        ],
+        [
+          6,
+          6,
+          11,
+          20
+        ],
+        [
+          12,
+          12,
+          21,
+          30
+        ]
+      ]
+    },
+    {
+      "stat": "maxMana",
+      "name": "Huyền Bí",
+      "slots": [
+        "weapon",
+        "offhand",
+        "head",
+        "amulet",
+        "ring"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          5,
+          10
+        ],
+        [
+          6,
+          6,
+          11,
+          20
+        ],
+        [
+          12,
+          12,
+          21,
+          30
+        ]
+      ]
+    },
+    {
+      "stat": "armor",
+      "name": "Cứng Cáp",
+      "slots": [
+        "body",
+        "head",
+        "gloves",
+        "boots",
+        "belt",
+        "offhand"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          4,
+          8
+        ],
+        [
+          6,
+          6,
+          9,
+          15
+        ],
+        [
+          12,
+          12,
+          16,
+          25
+        ]
+      ]
+    },
+    {
+      "stat": "spellDmgPct",
+      "name": "Thần Bí",
+      "slots": [
+        "weapon",
+        "amulet",
+        "ring",
+        "offhand"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          3,
+          6
+        ],
+        [
+          6,
+          6,
+          7,
+          12
+        ],
+        [
+          12,
+          12,
+          13,
+          18
+        ]
+      ]
+    },
+    {
+      "stat": "fireDmgPct",
+      "name": "Rực Lửa",
+      "slots": [
+        "weapon",
+        "offhand",
+        "amulet",
+        "ring",
+        "gloves",
+        "head"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          5,
+          10
+        ],
+        [
+          6,
+          6,
+          11,
+          18
+        ],
+        [
+          12,
+          12,
+          19,
+          26
+        ]
+      ]
+    },
+    {
+      "stat": "coldDmgPct",
+      "name": "Giá Lạnh",
+      "slots": [
+        "weapon",
+        "offhand",
+        "amulet",
+        "ring",
+        "gloves",
+        "head"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          5,
+          10
+        ],
+        [
+          6,
+          6,
+          11,
+          18
+        ],
+        [
+          12,
+          12,
+          19,
+          26
+        ]
+      ]
+    },
+    {
+      "stat": "lightningDmgPct",
+      "name": "Sấm Sét",
+      "slots": [
+        "weapon",
+        "offhand",
+        "amulet",
+        "ring",
+        "gloves",
+        "head"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          5,
+          10
+        ],
+        [
+          6,
+          6,
+          11,
+          18
+        ],
+        [
+          12,
+          12,
+          19,
+          26
+        ]
+      ]
+    },
+    {
+      "stat": "fireSkills",
+      "name": "của Hoả Thần",
+      "slots": [
+        "weapon",
+        "amulet",
+        "offhand",
+        "head"
+      ],
+      "tiers": [
+        [
+          6,
+          6,
+          1,
+          1
+        ],
+        [
+          14,
+          14,
+          2,
+          2
+        ]
+      ]
+    },
+    {
+      "stat": "coldSkills",
+      "name": "của Băng Thần",
+      "slots": [
+        "weapon",
+        "amulet",
+        "offhand",
+        "head"
+      ],
+      "tiers": [
+        [
+          6,
+          6,
+          1,
+          1
+        ],
+        [
+          14,
+          14,
+          2,
+          2
+        ]
+      ]
+    },
+    {
+      "stat": "lightningSkills",
+      "name": "của Lôi Thần",
+      "slots": [
+        "weapon",
+        "amulet",
+        "offhand",
+        "head"
+      ],
+      "tiers": [
+        [
+          6,
+          6,
+          1,
+          1
+        ],
+        [
+          14,
+          14,
+          2,
+          2
+        ]
+      ]
+    },
+    {
+      "stat": "critChance",
+      "name": "Sắc Bén",
+      "slots": [
+        "weapon",
+        "ring",
+        "amulet",
+        "gloves"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          1,
+          2
+        ],
+        [
+          8,
+          8,
+          3,
+          5
+        ]
+      ]
+    },
+    {
+      "stat": "cdSpeedPct",
+      "name": "Nhanh Nhảu",
+      "slots": [
+        "weapon",
+        "gloves",
+        "amulet",
+        "ring"
+      ],
+      "tiers": [
+        [
+          3,
+          3,
+          3,
+          5
+        ],
+        [
+          10,
+          10,
+          6,
+          10
+        ]
+      ]
+    },
+    {
+      "stat": "moveSpeedPct",
+      "name": "của Gió",
+      "slots": [
+        "boots"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          4,
+          8
+        ],
+        [
+          8,
+          8,
+          9,
+          15
+        ]
+      ]
+    },
+    {
+      "stat": "pickupPct",
+      "name": "của Kẻ Nhặt",
+      "slots": [
+        "boots",
+        "belt",
+        "ring",
+        "amulet"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          10,
+          20
+        ],
+        [
+          6,
+          6,
+          21,
+          35
+        ]
+      ]
+    },
+    {
+      "stat": "manaRegenPct",
+      "name": "Thông Tuệ",
+      "slots": [
+        "offhand",
+        "ring",
+        "amulet",
+        "head"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          10,
+          20
+        ],
+        [
+          8,
+          8,
+          21,
+          35
+        ]
+      ]
+    },
+    {
+      "stat": "resFire",
+      "name": "Chịu Lửa",
+      "slots": [
+        "body",
+        "head",
+        "gloves",
+        "boots",
+        "belt",
+        "offhand",
+        "amulet",
+        "ring"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          5,
+          10
+        ],
+        [
+          6,
+          6,
+          11,
+          20
+        ],
+        [
+          12,
+          12,
+          21,
+          30
+        ]
+      ]
+    },
+    {
+      "stat": "resCold",
+      "name": "Chịu Lạnh",
+      "slots": [
+        "body",
+        "head",
+        "gloves",
+        "boots",
+        "belt",
+        "offhand",
+        "amulet",
+        "ring"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          5,
+          10
+        ],
+        [
+          6,
+          6,
+          11,
+          20
+        ],
+        [
+          12,
+          12,
+          21,
+          30
+        ]
+      ]
+    },
+    {
+      "stat": "resLightning",
+      "name": "Cách Điện",
+      "slots": [
+        "body",
+        "head",
+        "gloves",
+        "boots",
+        "belt",
+        "offhand",
+        "amulet",
+        "ring"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          5,
+          10
+        ],
+        [
+          6,
+          6,
+          11,
+          20
+        ],
+        [
+          12,
+          12,
+          21,
+          30
+        ]
+      ]
+    },
+    {
+      "stat": "resPoison",
+      "name": "Kháng Độc",
+      "slots": [
+        "body",
+        "head",
+        "gloves",
+        "boots",
+        "belt",
+        "offhand",
+        "amulet",
+        "ring"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          5,
+          10
+        ],
+        [
+          6,
+          6,
+          11,
+          20
+        ],
+        [
+          12,
+          12,
+          21,
+          30
+        ]
+      ]
+    },
+    {
+      "stat": "hpOnKill",
+      "name": "Hút Hồn",
+      "slots": [
+        "weapon",
+        "gloves",
+        "ring"
+      ],
+      "tiers": [
+        [
+          3,
+          3,
+          1,
+          1
+        ],
+        [
+          10,
+          10,
+          2,
+          3
+        ]
+      ]
+    },
+    {
+      "stat": "lightningEliteDmgPct",
+      "name": "Diệt Tinh Anh",
+      "slots": [
+        "weapon",
+        "amulet",
+        "ring",
+        "gloves"
+      ],
+      "tiers": [
+        [
+          3,
+          3,
+          10,
+          20
+        ],
+        [
+          10,
+          10,
+          21,
+          35
+        ]
+      ]
+    }
   ],
   "rareNames": {
-    "first": ["Ác Mộng", "Tro Tàn", "Huyết", "Bóng Đêm", "Linh Hồn", "Mộ Phần", "Sương Mù", "Hắc Ám", "Thiên Thạch", "Băng Hà"],
-    "second": ["Thì Thầm", "Gào Thét", "Nanh Vuốt", "Lời Nguyền", "Vực Thẳm", "Cơn Giận", "Tiếng Vọng", "Lưỡi Hái", "Vết Sẹo", "Ánh Sao"]
+    "first": [
+      "Ác Mộng",
+      "Tro Tàn",
+      "Huyết",
+      "Bóng Đêm",
+      "Linh Hồn",
+      "Mộ Phần",
+      "Sương Mù",
+      "Hắc Ám",
+      "Thiên Thạch",
+      "Băng Hà"
+    ],
+    "second": [
+      "Thì Thầm",
+      "Gào Thét",
+      "Nanh Vuốt",
+      "Lời Nguyền",
+      "Vực Thẳm",
+      "Cơn Giận",
+      "Tiếng Vọng",
+      "Lưỡi Hái",
+      "Vết Sẹo",
+      "Ánh Sao"
+    ]
   },
   "uniques": [
-    { "id": "ash_crown", "name": "Vương Miện Tro Tàn", "base": "cap", "req": 6, "tree": "fire",
-      "stats": { "armor": 8, "fireSkills": 1, "fireDmgPct": 20, "resFire": 15 } },
-    { "id": "gravedigger_torch", "name": "Ngọn Đuốc Kẻ Đào Mộ", "base": "staff", "req": 4, "tree": "fire",
-      "stats": { "spellDmgPct": 25, "fireDmgPct": 15, "maxMana": 20 } },
-    { "id": "swamp_mantle", "name": "Áo Choàng Đầm Lầy", "base": "robe", "req": 8,
-      "stats": { "armor": 30, "maxHp": 30, "vit": 10, "resPoison": 25 } },
-    { "id": "bat_steps", "name": "Bước Chân Dơi", "base": "sandals", "req": 3,
-      "stats": { "armor": 4, "moveSpeedPct": 20, "dex": 10, "pickupPct": 30 } },
-    { "id": "ember_ring", "name": "Nhẫn Than Hồng", "base": "ring", "req": 5,
-      "stats": { "cdSpeedPct": 10, "maxMana": 15, "hpOnKill": 2 } },
-    { "id": "zombie_eye", "name": "Mắt Xác Sống", "base": "amulet", "req": 10,
-      "stats": { "allSkills": 1, "resAll": 10, "maxHp": 15 } },
-    { "id": "frost_grip", "name": "Găng Băng Giá", "base": "cloth_gloves", "req": 6, "tree": "cold",
-      "stats": { "armor": 4, "coldSkills": 1, "coldDmgPct": 15, "dex": 10 } },
-    { "id": "eternal_winter", "name": "Tinh Thể Vĩnh Đông", "base": "crystal_orb", "req": 9, "tree": "cold",
-      "stats": { "maxMana": 20, "coldDmgPct": 25, "freezeHits": 1, "resCold": 20 } },
-    { "id": "thunder_belt", "name": "Đai Sấm Rền", "base": "sash", "req": 6, "tree": "lightning",
-      "stats": { "maxHp": 20, "lightningSkills": 1, "lightningDmgPct": 15, "resLightning": 15 } },
-    { "id": "static_ring", "name": "Nhẫn Điện Tích", "base": "ring", "req": 9, "tree": "lightning",
-      "stats": { "lightningDmgPct": 20, "critChance": 5, "ene": 10 } }
+    {
+      "id": "ash_crown",
+      "name": "Vương Miện Tro Tàn",
+      "base": "cap",
+      "req": 6,
+      "tree": "fire",
+      "stats": {
+        "armor": 8,
+        "fireSkills": 1,
+        "fireDmgPct": 20,
+        "resFire": 15
+      }
+    },
+    {
+      "id": "gravedigger_torch",
+      "name": "Ngọn Đuốc Kẻ Đào Mộ",
+      "base": "staff",
+      "req": 4,
+      "tree": "fire",
+      "stats": {
+        "spellDmgPct": 25,
+        "fireDmgPct": 15,
+        "maxMana": 20
+      }
+    },
+    {
+      "id": "swamp_mantle",
+      "name": "Áo Choàng Đầm Lầy",
+      "base": "robe",
+      "req": 8,
+      "stats": {
+        "armor": 30,
+        "maxHp": 30,
+        "vit": 10,
+        "resPoison": 25
+      }
+    },
+    {
+      "id": "bat_steps",
+      "name": "Bước Chân Dơi",
+      "base": "sandals",
+      "req": 3,
+      "stats": {
+        "armor": 4,
+        "moveSpeedPct": 20,
+        "dex": 10,
+        "pickupPct": 30
+      }
+    },
+    {
+      "id": "ember_ring",
+      "name": "Nhẫn Than Hồng",
+      "base": "ring",
+      "req": 5,
+      "stats": {
+        "cdSpeedPct": 10,
+        "maxMana": 15,
+        "hpOnKill": 2
+      }
+    },
+    {
+      "id": "zombie_eye",
+      "name": "Mắt Xác Sống",
+      "base": "amulet",
+      "req": 10,
+      "stats": {
+        "allSkills": 1,
+        "resAll": 10,
+        "maxHp": 15
+      }
+    },
+    {
+      "id": "frost_grip",
+      "name": "Găng Băng Giá",
+      "base": "cloth_gloves",
+      "req": 6,
+      "tree": "cold",
+      "stats": {
+        "armor": 4,
+        "coldSkills": 1,
+        "coldDmgPct": 15,
+        "dex": 10
+      }
+    },
+    {
+      "id": "eternal_winter",
+      "name": "Tinh Thể Vĩnh Đông",
+      "base": "crystal_orb",
+      "req": 9,
+      "tree": "cold",
+      "stats": {
+        "maxMana": 20,
+        "coldDmgPct": 25,
+        "freezeHits": 1,
+        "resCold": 20
+      }
+    },
+    {
+      "id": "thunder_belt",
+      "name": "Đai Sấm Rền",
+      "base": "sash",
+      "req": 6,
+      "tree": "lightning",
+      "stats": {
+        "maxHp": 20,
+        "lightningSkills": 1,
+        "lightningDmgPct": 15,
+        "resLightning": 15
+      }
+    },
+    {
+      "id": "static_ring",
+      "name": "Nhẫn Điện Tích",
+      "base": "ring",
+      "req": 9,
+      "tree": "lightning",
+      "stats": {
+        "lightningDmgPct": 20,
+        "critChance": 5,
+        "ene": 10
+      }
+    }
   ]
 }

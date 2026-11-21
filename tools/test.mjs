@@ -161,6 +161,25 @@ t('Kháng nguyên tố của quái giảm đúng sát thương nguyên tố đó
   assert.equal(g.damageEnemy(e, 100, 'cold', {}), 100);
 });
 
+t('Sét gây thêm sát thương lên tinh anh và trùm nhỏ, không lên boss/quái thường', () => {
+  const ch = P.createCharacter(data);
+  const g = new Game(data, ch, { seed: 1, headless: true });
+  g.stats.critChance = 0;
+  const bonus = data.config.eliteDmgBonus.lightning;
+  const el = g.spawnEnemy('zombie', 100, 100); g.makeElite(el); el.hp = el.maxHp = 1e4;
+  const z = g.spawnEnemy('zombie', 100, 100); z.hp = z.maxHp = 1e4;
+  const mb = g.spawnEnemy('gravedigger', 100, 100);
+  const b = g.spawnEnemy('swamp_lord', 100, 100);
+  assert.ok(Math.abs(g.damageEnemy(el, 100, 'lightning') - 100 * (1 + bonus)) < 1e-9);
+  assert.ok(Math.abs(g.damageEnemy(mb, 100, 'lightning') - 100 * (1 + bonus)) < 1e-9);
+  assert.equal(g.damageEnemy(z, 100, 'lightning'), 100);
+  assert.equal(g.damageEnemy(b, 100, 'lightning'), 100);
+  assert.equal(g.damageEnemy(el, 100, 'fire'), 100);
+  // dòng trên đồ cộng thêm
+  ch.equipment.ring1 = { uid: 'r', base: 'ring', type: 'ring', rarity: 'magic', name: 'r', ilvl: 5, req: { level: 1, str: 0 }, stats: { lightningEliteDmgPct: 20 } };
+  assert.ok(Math.abs(P.computeStats(ch, data).eliteDmgPct.lightning - (bonus + 0.2)) < 1e-9);
+});
+
 t('Trường Tĩnh Điện: 15% máu hiện tại, boss 5%', () => {
   const ch = P.createCharacter(data);
   ch.level = 10; ch.skillPoints = 5;

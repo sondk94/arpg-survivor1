@@ -59,7 +59,7 @@ tools/
 - **3 nhánh kỹ năng**, mỗi nhánh 6 kỹ năng, đúng bảng trong tài liệu. Vẫn tối đa 4 ô chủ động, lấy từ nhánh nào cũng được (build lai).
 - **Đóng băng:** 3 đòn băng liên tiếp (cách nhau không quá 2 giây) đóng băng quái 1 giây; tinh anh và trùm nhỏ 0,5 giây; boss miễn nhiễm. Sau khi tan băng, quái được miễn đóng băng 1 giây.
 - **Kháng nguyên tố của quái:** mỗi quái có kháng Lửa/Băng/Sét/Độc trong `monsters.json` (chương 1 đều bằng 0). Giới hạn từ −50% đến 75%.
-- **Đồ đạc:** 4 bậc (Thường, Ma thuật 1–2 dòng, Hiếm 3–4 dòng, Độc nhất), 20 đồ gốc, 24 loại dòng chỉ số, 10 món độc nhất (6 chung/Lửa, 2 Băng, 2 Sét).
+- **Đồ đạc:** 4 bậc (Thường, Ma thuật 1–2 dòng, Hiếm 3–4 dòng, Độc nhất), 20 đồ gốc, 25 loại dòng chỉ số, 10 món độc nhất (6 chung/Lửa, 2 Băng, 2 Sét).
   - Có dòng +% sát thương băng/sét và +cấp kỹ năng Băng/Sét.
   - Đồ có yêu cầu cấp; một số đồ gốc cần thêm Sức mạnh.
   - Cấp của đồ rơi = cấp bản đồ + số phút đã chơi (+2 với tinh anh, +3 với trùm nhỏ, +5 với boss).
@@ -92,10 +92,18 @@ Kết quả hiện tại, tính chênh lệch so với trung bình 3 nhánh:
 
 Mô phỏng cả lượt 10 phút có nhặt và tự mặc đồ (`--items`): Lửa, Băng, Sét và build lai Băng+Lửa đều hạ boss 3/3 lượt.
 
-**Chưa đạt "Sét hạ nhanh tinh anh":** ở cấp 10, thời gian hạ tinh anh 600 máu là Lửa 8,6 giây, Băng 9,0 giây, Sét 11,3 giây. Trường Tĩnh Điện (15% máu hiện tại mỗi 3 giây) chưa đủ mạnh để bù. Cần chốt hướng sửa, ví dụ:
+**Sét khắc chế tinh anh:**
 
-- Trường Tĩnh Điện tính 15% máu **tối đa** với tinh anh.
-- Hoặc thêm dòng "+X% sát thương sét lên tinh anh" cho nhánh Sét.
+- Mọi sát thương sét gây thêm **+60%** lên tinh anh và trùm nhỏ. Boss và quái thường không được cộng, nên các mức DPS ở trên giữ nguyên.
+- Đồ có thêm dòng chỉ số "+% sát thương sét lên tinh anh" (10–20% từ cấp đồ 3, 21–35% từ cấp đồ 10) để cộng tiếp.
+- Mức +60% đặt trong `config.json` (`eliteDmgBonus`).
+
+Thời gian hạ một tinh anh Vỏ Đá 600 máu:
+
+| Cấp | Lửa | Băng | Sét |
+|---|---|---|---|
+| 10 | 8,6 giây | 9,0 giây | 6,7 giây |
+| 6 | 20 giây | 20 giây | 15 giây |
 
 ## Chế độ debug
 

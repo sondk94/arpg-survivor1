@@ -864,6 +864,7 @@ export class Game {
       const af = this.data.monsters.elite.affixes.stone_skin;
       if (e.hp > e.maxHp * af.untilHpPct) dmg *= af.damageTakenMult;
     }
+    if ((e.elite || e.ai === 'miniboss') && this.stats.eliteDmgPct[element]) dmg *= 1 + this.stats.eliteDmgPct[element];
     if (e.frozenT > 0) {
       const sl = this.lvl('shatter');
       if (sl > 0) dmg *= 1 + P.lv(this.data.skills.shatter.frozenDmgBonus, sl);

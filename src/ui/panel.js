@@ -246,6 +246,7 @@ export class Panel {
         <div><span>Né</span><b>${pctStr(st.dodge)}</b></div>
         <div><span>Sát thương phép</span><b>+${pctStr(st.spellDmgPct)}</b></div>
         <div><span>Lửa / Băng / Sét</span><b>+${pctStr(st.elemDmgPct.fire)} / +${pctStr(st.elemDmgPct.cold)} / +${pctStr(st.elemDmgPct.lightning)}</b></div>
+        <div><span>Sét lên tinh anh</span><b>+${pctStr(st.eliteDmgPct.lightning)}</b></div>
         <div><span>Chí mạng</span><b>${pctStr(st.critChance)} ×${st.critMult}</b></div>
         <div><span>Giáp</span><b>${st.armor} (−${pctStr(red)} vs cấp 1)</b></div>
         <div><span>Kháng L/B/S/Độc</span><b>${res('fire')} ${res('cold')} ${res('lightning')} ${res('poison')}</b></div>

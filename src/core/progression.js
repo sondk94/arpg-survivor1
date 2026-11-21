@@ -88,6 +88,8 @@ export function computeStats(ch, data) {
     physDmgPct: at.str * a.str.physDmgPct,
     spellDmgPct: at.ene * a.ene.spellDmgPct + pct('spellDmgPct'),
     elemDmgPct: { fire: pct('fireDmgPct'), cold: pct('coldDmgPct'), lightning: pct('lightningDmgPct') },
+    // +% sát thương lên tinh anh và trùm nhỏ theo nguyên tố (mặc định của nhánh + từ đồ).
+    eliteDmgPct: { lightning: (c.eliteDmgBonus?.lightning || 0) + pct('lightningEliteDmgPct') },
     skillBonus: { fire: g.fireSkills || 0, cold: g.coldSkills || 0, lightning: g.lightningSkills || 0, all: g.allSkills || 0 },
     moveSpeed: p.moveSpeed * (1 + pct('moveSpeedPct')),
     pickupRadius: p.pickupRadius * (1 + pct('pickupPct')),

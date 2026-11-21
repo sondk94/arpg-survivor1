@@ -112,5 +112,9 @@
     "charKey": "arpg_char_v1",
     "stashKey": "arpg_stash_v1",
     "codePrefix": "ARPG1"
+  },
+  "eliteDmgBonus": {
+    "lightning": 0.6,
+    "appliesTo": "Tinh anh và trùm nhỏ (không gồm boss)"
   }
 }
