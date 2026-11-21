@@ -1,0 +1,161 @@
+{
+  "zombie": {
+    "name": "Xác sống lê bước",
+    "ai": "chase",
+    "hp": 12,
+    "damage": 4,
+    "damageType": "physical",
+    "speed": 50,
+    "xp": 2,
+    "radius": 13,
+    "color": "#7d9a5e",
+    "resist": {
+      "fire": 0,
+      "cold": 0,
+      "lightning": 0,
+      "poison": 0
+    }
+  },
+  "bat": {
+    "name": "Dơi hang",
+    "ai": "bat",
+    "hp": 6,
+    "damage": 2,
+    "damageType": "physical",
+    "speed": 110,
+    "xp": 1,
+    "radius": 9,
+    "flying": true,
+    "flock": [
+      8,
+      12
+    ],
+    "waveFreq": 3,
+    "waveStrength": 0.8,
+    "color": "#9a6ad6",
+    "resist": {
+      "fire": 0,
+      "cold": 0,
+      "lightning": 0,
+      "poison": 0
+    }
+  },
+  "bone_thrower": {
+    "name": "Kẻ ném xương",
+    "ai": "ranged",
+    "hp": 20,
+    "damage": 6,
+    "damageType": "physical",
+    "speed": 60,
+    "xp": 5,
+    "radius": 13,
+    "keepDistance": 250,
+    "attackInterval": 2.5,
+    "attackRange": 420,
+    "projectileSpeed": 230,
+    "projectileRadius": 6,
+    "contactDamage": 2,
+    "color": "#d9d2b6",
+    "resist": {
+      "fire": 0,
+      "cold": 0,
+      "lightning": 0,
+      "poison": 0
+    }
+  },
+  "elite": {
+    "hpMult": 4,
+    "dmgMult": 1.5,
+    "xp": 40,
+    "radiusMult": 1.4,
+    "guaranteedDrop": "hp",
+    "baseTypes": [
+      "zombie",
+      "bone_thrower"
+    ],
+    "affixes": {
+      "fire_enchanted": {
+        "name": "Cường hoá Lửa",
+        "deathExplosion": {
+          "damage": 15,
+          "radius": 70,
+          "delay": 0.35
+        }
+      },
+      "fast": {
+        "name": "Nhanh",
+        "speedMult": 1.6
+      },
+      "stone_skin": {
+        "name": "Vỏ Đá",
+        "damageTakenMult": 0.5,
+        "untilHpPct": 0.5
+      },
+      "mana_drain": {
+        "name": "Hút Mana",
+        "manaPerHit": 5
+      }
+    }
+  },
+  "gravedigger": {
+    "name": "Kẻ Đào Mộ",
+    "ai": "miniboss",
+    "hp": 600,
+    "damage": 10,
+    "damageType": "physical",
+    "speed": 48,
+    "xp": 200,
+    "radius": 30,
+    "summonInterval": 6,
+    "summonCount": 5,
+    "summonType": "zombie",
+    "color": "#8a6a45",
+    "resist": {
+      "fire": 0,
+      "cold": 0,
+      "lightning": 0,
+      "poison": 0
+    }
+  },
+  "swamp_lord": {
+    "name": "Chúa Đầm Lầy",
+    "ai": "boss",
+    "hp": 2500,
+    "damage": 8,
+    "damageType": "physical",
+    "speed": 70,
+    "xp": 400,
+    "radius": 42,
+    "color": "#3f6b4a",
+    "attackInterval": 3.5,
+    "slam": {
+      "telegraph": 1.0,
+      "damage": 20,
+      "dashSpeed": 820,
+      "recover": 0.5
+    },
+    "pools": {
+      "count": 3,
+      "duration": 5,
+      "dps": 4,
+      "radius": 55,
+      "spread": 140,
+      "landDelay": 0.7,
+      "tick": 0.5,
+      "castTime": 0.6
+    },
+    "phase2": {
+      "hpPct": 0.5,
+      "speedMult": 1.3,
+      "batInterval": 7,
+      "batType": "bat"
+    },
+    "enrageDmgMult": 2,
+    "resist": {
+      "fire": 0,
+      "cold": 0,
+      "lightning": 0,
+      "poison": 0
+    }
+  }
+}

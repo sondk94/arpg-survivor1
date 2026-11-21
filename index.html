@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>ARPG Survivor – Giai đoạn 0</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="game" tabindex="0"></canvas>
+
+  <button id="btn-plus" class="hidden" title="Cộng điểm (Tab / C)">+<span id="plus-count"></span></button>
+
+  <div id="panel" class="overlay hidden">
+    <div class="panel-box">
+      <header><h2 id="panel-title"></h2><nav id="panel-tabs"></nav><span id="panel-msg"></span></header>
+      <div id="panel-body"></div>
+      <footer>
+        <span class="muted">Tab / C: nhân vật · I: đồ đạc · Esc để đóng · đóng bảng là chốt điểm</span>
+        <button id="btn-undo">Hoàn tác</button>
+        <button id="btn-continue" class="primary">Tiếp tục</button>
+      </footer>
+    </div>
+    <div id="replace-dialog" class="hidden"></div>
+  </div>
+
+  <div id="village" class="overlay"></div>
+  <div id="debug" class="hidden"></div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

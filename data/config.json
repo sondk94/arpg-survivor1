@@ -1,0 +1,120 @@
+{
+  "version": "1.0",
+  "testMode": true,
+  "run": {
+    "duration": 600,
+    "resumeDelay": 0.3
+  },
+  "player": {
+    "className": "Pháp sư Nguyên tố",
+    "startAttributes": {
+      "str": 10,
+      "dex": 20,
+      "vit": 15,
+      "ene": 30
+    },
+    "startSkills": {},
+    "startAttrPoints": 0,
+    "startSkillPoints": 1,
+    "attrPointsPerLevel": 5,
+    "skillPointsPerLevel": 1,
+    "baseHp": 40,
+    "hpPerVit": 3,
+    "hpPerLevel": 2,
+    "baseMana": 30,
+    "manaPerEne": 2,
+    "manaPerLevel": 1.5,
+    "manaRegenPct": 0.05,
+    "hpRegenPct": 0,
+    "moveSpeed": 160,
+    "pickupRadius": 90,
+    "radius": 14,
+    "invulnAfterHit": 0.5,
+    "critChance": 0.05,
+    "critMult": 1.5,
+    "maxSlots": 4,
+    "levelUp": {
+      "knockbackRadius": 150,
+      "knockbackForce": 520
+    }
+  },
+  "attributes": {
+    "str": {
+      "name": "Sức mạnh",
+      "key": "1",
+      "physDmgPct": 0.01,
+      "desc": "+1% sát thương vật lý. Sau này dùng để đủ điều kiện mặc đồ"
+    },
+    "dex": {
+      "name": "Nhanh nhẹn",
+      "key": "2",
+      "cdSpeedPct": 0.004,
+      "dodgePct": 0.002,
+      "desc": "+0,4% tốc độ hồi chiêu, +0,2% né (tối đa 40%)"
+    },
+    "vit": {
+      "name": "Thể lực",
+      "key": "3",
+      "hp": 3,
+      "desc": "+3 máu tối đa"
+    },
+    "ene": {
+      "name": "Năng lượng",
+      "key": "4",
+      "mana": 2,
+      "spellDmgPct": 0.005,
+      "desc": "+2 mana tối đa, +0,5% sát thương phép"
+    }
+  },
+  "caps": {
+    "dodge": 0.4,
+    "armorReduction": 0.75,
+    "playerResist": 0.75,
+    "monsterResistMin": -0.5,
+    "monsterResistMax": 0.75
+  },
+  "armor": {
+    "base": 50,
+    "perMonsterLevel": 10
+  },
+  "xp": {
+    "base": 20,
+    "exp": 1.8,
+    "maxLevel": 99
+  },
+  "monsterScaling": {
+    "hpPerLevel": 0.15,
+    "dmgPerLevel": 0.1
+  },
+  "drops": {
+    "hpPotion": {
+      "chance": 0.02,
+      "healPct": 0.3
+    },
+    "manaPotion": {
+      "chance": 0.02,
+      "restorePct": 0.4
+    },
+    "maxPickups": 600,
+    "magnetSpeed": 520
+  },
+  "relocateDistance": 1400,
+  "freeze": {
+    "hits": 3,
+    "window": 2,
+    "duration": 1,
+    "eliteMult": 0.5,
+    "cooldown": 1,
+    "bossImmune": true,
+    "bossSlowMult": 0.5
+  },
+  "save": {
+    "charKey": "arpg_char_v1",
+    "stashKey": "arpg_stash_v1",
+    "codePrefix": "ARPG1"
+  },
+  "eliteDmgBonus": {
+    "lightning": 0.6,
+    "appliesTo": "Tinh anh và trùm nhỏ (không gồm boss)"
+  }
+}
