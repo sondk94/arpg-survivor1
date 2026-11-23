@@ -10,6 +10,13 @@ export function lv(param, level) {
   return param.base + param.perLevel * (level - 1);
 }
 
+// Khoảng sát thương một đòn, kèm sát thương vật lý cộng thẳng từ Sức mạnh cộng thêm (chỉ kỹ năng vật lý).
+export function hitRange(skill, level, stats) {
+  const [a, b] = damageRange(skill, level);
+  const f = skill.element === 'physical' && stats ? stats.physFlat || 0 : 0;
+  return [a + f, b + f];
+}
+
 export function damageRange(skill, level) {
   const d = skill.damage;
   const k = level - 1;
@@ -127,6 +134,8 @@ export function computeStats(ch, data) {
     cdSpeed: 1 + at.dex * a.dex.cdSpeedPct + pct('cdSpeedPct'),
     dodge: Math.min(c.caps.dodge, at.dex * a.dex.dodgePct),
     physDmgPct: at.str * a.str.physDmgPct + pct('physDmgPct'),
+    // +2 sát thương vật lý mỗi đòn cho mỗi điểm Sức mạnh vượt mức khởi đầu của lớp (từ điểm cộng và từ đồ).
+    physFlat: Math.max(0, at.str - ((getClass(ch, data).startAttributes || p.startAttributes || {}).str ?? 0)) * (a.str.physFlatPerPoint || 0),
     spellDmgPct: at.ene * a.ene.spellDmgPct + pct('spellDmgPct'),
     elemDmgPct: { fire: pct('fireDmgPct'), cold: pct('coldDmgPct'), lightning: pct('lightningDmgPct') },
     // +% sát thương lên tinh anh và trùm nhỏ theo nguyên tố (mặc định của nhánh + từ đồ).

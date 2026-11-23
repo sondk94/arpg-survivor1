@@ -614,7 +614,7 @@ export class Game {
   }
 
   rollSkill(skill, lvl, mult) {
-    const [a, b] = P.damageRange(skill, lvl);
+    const [a, b] = P.hitRange(skill, lvl, this.stats);
     return this.rng.range(a, b) * mult;
   }
 
@@ -760,7 +760,7 @@ export class Game {
     const spread = ((sk.spreadDeg || 10) * Math.PI) / 180;
     const pierce = (sk.pierce || 0) + (sk.pierceFromLevel && lvl >= sk.pierceFromLevel ? sk.pierceBonus : 0);
     const mult = this.skillMult(sk);
-    const dmg = P.damageRange(sk, lvl);
+    const dmg = P.hitRange(sk, lvl, this.stats);
     for (let k = 0; k < n; k++) {
       const a = base + (k - (n - 1) / 2) * spread;
       this.addProjectile({

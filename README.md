@@ -106,6 +106,24 @@ Chỉ số cấp 1 so với pháp sư:
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
 
+## Sức mạnh cộng sát thương vật lý mỗi đòn (bản 1.5)
+
+- Mỗi điểm Sức mạnh **cộng thêm** cho +2 sát thương vật lý vào mỗi đòn của kỹ năng vật lý.
+  - "Cộng thêm" là phần vượt mức Sức mạnh khởi đầu của lớp, tính cả điểm tự cộng lẫn Sức mạnh từ đồ.
+  - Số +2 được cộng vào sát thương gốc trước khi nhân hệ số %, nên còn được nhân tiếp bởi các % tăng sát thương.
+  - Kỹ năng phép không được cộng.
+- Con số nằm ở `config.json` → `attributes.str.physFlatPerPoint`.
+- Bảng nhân vật hiện dòng "Sát thương vật lý mỗi đòn". Khoảng sát thương trong mô tả kỹ năng đã tính phần cộng này.
+- **Ảnh hưởng tới cân bằng** (`balance.mjs --arena close`, trung bình 3 nhánh, Chiến Binh / pháp sư):
+
+  | Cấp | Một mục tiêu | Đám đông | Hạ tinh anh 600 máu |
+  |---|---|---|---|
+  | 4 | 126 / 50 (×2,5) | 258 / 249 | 17,5 / 25,9 giây |
+  | 10 | 373 / 121 (×3,1) | 526 / 370 | 3,7 / 7,9 giây |
+  | 14 | 560 / 177 (×3,2) | 524 / 414 | 2,5 / 5,1 giây |
+
+  Trước thay đổi này, Chiến Binh chỉ hơn pháp sư khoảng +40% khi đánh một mục tiêu. Kỹ năng đánh nhanh (Lốc Xoáy, Chém Bổ) hưởng lợi nhiều nhất. Muốn dịu bớt thì giảm `physFlatPerPoint`, ví dụ còn 0,5–1.
+
 ## Thời lượng màn và kinh nghiệm (bản 1.4)
 
 - **Mỗi màn 7 phút** (`config.json` → `run.duration`). Mọi mốc thời gian trong `maps/1-1.json` rút về khoảng 70%:

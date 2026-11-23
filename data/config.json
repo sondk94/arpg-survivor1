@@ -1,5 +1,5 @@
 {
-  "version": "1.4",
+  "version": "1.5",
   "testMode": true,
   "run": {
     "duration": 420,
@@ -43,7 +43,8 @@
       "name": "Sức mạnh",
       "key": "1",
       "physDmgPct": 0.01,
-      "desc": "+1% sát thương vật lý. Sau này dùng để đủ điều kiện mặc đồ"
+      "desc": "+1% sát thương vật lý; mỗi điểm cộng thêm (so với lúc tạo nhân vật) +2 sát thương vật lý mỗi đòn. Sau này dùng để đủ điều kiện mặc đồ",
+      "physFlatPerPoint": 2
     },
     "dex": {
       "name": "Nhanh nhẹn",

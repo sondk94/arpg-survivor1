@@ -493,4 +493,31 @@ t('Tìm cụm quái không trả về NaN khi quái vừa sinh chưa vào lướ
   assert.ok(Number.isFinite(g.player.x) && Number.isFinite(g.player.y));
 });
 
+t('Mỗi điểm Sức mạnh cộng thêm cho +2 sát thương vật lý mỗi đòn (không áp dụng cho phép)', () => {
+  const w = P.createCharacter(data, 'warrior');
+  w.attrPoints = 10;
+  assert.equal(P.computeStats(w, data).physFlat, 0);
+  P.addAttr(w, 'str', 10);
+  const st = P.computeStats(w, data);
+  assert.equal(st.physFlat, 20);
+  const [a, b] = P.damageRange(data.skills.cleave, 1);
+  assert.deepEqual(P.hitRange(data.skills.cleave, 1, st), [a + 20, b + 20]);
+  // Sức mạnh từ đồ cũng tính
+  w.equipment.ring1 = { uid: 'r', base: 'ring', type: 'ring', rarity: 'magic', name: 'r', ilvl: 1, req: { level: 1, str: 0 }, stats: { str: 5 }, sockets: 0, runes: [] };
+  assert.equal(P.computeStats(w, data).physFlat, 30);
+  // kỹ năng phép không được cộng
+  const m = P.createCharacter(data, 'mage');
+  m.attrs.str += 10;
+  const sm = P.computeStats(m, data);
+  assert.deepEqual(P.hitRange(data.skills.fireball, 1, sm), P.damageRange(data.skills.fireball, 1));
+  // trong trận: đòn chém nhận đủ +20 trước khi nhân hệ số
+  const g = new Game(data, w, { seed: 1, headless: true });
+  w.equipment.ring1 = null; g.refreshStats();
+  const mult = g.skillMult(data.skills.cleave);
+  for (let i = 0; i < 20; i++) {
+    const d = g.rollSkill(data.skills.cleave, 1, mult);
+    assert.ok(d >= (a + 20) * mult - 1e-9 && d <= (b + 20) * mult + 1e-9);
+  }
+});
+
 console.log(`\n${n} kiểm tra đều qua.`);

@@ -294,6 +294,7 @@ export class Panel {
         <div><span>${P.getClass(ch, this.data).mainStat === 'str' ? 'Sát thương vật lý' : 'Sát thương phép'}</span><b>+${pctStr(P.getClass(ch, this.data).mainStat === 'str' ? st.physDmgPct : st.spellDmgPct)}</b></div>
         ${P.getClass(ch, this.data).mainStat === 'str' ? '' : `<div><span>Lửa / Băng / Sét</span><b>+${pctStr(st.elemDmgPct.fire)} / +${pctStr(st.elemDmgPct.cold)} / +${pctStr(st.elemDmgPct.lightning)}</b></div>`}
         ${P.getClass(ch, this.data).mainStat === 'str' ? `<div><span>Hút máu</span><b>${pctStr(st.leech || 0)}</b></div><div><span>Hồi máu</span><b>${st.hpRegen.toFixed(1)}/giây</b></div>` : `<div><span>Sét lên tinh anh</span><b>+${pctStr(st.eliteDmgPct.lightning)}</b></div>`}
+        ${st.physFlat ? `<div><span>Sát thương vật lý mỗi đòn</span><b>+${st.physFlat}</b></div>` : ''}
         <div><span>Chí mạng</span><b>${pctStr(st.critChance)} ×${st.critMult}</b></div>
         <div><span>Giáp</span><b>${st.armor} (−${pctStr(red)} vs cấp 1)</b></div>
         <div><span>Kháng L/B/S/Độc</span><b>${res('fire')} ${res('cold')} ${res('lightning')} ${res('poison')}</b></div>
