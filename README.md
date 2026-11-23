@@ -1,6 +1,6 @@
 # ARPG Survivor – Giai đoạn 1 (Lõi ARPG)
 
-**20 màn chơi** (4 chương × 5 màn, mỗi màn 10 phút), **2 lớp nhân vật**: Pháp sư Nguyên tố (Lửa / Băng / Sét) và Chiến Binh cận chiến (Vũ Khí / Tiếng Thét / Huyết Chiến), mỗi lớp 3 nhánh × 6 kỹ năng. Có đồ đạc 4 bậc, kho đồ, làng, rương chung, lưu game, xuất/nhập mã nhân vật. Chạy trên trình duyệt, HTML5 Canvas + JavaScript thuần, không cần build, không có thư viện ngoài. Đồ hoạ vẽ bằng hình khối: nhân vật có thân, tay, đầu và chân chạy theo nhịp bước.
+**20 màn chơi** (4 chương × 5 màn, mỗi màn 7 phút), **2 lớp nhân vật**: Pháp sư Nguyên tố (Lửa / Băng / Sét) và Chiến Binh cận chiến (Vũ Khí / Tiếng Thét / Huyết Chiến), mỗi lớp 3 nhánh × 6 kỹ năng. Có đồ đạc 4 bậc, kho đồ, làng, rương chung, lưu game, xuất/nhập mã nhân vật. Chạy trên trình duyệt, HTML5 Canvas + JavaScript thuần, không cần build, không có thư viện ngoài. Đồ hoạ vẽ bằng hình khối: nhân vật có thân, tay, đầu và chân chạy theo nhịp bước.
 
 ## Chạy game
 
@@ -59,7 +59,7 @@ src/ui/sprites.js     hình nhân vật có chân chạy (quái vẽ sẵn thàn
 src/ui/               vẽ canvas, HUD, bảng nhân vật/đồ đạc/rương, cần ảo, debug, ghi log
 tools/
   serve.mjs           máy chủ tĩnh
-  sim.mjs             mô phỏng nhiều lượt 10 phút bằng bot
+  sim.mjs             mô phỏng nhiều lượt chơi bằng bot
   balance.mjs         so sánh DPS 3 nhánh ở cùng cấp, cùng số điểm
   test.mjs            kiểm tra công thức và hệ thống
 ```
@@ -105,6 +105,30 @@ Chỉ số cấp 1 so với pháp sư:
 | 4 | 211 / 239 (−12%) | 75 / 50 (+50%) | 20 / 27 giây |
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
+
+## Thời lượng màn và kinh nghiệm (bản 1.4)
+
+- **Mỗi màn 7 phút** (`config.json` → `run.duration`). Mọi mốc thời gian trong `maps/1-1.json` rút về khoảng 70%:
+  - Tinh anh: 1:25, 2:25, 4:10, 4:55, 5:35.
+  - Trùm nhỏ: 3:30.
+  - Quái rút đi: 5:55.
+  - Boss: 6:15.
+  - Boss nổi điên: 7:00.
+- **Kinh nghiệm ×2** cho mọi quái (`monsters.json`):
+
+  | Quái | Kinh nghiệm |
+  |---|---|
+  | Xác sống | 4 |
+  | Dơi | 2 |
+  | Kẻ ném xương | 10 |
+  | Tinh anh | 80 |
+  | Trùm nhỏ | 400 |
+  | Boss | 800 |
+
+- **Cấp đồ rơi tăng 1,4 mỗi phút** (trước là 1) để đồ rơi cuối màn vẫn có cấp tương đương.
+- **Kết quả mô phỏng:**
+  - Một lượt màn 1-1 kết thúc khoảng 6:25 với cấp 12–13, so với cấp ~11 sau 10 phút trước đây.
+  - Bot chơi hết 20 màn Bình thường đạt cấp 45 (trước khoảng 39–41).
 
 ## Rune, đồ bộ, lò chế
 
@@ -308,7 +332,7 @@ Tất cả đều nằm trong JSON, đổi được ngay.
   - Kẻ ném xương chạm gây 2 sát thương, boss chạm gây 8.
   - Cú Vồ gây 20, xen kẽ với Vũng độc mỗi 3,5 giây.
 - **Sinh quái:** đàn dơi trừ đúng số con vào ngân sách sinh quái. Quái sinh ra luôn ở ngoài màn hình, và quái bị bỏ xa quá 1.400 px được đưa lại gần.
-- **Từ 8:30 quái rút đi** và không cho kinh nghiệm.
+- **Từ 5:55 quái rút đi** và không cho kinh nghiệm.
 - **Boss:** kinh nghiệm của boss cộng thẳng khi boss chết, ngọc còn trong bán kính 700 px được hút về.
 - **"Hòm thưởng không chết"** hiện khi hoàn thành 1-1 mà nhân vật chưa chết lần nào ở bản đồ này (chưa có phần thưởng đồ riêng).
 - **Hoàn tác** tính máu/mana tương đối với lúc mở bảng.

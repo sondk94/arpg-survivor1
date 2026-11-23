@@ -6,7 +6,7 @@
     "damage": 4,
     "damageType": "physical",
     "speed": 50,
-    "xp": 2,
+    "xp": 4,
     "radius": 13,
     "color": "#7d9a5e",
     "resist": {
@@ -23,7 +23,7 @@
     "damage": 2,
     "damageType": "physical",
     "speed": 110,
-    "xp": 1,
+    "xp": 2,
     "radius": 9,
     "flying": true,
     "flock": [
@@ -47,7 +47,7 @@
     "damage": 6,
     "damageType": "physical",
     "speed": 60,
-    "xp": 5,
+    "xp": 10,
     "radius": 13,
     "keepDistance": 250,
     "attackInterval": 2.5,
@@ -66,7 +66,7 @@
   "elite": {
     "hpMult": 4,
     "dmgMult": 1.5,
-    "xp": 40,
+    "xp": 80,
     "radiusMult": 1.4,
     "guaranteedDrop": "hp",
     "baseTypes": [
@@ -104,7 +104,7 @@
     "damage": 10,
     "damageType": "physical",
     "speed": 48,
-    "xp": 200,
+    "xp": 400,
     "radius": 30,
     "summonInterval": 6,
     "summonCount": 5,
@@ -124,7 +124,7 @@
     "damage": 8,
     "damageType": "physical",
     "speed": 70,
-    "xp": 400,
+    "xp": 800,
     "radius": 42,
     "color": "#3f6b4a",
     "attackInterval": 3.5,

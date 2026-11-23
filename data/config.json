@@ -1,8 +1,8 @@
 {
-  "version": "1.3",
+  "version": "1.4",
   "testMode": true,
   "run": {
-    "duration": 600,
+    "duration": 420,
     "resumeDelay": 0.3
   },
   "player": {
