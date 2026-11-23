@@ -1125,7 +1125,7 @@ export class Game {
 
   // Cấp đồ rơi: cấp bản đồ + số phút đã chơi + thưởng theo loại quái.
   itemLevel(bonus = 0) {
-    return this.map.level + (this.map.itemLevelBonus || 0) + (this.diff.ilvlBonus || 0) + Math.floor(this.time / 60) * this.data.items.drops.ilvlPerMinute + bonus;
+    return this.map.level + (this.map.itemLevelBonus || 0) + (this.diff.ilvlBonus || 0) + Math.floor((this.time / 60) * this.data.items.drops.ilvlPerMinute) + bonus;
   }
 
   dropLoot(e, kind) {
