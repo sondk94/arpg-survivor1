@@ -94,12 +94,33 @@
       ],
       "weight": 2,
       "sellMult": 15
+    },
+    "set": {
+      "name": "Đồ bộ",
+      "color": "#3fd16a",
+      "affixes": [
+        0,
+        0
+      ],
+      "weight": 3,
+      "sellMult": 12
+    },
+    "rune": {
+      "name": "Rune",
+      "color": "#ff9a3c",
+      "affixes": [
+        0,
+        0
+      ],
+      "weight": 0,
+      "sellMult": 4
     }
   },
   "drops": {
     "normal": {
       "itemChance": 0.004,
-      "goldChance": 0.02
+      "goldChance": 0.02,
+      "runeChance": 0.0025
     },
     "elite": {
       "items": 1,
@@ -107,7 +128,9 @@
       "ilvlBonus": 2,
       "rareMult": 2,
       "uniqueMult": 2,
-      "gold": true
+      "gold": true,
+      "runeChance": 0.12,
+      "setMult": 2
     },
     "miniboss": {
       "items": 2,
@@ -115,7 +138,9 @@
       "ilvlBonus": 3,
       "rareMult": 2,
       "uniqueMult": 2,
-      "gold": true
+      "gold": true,
+      "runeChance": 0.5,
+      "setMult": 2
     },
     "boss": {
       "items": 3,
@@ -124,7 +149,9 @@
       "ilvlBonus": 5,
       "rareMult": 3,
       "uniqueMult": 3,
-      "gold": true
+      "gold": true,
+      "runeChance": 1.0,
+      "setMult": 2
     },
     "gold": {
       "min": 2,
@@ -244,7 +271,8 @@
           5,
           10
         ]
-      }
+      },
+      "maxSockets": 3
     },
     {
       "id": "staff",
@@ -260,7 +288,8 @@
           5,
           10
         ]
-      }
+      },
+      "maxSockets": 3
     },
     {
       "id": "grand_staff",
@@ -276,7 +305,8 @@
           10,
           20
         ]
-      }
+      },
+      "maxSockets": 3
     },
     {
       "id": "stone_orb",
@@ -288,7 +318,8 @@
           5,
           10
         ]
-      }
+      },
+      "maxSockets": 2
     },
     {
       "id": "crystal_orb",
@@ -304,7 +335,8 @@
           5,
           10
         ]
-      }
+      },
+      "maxSockets": 2
     },
     {
       "id": "buckler",
@@ -317,7 +349,8 @@
           6,
           10
         ]
-      }
+      },
+      "maxSockets": 2
     },
     {
       "id": "cap",
@@ -329,7 +362,8 @@
           3,
           5
         ]
-      }
+      },
+      "maxSockets": 2
     },
     {
       "id": "helm",
@@ -342,7 +376,8 @@
           8,
           12
         ]
-      }
+      },
+      "maxSockets": 2
     },
     {
       "id": "circlet",
@@ -358,7 +393,8 @@
           10,
           15
         ]
-      }
+      },
+      "maxSockets": 2
     },
     {
       "id": "robe",
@@ -370,7 +406,8 @@
           6,
           10
         ]
-      }
+      },
+      "maxSockets": 3
     },
     {
       "id": "leather",
@@ -383,7 +420,8 @@
           12,
           18
         ]
-      }
+      },
+      "maxSockets": 3
     },
     {
       "id": "mail",
@@ -396,7 +434,8 @@
           25,
           35
         ]
-      }
+      },
+      "maxSockets": 3
     },
     {
       "id": "cloth_gloves",
@@ -408,7 +447,8 @@
           2,
           3
         ]
-      }
+      },
+      "maxSockets": 0
     },
     {
       "id": "leather_gloves",
@@ -421,7 +461,8 @@
           4,
           6
         ]
-      }
+      },
+      "maxSockets": 0
     },
     {
       "id": "sash",
@@ -433,7 +474,8 @@
           5,
           8
         ]
-      }
+      },
+      "maxSockets": 0
     },
     {
       "id": "leather_belt",
@@ -445,7 +487,8 @@
           10,
           15
         ]
-      }
+      },
+      "maxSockets": 0
     },
     {
       "id": "sandals",
@@ -457,7 +500,8 @@
           2,
           3
         ]
-      }
+      },
+      "maxSockets": 0
     },
     {
       "id": "leather_boots",
@@ -473,21 +517,24 @@
           3,
           5
         ]
-      }
+      },
+      "maxSockets": 0
     },
     {
       "id": "amulet",
       "type": "amulet",
       "name": "Dây Chuyền",
       "req": 1,
-      "implicit": {}
+      "implicit": {},
+      "maxSockets": 0
     },
     {
       "id": "ring",
       "type": "ring",
       "name": "Nhẫn",
       "req": 1,
-      "implicit": {}
+      "implicit": {},
+      "maxSockets": 0
     },
     {
       "id": "short_sword",
@@ -499,7 +546,8 @@
           8,
           14
         ]
-      }
+      },
+      "maxSockets": 3
     },
     {
       "id": "war_axe",
@@ -512,7 +560,8 @@
           15,
           22
         ]
-      }
+      },
+      "maxSockets": 3
     },
     {
       "id": "great_sword",
@@ -525,7 +574,171 @@
           24,
           34
         ]
-      }
+      },
+      "maxSockets": 3
+    },
+    {
+      "id": "rune",
+      "type": "rune",
+      "name": "Rune",
+      "req": 1,
+      "implicit": {},
+      "maxSockets": 0
+    },
+    {
+      "id": "shadow_staff",
+      "type": "weapon",
+      "name": "Trượng Bóng Tối",
+      "req": 22,
+      "implicit": {
+        "spellDmgPct": [
+          28,
+          38
+        ],
+        "maxMana": [
+          20,
+          35
+        ]
+      },
+      "maxSockets": 3
+    },
+    {
+      "id": "void_staff",
+      "type": "weapon",
+      "name": "Gậy Hư Không",
+      "req": 35,
+      "implicit": {
+        "spellDmgPct": [
+          40,
+          55
+        ],
+        "maxMana": [
+          35,
+          50
+        ]
+      },
+      "maxSockets": 3
+    },
+    {
+      "id": "war_cleaver",
+      "type": "weapon",
+      "name": "Đại Đao Chiến Trận",
+      "req": 22,
+      "reqStr": 70,
+      "implicit": {
+        "physDmgPct": [
+          38,
+          50
+        ]
+      },
+      "maxSockets": 3
+    },
+    {
+      "id": "titan_blade",
+      "type": "weapon",
+      "name": "Kiếm Khổng Lồ",
+      "req": 35,
+      "reqStr": 95,
+      "implicit": {
+        "physDmgPct": [
+          55,
+          72
+        ]
+      },
+      "maxSockets": 3
+    },
+    {
+      "id": "plate",
+      "type": "body",
+      "name": "Giáp Tấm",
+      "req": 22,
+      "reqStr": 60,
+      "implicit": {
+        "armor": [
+          60,
+          80
+        ]
+      },
+      "maxSockets": 3
+    },
+    {
+      "id": "archon_robe",
+      "type": "body",
+      "name": "Áo Thánh Sư",
+      "req": 30,
+      "implicit": {
+        "armor": [
+          35,
+          50
+        ],
+        "maxMana": [
+          20,
+          30
+        ]
+      },
+      "maxSockets": 3
+    },
+    {
+      "id": "great_helm",
+      "type": "head",
+      "name": "Mũ Đại Chiến",
+      "req": 24,
+      "reqStr": 55,
+      "implicit": {
+        "armor": [
+          25,
+          35
+        ]
+      },
+      "maxSockets": 2
+    },
+    {
+      "id": "diadem",
+      "type": "head",
+      "name": "Vương Miện Pha Lê",
+      "req": 30,
+      "implicit": {
+        "armor": [
+          15,
+          22
+        ],
+        "maxMana": [
+          25,
+          40
+        ]
+      },
+      "maxSockets": 2
+    },
+    {
+      "id": "tower_shield",
+      "type": "offhand",
+      "name": "Khiên Tháp",
+      "req": 25,
+      "reqStr": 65,
+      "implicit": {
+        "armor": [
+          40,
+          55
+        ]
+      },
+      "maxSockets": 2
+    },
+    {
+      "id": "eldritch_orb",
+      "type": "offhand",
+      "name": "Quả Cầu Thượng Cổ",
+      "req": 28,
+      "implicit": {
+        "maxMana": [
+          30,
+          45
+        ],
+        "spellDmgPct": [
+          10,
+          16
+        ]
+      },
+      "maxSockets": 2
     }
   ],
   "affixes": [
@@ -553,6 +766,18 @@
           12,
           9,
           12
+        ],
+        [
+          25,
+          25,
+          13,
+          17
+        ],
+        [
+          40,
+          40,
+          18,
+          24
         ]
       ]
     },
@@ -580,6 +805,18 @@
           12,
           9,
           12
+        ],
+        [
+          25,
+          25,
+          13,
+          17
+        ],
+        [
+          40,
+          40,
+          18,
+          24
         ]
       ]
     },
@@ -607,6 +844,18 @@
           12,
           9,
           12
+        ],
+        [
+          25,
+          25,
+          13,
+          17
+        ],
+        [
+          40,
+          40,
+          18,
+          24
         ]
       ]
     },
@@ -634,6 +883,18 @@
           12,
           9,
           12
+        ],
+        [
+          25,
+          25,
+          13,
+          17
+        ],
+        [
+          40,
+          40,
+          18,
+          24
         ]
       ]
     },
@@ -666,6 +927,18 @@
           12,
           21,
           30
+        ],
+        [
+          25,
+          25,
+          32,
+          44
+        ],
+        [
+          40,
+          40,
+          45,
+          60
         ]
       ]
     },
@@ -697,6 +970,18 @@
           12,
           21,
           30
+        ],
+        [
+          25,
+          25,
+          32,
+          44
+        ],
+        [
+          40,
+          40,
+          45,
+          60
         ]
       ]
     },
@@ -729,6 +1014,18 @@
           12,
           16,
           25
+        ],
+        [
+          25,
+          25,
+          26,
+          36
+        ],
+        [
+          40,
+          40,
+          38,
+          50
         ]
       ]
     },
@@ -759,6 +1056,18 @@
           12,
           13,
           18
+        ],
+        [
+          25,
+          25,
+          19,
+          26
+        ],
+        [
+          40,
+          40,
+          27,
+          36
         ]
       ]
     },
@@ -791,6 +1100,18 @@
           12,
           19,
           26
+        ],
+        [
+          25,
+          25,
+          27,
+          38
+        ],
+        [
+          40,
+          40,
+          39,
+          52
         ]
       ]
     },
@@ -823,6 +1144,18 @@
           12,
           19,
           26
+        ],
+        [
+          25,
+          25,
+          27,
+          38
+        ],
+        [
+          40,
+          40,
+          39,
+          52
         ]
       ]
     },
@@ -855,6 +1188,18 @@
           12,
           19,
           26
+        ],
+        [
+          25,
+          25,
+          27,
+          38
+        ],
+        [
+          40,
+          40,
+          39,
+          52
         ]
       ]
     },
@@ -879,6 +1224,12 @@
           14,
           2,
           2
+        ],
+        [
+          30,
+          30,
+          3,
+          3
         ]
       ]
     },
@@ -903,6 +1254,12 @@
           14,
           2,
           2
+        ],
+        [
+          30,
+          30,
+          3,
+          3
         ]
       ]
     },
@@ -927,6 +1284,12 @@
           14,
           2,
           2
+        ],
+        [
+          30,
+          30,
+          3,
+          3
         ]
       ]
     },
@@ -951,6 +1314,12 @@
           8,
           3,
           5
+        ],
+        [
+          28,
+          28,
+          6,
+          8
         ]
       ]
     },
@@ -975,6 +1344,12 @@
           10,
           6,
           10
+        ],
+        [
+          28,
+          28,
+          11,
+          15
         ]
       ]
     },
@@ -996,6 +1371,12 @@
           8,
           9,
           15
+        ],
+        [
+          28,
+          28,
+          16,
+          22
         ]
       ]
     },
@@ -1020,6 +1401,12 @@
           6,
           21,
           35
+        ],
+        [
+          28,
+          28,
+          38,
+          52
         ]
       ]
     },
@@ -1044,6 +1431,12 @@
           8,
           21,
           35
+        ],
+        [
+          28,
+          28,
+          38,
+          52
         ]
       ]
     },
@@ -1078,6 +1471,18 @@
           12,
           21,
           30
+        ],
+        [
+          25,
+          25,
+          32,
+          44
+        ],
+        [
+          40,
+          40,
+          45,
+          60
         ]
       ]
     },
@@ -1112,6 +1517,18 @@
           12,
           21,
           30
+        ],
+        [
+          25,
+          25,
+          32,
+          44
+        ],
+        [
+          40,
+          40,
+          45,
+          60
         ]
       ]
     },
@@ -1146,6 +1563,18 @@
           12,
           21,
           30
+        ],
+        [
+          25,
+          25,
+          32,
+          44
+        ],
+        [
+          40,
+          40,
+          45,
+          60
         ]
       ]
     },
@@ -1180,6 +1609,18 @@
           12,
           21,
           30
+        ],
+        [
+          25,
+          25,
+          32,
+          44
+        ],
+        [
+          40,
+          40,
+          45,
+          60
         ]
       ]
     },
@@ -1203,6 +1644,12 @@
           10,
           2,
           3
+        ],
+        [
+          28,
+          28,
+          3,
+          4
         ]
       ]
     },
@@ -1227,6 +1674,12 @@
           10,
           21,
           35
+        ],
+        [
+          28,
+          28,
+          38,
+          52
         ]
       ]
     },
@@ -1258,6 +1711,18 @@
           12,
           19,
           26
+        ],
+        [
+          25,
+          25,
+          27,
+          38
+        ],
+        [
+          40,
+          40,
+          39,
+          52
         ]
       ]
     },
@@ -1282,6 +1747,12 @@
           14,
           2,
           2
+        ],
+        [
+          30,
+          30,
+          3,
+          3
         ]
       ]
     },
@@ -1306,6 +1777,12 @@
           14,
           2,
           2
+        ],
+        [
+          30,
+          30,
+          3,
+          3
         ]
       ]
     },
@@ -1330,6 +1807,12 @@
           14,
           2,
           2
+        ],
+        [
+          30,
+          30,
+          3,
+          3
         ]
       ]
     }
@@ -1505,6 +1988,337 @@
         "bloodSkills": 1,
         "str": 10
       }
+    }
+  ],
+  "socketChance": {
+    "normal": 0.35,
+    "magic": 0.15,
+    "rare": 0.1,
+    "set": 0,
+    "unique": 0
+  },
+  "crafting": {
+    "salvage": {
+      "normal": 1,
+      "magic": 3,
+      "rare": 8,
+      "set": 15,
+      "unique": 20,
+      "rune": 0
+    },
+    "salvagePerIlvl": 0.1,
+    "reroll": {
+      "shards": 6,
+      "goldPerIlvl": 15
+    },
+    "upgrade": {
+      "normal": {
+        "to": "magic",
+        "shards": 5
+      },
+      "magic": {
+        "to": "rare",
+        "shards": 15
+      }
+    },
+    "socket": {
+      "shards": 10
+    },
+    "unsocket": {
+      "gold": 60
+    },
+    "runeCombine": {
+      "count": 3,
+      "goldPerTier": 40
+    }
+  },
+  "sets": [
+    {
+      "id": "set_fire",
+      "name": "Di Sản Hoả Ngục",
+      "tree": "fire",
+      "bonus": {
+        "2": {
+          "fireDmgPct": 20
+        },
+        "3": {
+          "fireSkills": 1,
+          "spellDmgPct": 15
+        }
+      },
+      "pieces": [
+        {
+          "id": "sf_head",
+          "name": "Mão Hoả Ngục",
+          "base": "circlet",
+          "req": 12,
+          "stats": {
+            "armor": 12,
+            "fireDmgPct": 12,
+            "ene": 10
+          }
+        },
+        {
+          "id": "sf_body",
+          "name": "Áo Hoả Ngục",
+          "base": "leather",
+          "req": 14,
+          "stats": {
+            "armor": 30,
+            "maxHp": 30,
+            "resFire": 20
+          }
+        },
+        {
+          "id": "sf_gloves",
+          "name": "Găng Hoả Ngục",
+          "base": "cloth_gloves",
+          "req": 10,
+          "stats": {
+            "armor": 6,
+            "fireDmgPct": 10,
+            "cdSpeedPct": 5
+          }
+        }
+      ]
+    },
+    {
+      "id": "set_cold",
+      "name": "Hơi Thở Băng Hà",
+      "tree": "cold",
+      "bonus": {
+        "2": {
+          "coldDmgPct": 20
+        },
+        "3": {
+          "coldSkills": 1,
+          "freezeHits": 1
+        }
+      },
+      "pieces": [
+        {
+          "id": "sc_head",
+          "name": "Mũ Băng Hà",
+          "base": "circlet",
+          "req": 12,
+          "stats": {
+            "armor": 12,
+            "coldDmgPct": 12,
+            "vit": 8
+          }
+        },
+        {
+          "id": "sc_offhand",
+          "name": "Cầu Băng Hà",
+          "base": "crystal_orb",
+          "req": 14,
+          "stats": {
+            "maxMana": 30,
+            "coldDmgPct": 15
+          }
+        },
+        {
+          "id": "sc_boots",
+          "name": "Ủng Băng Hà",
+          "base": "leather_boots",
+          "req": 10,
+          "stats": {
+            "armor": 8,
+            "moveSpeedPct": 10,
+            "resCold": 20
+          }
+        }
+      ]
+    },
+    {
+      "id": "set_lightning",
+      "name": "Cơn Thịnh Nộ Sấm",
+      "tree": "lightning",
+      "bonus": {
+        "2": {
+          "lightningDmgPct": 20
+        },
+        "3": {
+          "lightningSkills": 1,
+          "lightningEliteDmgPct": 30
+        }
+      },
+      "pieces": [
+        {
+          "id": "sl_amulet",
+          "name": "Bùa Sấm",
+          "base": "amulet",
+          "req": 12,
+          "stats": {
+            "lightningDmgPct": 15,
+            "maxMana": 20
+          }
+        },
+        {
+          "id": "sl_ring",
+          "name": "Nhẫn Sấm",
+          "base": "ring",
+          "req": 10,
+          "stats": {
+            "lightningDmgPct": 10,
+            "critChance": 3
+          }
+        },
+        {
+          "id": "sl_belt",
+          "name": "Đai Sấm",
+          "base": "leather_belt",
+          "req": 14,
+          "stats": {
+            "maxHp": 25,
+            "resLightning": 20,
+            "ene": 10
+          }
+        }
+      ]
+    },
+    {
+      "id": "set_weapon",
+      "name": "Lưỡi Thép Bất Bại",
+      "tree": "weapon",
+      "bonus": {
+        "2": {
+          "physDmgPct": 20
+        },
+        "3": {
+          "weaponSkills": 1,
+          "critChance": 5
+        }
+      },
+      "pieces": [
+        {
+          "id": "sw_weapon",
+          "name": "Kiếm Bất Bại",
+          "base": "war_axe",
+          "req": 12,
+          "stats": {
+            "physDmgPct": 30,
+            "str": 10
+          }
+        },
+        {
+          "id": "sw_gloves",
+          "name": "Găng Bất Bại",
+          "base": "leather_gloves",
+          "req": 10,
+          "stats": {
+            "armor": 10,
+            "physDmgPct": 10,
+            "cdSpeedPct": 5
+          }
+        },
+        {
+          "id": "sw_ring",
+          "name": "Nhẫn Bất Bại",
+          "base": "ring",
+          "req": 14,
+          "stats": {
+            "physDmgPct": 12,
+            "hpOnKill": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "set_shout",
+      "name": "Tiếng Gầm Tổ Tiên",
+      "tree": "shout",
+      "bonus": {
+        "2": {
+          "armor": 40,
+          "resAll": 10
+        },
+        "3": {
+          "shoutSkills": 1,
+          "maxHp": 60
+        }
+      },
+      "pieces": [
+        {
+          "id": "ss_head",
+          "name": "Mũ Tổ Tiên",
+          "base": "helm",
+          "req": 12,
+          "stats": {
+            "armor": 20,
+            "vit": 12
+          }
+        },
+        {
+          "id": "ss_body",
+          "name": "Giáp Tổ Tiên",
+          "base": "mail",
+          "req": 14,
+          "stats": {
+            "armor": 40,
+            "maxHp": 40
+          }
+        },
+        {
+          "id": "ss_belt",
+          "name": "Đai Tổ Tiên",
+          "base": "leather_belt",
+          "req": 10,
+          "stats": {
+            "maxHp": 30,
+            "str": 8
+          }
+        }
+      ]
+    },
+    {
+      "id": "set_blood",
+      "name": "Khế Ước Máu",
+      "tree": "blood",
+      "bonus": {
+        "2": {
+          "physDmgPct": 15,
+          "hpOnKill": 3
+        },
+        "3": {
+          "bloodSkills": 1,
+          "critChance": 8
+        }
+      },
+      "pieces": [
+        {
+          "id": "sb_amulet",
+          "name": "Bùa Khế Ước",
+          "base": "amulet",
+          "req": 12,
+          "stats": {
+            "physDmgPct": 15,
+            "str": 8
+          }
+        },
+        {
+          "id": "sb_gloves",
+          "name": "Găng Khế Ước",
+          "base": "leather_gloves",
+          "req": 10,
+          "stats": {
+            "armor": 8,
+            "critChance": 3,
+            "hpOnKill": 1
+          }
+        },
+        {
+          "id": "sb_boots",
+          "name": "Ủng Khế Ước",
+          "base": "leather_boots",
+          "req": 14,
+          "stats": {
+            "armor": 10,
+            "moveSpeedPct": 8,
+            "dex": 10
+          }
+        }
+      ]
     }
   ]
 }

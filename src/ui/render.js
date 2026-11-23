@@ -212,8 +212,8 @@ export class Renderer {
     for (const k of g.pickups) {
       if (k.kind === 'item') {
         if (!this.vis(k.x, k.y, 60)) continue;
-        const col = g.data.items.rarities[k.item.rarity].color;
-        if (k.item.rarity === 'rare' || k.item.rarity === 'unique') {
+        const col = k.item.type === 'rune' ? g.data.runes.byId[k.item.rune].color : g.data.items.rarities[k.item.rarity].color;
+        if (k.item.rarity === 'rare' || k.item.rarity === 'unique' || k.item.rarity === 'set' || k.item.type === 'rune') {
           const grd = ctx.createLinearGradient(0, k.y - 70, 0, k.y);
           grd.addColorStop(0, 'rgba(0,0,0,0)');
           grd.addColorStop(1, col);
@@ -648,7 +648,7 @@ export class Renderer {
     ctx.textAlign = 'right';
     ctx.font = '600 13px system-ui, sans-serif';
     ctx.fillStyle = '#bdb6a2';
-    ctx.fillText(`Màn ${g.map.id}: ${g.map.name}${g.map.difficulty > 1.0001 ? ` · +${Math.round((g.map.difficulty - 1) * 100)}%` : ''}`, w - 14, 22);
+    ctx.fillText(`${g.diff && g.diff.id !== 'normal' ? `${g.diff.name} · ` : ''}Màn ${g.map.id}: ${g.map.name}${g.map.difficulty > 1.0001 ? ` · +${Math.round((g.map.difficulty - 1) * 100)}%` : ''}`, w - 14, 22);
 
     if (g.banner) {
       const k = g.banner.t < 0.3 ? g.banner.t / 0.3 : Math.min(1, (g.banner.dur - g.banner.t) / 0.5);

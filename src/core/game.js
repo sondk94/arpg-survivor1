@@ -2,7 +2,7 @@
 import { RNG } from './rng.js';
 import { Grid } from './grid.js';
 import * as P from './progression.js';
-import { generateItem, addToInventory, firstFree } from './items.js';
+import { generateItem, generateRune, addToInventory, firstFree } from './items.js';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -55,6 +55,7 @@ export class Game {
     this.ch = ch;
     this.map = data.maps[opts.mapId || data.mapOrder[0]];
     if (!this.map) throw new Error(`Không có màn ${opts.mapId}`);
+    this.diff = data.difficultiesById[opts.difficulty || 'normal'] || data.difficulties[0];
     this.seed = opts.seed ?? ((Math.random() * 0xffffffff) >>> 0);
     this.rng = new RNG(this.seed);
     this.headless = !!opts.headless;
@@ -333,16 +334,17 @@ export class Game {
     const sc = this.cfg.monsterScaling;
     // Độ khó của màn (×1,05 mỗi màn) nhân vào máu và sát thương của mọi quái.
     const diff = this.map.difficulty || 1;
-    const hp = def.hp * (1 + sc.hpPerLevel * (lvl - 1)) * diff;
-    const dmgMult = (1 + sc.dmgPerLevel * (lvl - 1)) * diff;
+    const D = this.diff;
+    const hp = def.hp * (1 + sc.hpPerLevel * (lvl - 1)) * diff * D.hpMult;
+    const dmgMult = (1 + sc.dmgPerLevel * (lvl - 1)) * diff * D.dmgMult;
     const e = {
       id: this.nextId++, type: typeId, def, name: def.name, ai: def.ai,
       x, y, r: def.radius, hp, maxHp: hp,
       dmg: def.damage * dmgMult, dmgMult,
       contact: (def.contactDamage ?? def.damage) * dmgMult,
       dmgType: def.damageType || 'physical',
-      speed: def.speed, xp: def.xp * (this.map.rewardMult || 1), color: def.color,
-      resist: def.resist || {}, level: lvl,
+      speed: def.speed, xp: def.xp * (this.map.rewardMult || 1) * D.xpMult, color: def.color,
+      resist: this.diffResist(def.resist || {}), level: lvl,
       kx: 0, ky: 0, slowT: 0, slowPct: 0, hit: 0,
       t: this.rng.next() * 10, phase: this.rng.next() * TAU,
       atkT: def.attackInterval ? this.rng.range(0.5, def.attackInterval) : 0,
@@ -356,6 +358,16 @@ export class Game {
     this.enemies.push(e);
     if (!e.big) this.aliveNormal++;
     return e;
+  }
+
+  // Độ khó cao: quái có thêm kháng mọi nguyên tố (vật lý được nửa).
+  diffResist(base) {
+    const add = this.diff.monsterResist || 0;
+    if (!add) return base;
+    const o = { ...base };
+    for (const k of ['fire', 'cold', 'lightning', 'poison']) o[k] = (o[k] || 0) + add;
+    o.physical = (o.physical || 0) + add * 0.5;
+    return o;
   }
 
   makeElite(e) {
@@ -434,7 +446,9 @@ export class Game {
       const red = Math.min(this.cfg.caps.armorReduction, a / (a + this.cfg.armor.base + this.cfg.armor.perMonsterLevel * lvl));
       dmg *= 1 - red;
     } else {
-      dmg *= 1 - Math.min(this.cfg.caps.playerResist, this.stats.resist[type] || 0);
+      // Độ khó cao trừ kháng của người chơi (có thể âm, tối đa nhận ×2 sát thương).
+      const res = Math.max(-1, Math.min(this.cfg.caps.playerResist, (this.stats.resist[type] || 0) - (this.diff.playerResistPenalty || 0)));
+      dmg *= 1 - res;
       if (dmg < 0) dmg = 0;
     }
     p.hp -= dmg;
@@ -473,12 +487,22 @@ export class Game {
     const flawless = !(this.ch.mapDeaths[this.map.id] > 0);
     // Mở khoá màn kế tiếp.
     const idx = this.map.index ?? 0;
-    const firstClear = (this.ch.mapProgress || 0) <= idx;
-    this.ch.mapProgress = Math.max(this.ch.mapProgress || 0, idx + 1);
+    const dId = this.diff.id;
+    const before = P.unlockedDifficulties(this.ch, this.data);
+    const firstClear = P.progressOf(this.ch, dId) <= idx;
+    P.setProgress(this.ch, dId, idx + 1);
     this.ch.mapClears = this.ch.mapClears || {};
-    this.ch.mapClears[this.map.id] = (this.ch.mapClears[this.map.id] || 0) + 1;
+    const ck = P.clearKey(dId, this.map.id);
+    this.ch.mapClears[ck] = (this.ch.mapClears[ck] || 0) + 1;
+    // Kỷ lục thời gian hạ boss.
+    this.ch.records = this.ch.records || {};
+    const rk = `${dId}:${this.map.id}`;
+    const t = Math.round(this.time * 10) / 10;
+    const newRecord = !(this.ch.records[rk] <= t);
+    if (newRecord) this.ch.records[rk] = t;
     const next = this.data.mapOrder[idx + 1] || null;
-    this.result = { win: true, time: this.time, flawless, firstClear, nextMap: firstClear ? next : null };
+    const newDiff = P.unlockedDifficulties(this.ch, this.data).find((d) => !before.includes(d)) || null;
+    this.result = { win: true, time: this.time, flawless, firstClear, nextMap: firstClear ? next : null, newRecord, difficulty: dId, newDifficulty: newDiff };
     this.emit({ type: 'victory', flawless });
   }
 
@@ -717,7 +741,8 @@ export class Game {
           n += w; sx += e.x * w; sy += e.y * w;
         }
       });
-      if (!best || n > best.n) best = { n, x: sx / n, y: sy / n };
+      // Quái vừa sinh trong khung hình này chưa có trong lưới: n = 0, bỏ qua (tránh chia 0 ra NaN).
+      if (n > 0 && (!best || n > best.n)) best = { n, x: sx / n, y: sy / n };
     }
     return best;
   }
@@ -915,7 +940,7 @@ export class Game {
   // Nhảy vào cụm quái đông nhất rồi đập xuống.
   castLeap(sk, lvl) {
     const t = this.densestPoint(sk.range, sk.radius);
-    if (!t) return false;
+    if (!t || !Number.isFinite(t.x) || !Number.isFinite(t.y)) return false;
     const p = this.player;
     const from = { x: p.x, y: p.y };
     const o = this.pushOutObstacles(clamp(t.x, p.r, this.W - p.r), clamp(t.y, p.r, this.H - p.r), p.r);
@@ -1100,22 +1125,24 @@ export class Game {
 
   // Cấp đồ rơi: cấp bản đồ + số phút đã chơi + thưởng theo loại quái.
   itemLevel(bonus = 0) {
-    return this.map.level + (this.map.itemLevelBonus || 0) + Math.floor(this.time / 60) * this.data.items.drops.ilvlPerMinute + bonus;
+    return this.map.level + (this.map.itemLevelBonus || 0) + (this.diff.ilvlBonus || 0) + Math.floor(this.time / 60) * this.data.items.drops.ilvlPerMinute + bonus;
   }
 
   dropLoot(e, kind) {
     const D = this.data.items.drops;
     const cfg = D[kind];
     if (!cfg) return;
+    const DF = this.diff;
+    if (this.rng.next() < (cfg.runeChance || 0)) this.dropItem(e.x - 10, e.y + 6, generateRune(this.rng, this.data, this.itemLevel(cfg.ilvlBonus || 0)));
     if (kind === 'normal') {
-      if (this.rng.next() < cfg.itemChance) this.dropItem(e.x, e.y, generateItem(this.rng, this.data, this.itemLevel()));
+      if (this.rng.next() < cfg.itemChance) this.dropItem(e.x, e.y, generateItem(this.rng, this.data, this.itemLevel(), { rareMult: DF.rareMult, uniqueMult: DF.uniqueMult }));
       if (this.rng.next() < cfg.goldChance) this.dropGold(e.x, e.y, this.itemLevel());
       return;
     }
     const ilvl = this.itemLevel(cfg.ilvlBonus);
     for (let i = 0; i < cfg.items; i++) {
       const minRarity = i === 0 && cfg.firstMinRarity ? cfg.firstMinRarity : cfg.minRarity;
-      const it = generateItem(this.rng, this.data, ilvl, { minRarity, rareMult: cfg.rareMult, uniqueMult: cfg.uniqueMult });
+      const it = generateItem(this.rng, this.data, ilvl, { minRarity, rareMult: cfg.rareMult * DF.rareMult, uniqueMult: cfg.uniqueMult * DF.uniqueMult, setMult: cfg.setMult || 1 });
       const a = (i / cfg.items) * TAU;
       this.dropItem(e.x + Math.cos(a) * 18, e.y + Math.sin(a) * 18, it);
     }
@@ -1514,7 +1541,7 @@ export class Game {
           this.addText(p.x, p.y - 30, `+${k.value} vàng`, '#ffd76a', 13);
         } else if (k.kind === 'item') {
           if (!addToInventory(this.ch, k.item)) { k.dead = false; k.mag = false; continue; }
-          const col = this.data.items.rarities[k.item.rarity].color;
+          const col = k.item.type === 'rune' ? this.data.runes.byId[k.item.rune].color : this.data.items.rarities[k.item.rarity].color;
           this.log.itemsPicked.push({ rarity: k.item.rarity, name: k.item.name, ilvl: k.item.ilvl, t: Math.round(this.time) });
           this.addText(p.x, p.y - 48, k.item.name, col, 15);
           this.emit({ type: 'item', item: k.item });

@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { loadData } from '../src/core/data.js';
 import { Game, fmtTime } from '../src/core/game.js';
-import { createCharacter } from '../src/core/progression.js';
+import * as P from '../src/core/progression.js';
+const { createCharacter } = P;
 import { botInput, botAllocate, botManageItems, BUILDS } from '../src/core/bot.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -30,6 +31,8 @@ const verbose = !!arg('verbose', false);
 const mapArg = arg('map', null);
 const campaign = !!arg('campaign', false);
 const maxRuns = Number(arg('max-runs', 120));
+const diffArg = arg('difficulty', 'normal');
+const untilDiff = arg('until', 'hell');
 
 const data = await loadData(async (p) => JSON.parse(await readFile(path.join(root, p), 'utf8')));
 const DT = 1 / 60;
@@ -41,10 +44,20 @@ const attempts = {};
 for (let r = 0; r < totalRuns; r++) {
   if (!persist && !campaign) ch = createCharacter(data, (BUILDS[build] || {}).class);
   botAllocate(ch, data, build);
-  const mapId = campaign ? data.mapOrder[Math.min(ch.mapProgress || 0, data.mapOrder.length - 1)] : mapArg || data.mapOrder[0];
-  if (campaign && (ch.mapClears?.[data.mapOrder[data.mapOrder.length - 1]] || 0) > 0) break;
-  attempts[mapId] = (attempts[mapId] || 0) + 1;
-  const g = new Game(data, ch, { seed: seed0 + r, headless: true, mapId });
+  // Chiến dịch: chơi hết Bình thường rồi tới Ác mộng, Địa ngục (tới mức --until).
+  let diff = diffArg;
+  if (campaign) {
+    diff = null;
+    for (const d of data.difficulties) {
+      if (P.progressOf(ch, d.id) < data.mapOrder.length && P.unlockedDifficulties(ch, data).includes(d.id)) { diff = d.id; break; }
+      if (d.id === untilDiff) break;
+    }
+    if (!diff) break;
+  }
+  const mapId = campaign ? data.mapOrder[Math.min(P.progressOf(ch, diff), data.mapOrder.length - 1)] : mapArg || data.mapOrder[0];
+  const ak = `${diff}:${mapId}`;
+  attempts[ak] = (attempts[ak] || 0) + 1;
+  const g = new Game(data, ch, { seed: seed0 + r, headless: true, mapId, difficulty: diff });
   g.god = god;
   const perMin = [];
   let nextMark = 60;
@@ -86,8 +99,12 @@ for (let r = 0; r < totalRuns; r++) {
     simMs: Math.round(ms),
   };
   results.push(res);
+  if (campaign && !g.over && g.boss) {
+    const b = g.boss, p = g.player;
+    console.log(`   HẾT GIỜ: người chơi (${p.x | 0},${p.y | 0}) máu ${p.hp | 0}; boss (${b.x | 0},${b.y | 0}) trạng thái ${b.b.state}, cách ${Math.hypot(b.x - p.x, b.y - p.y) | 0}px; quái còn ${g.enemies.length}`);
+  } else if (campaign && !g.over) console.log(`   HẾT GIỜ khi chưa có boss: t=${g.time | 0}, bossSpawned=${g.bossSpawned}, sự kiện ${g.eventIdx}/${g.events.length}`);
   if (campaign) {
-    console.log(`Màn ${mapId} (×${g.map.difficulty.toFixed(2)}) lần ${attempts[mapId]}: ${res.result} lúc ${res.time}, cấp ${res.level}, boss còn ${res.boss}, nguyên nhân ${res.cause}`);
+    if (verbose || res.result !== 'THẮNG' || mapId.endsWith('-5')) console.log(`${data.difficultiesById[diff].name} ${mapId} (×${g.map.difficulty.toFixed(2)}) lần ${attempts[ak]}: ${res.result} lúc ${res.time}, cấp ${res.level}, boss còn ${res.boss}, nguyên nhân ${res.cause}`);
     continue;
   }
   console.log(`Lượt ${res.run}: ${res.result} lúc ${res.time}, cấp ${res.level}, giết ${res.kills}, nguyên nhân: ${res.cause}, boss còn ${res.boss}, quái tối đa ${maxAlive}, thiếu mana ${res.noManaSec}s, đồ ${res.items}, vàng ${g.log.gold}, đóng băng ${g.log.freezes} (${ms.toFixed(0)}ms)`);
@@ -96,6 +113,7 @@ for (let r = 0; r < totalRuns; r++) {
 }
 
 if (campaign) {
-  const cleared = ch.mapProgress || 0;
-  console.log(`\nKết thúc: qua ${Math.min(cleared, data.mapOrder.length)}/${data.mapOrder.length} màn sau ${Object.values(attempts).reduce((a, b) => a + b, 0)} lượt, cấp ${ch.level}. Số lần thử từng màn: ${Object.entries(attempts).map(([k, v]) => `${k}:${v}`).join(' ')}`);
+  const prog = data.difficulties.map((d) => `${d.name} ${P.progressOf(ch, d.id)}/${data.mapOrder.length}`).join(', ');
+  const hard = Object.entries(attempts).filter(([, v]) => v > 1).map(([k, v]) => `${k}:${v}`).join(' ');
+  console.log(`\nKết thúc sau ${Object.values(attempts).reduce((a, b) => a + b, 0)} lượt, cấp ${ch.level}: ${prog}. Màn phải thử nhiều lần: ${hard || 'không'}`);
 }

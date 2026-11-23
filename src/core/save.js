@@ -1,7 +1,7 @@
 // Lưu nhân vật + rương chung, và mã sao lưu để chuyển sang máy khác.
 import { createCharacter, getClass } from './progression.js';
 
-const FIELDS = ['uid', 'name', 'classId', 'level', 'xp', 'attrs', 'attrPoints', 'skillPoints', 'skills', 'slots', 'gold', 'inventory', 'equipment', 'runs', 'deaths', 'clears', 'mapDeaths', 'mapProgress', 'mapClears'];
+const FIELDS = ['uid', 'name', 'classId', 'level', 'xp', 'attrs', 'attrPoints', 'skillPoints', 'skills', 'slots', 'gold', 'inventory', 'equipment', 'runs', 'deaths', 'clears', 'mapDeaths', 'mapProgress', 'mapClears', 'diffProgress', 'records', 'shards'];
 
 function b64encode(str) {
   const bytes = new TextEncoder().encode(str);
@@ -23,8 +23,15 @@ function checksum(s) {
 
 // Kiểm tra một món đồ có hợp lệ với dữ liệu hiện tại không.
 function validItem(it, data) {
-  return it && typeof it === 'object' && data.items.basesById[it.base] && data.items.rarities[it.rarity] &&
+  const ok = it && typeof it === 'object' && data.items.basesById[it.base] && data.items.rarities[it.rarity] &&
     it.req && typeof it.req.level === 'number' && it.stats && typeof it.stats === 'object';
+  if (!ok) return false;
+  if (it.type === 'rune' && !data.runes.byId[it.rune]) return false;
+  // Lỗ và rune: chuẩn hoá (đồ cũ chưa có lỗ).
+  it.sockets = Math.max(0, Math.min(data.items.basesById[it.base].maxSockets || 0, Math.floor(Number(it.sockets) || 0)));
+  it.runes = Array.isArray(it.runes) ? it.runes.filter((r) => r && data.runes.byId[r.id] && r.stats && typeof r.stats === 'object').slice(0, it.sockets) : [];
+  if (it.set && !data.items.setsById[it.set]) delete it.set;
+  return true;
 }
 
 // Chuẩn hoá dữ liệu nhân vật đọc từ ngoài: điền giá trị thiếu, bỏ đồ/kỹ năng không hợp lệ.
@@ -64,7 +71,12 @@ export function normalizeCharacter(raw, data) {
   ch.equipment = eq;
   ch.mapDeaths = ch.mapDeaths && typeof ch.mapDeaths === 'object' ? ch.mapDeaths : {};
   for (const k of ['runs', 'deaths', 'clears']) ch[k] = Math.max(0, Math.floor(num(ch[k], 0)));
-  ch.mapProgress = Math.max(0, Math.min(data.mapOrder.length - 1, Math.floor(num(ch.mapProgress, 0))));
+  ch.mapProgress = Math.max(0, Math.min(data.mapOrder.length, Math.floor(num(ch.mapProgress, 0))));
+  const dp = {};
+  for (const d of data.difficulties) if (d.id !== 'normal') dp[d.id] = Math.max(0, Math.min(data.mapOrder.length, Math.floor(num(ch.diffProgress?.[d.id], 0))));
+  ch.diffProgress = dp;
+  ch.records = ch.records && typeof ch.records === 'object' ? Object.fromEntries(Object.entries(ch.records).filter(([, v]) => Number.isFinite(v) && v > 0)) : {};
+  ch.shards = Math.max(0, Math.floor(num(ch.shards, 0)));
   ch.mapClears = ch.mapClears && typeof ch.mapClears === 'object' ? ch.mapClears : {};
   return ch;
 }

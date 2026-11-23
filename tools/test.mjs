@@ -195,11 +195,11 @@ t('Trường Tĩnh Điện: 15% máu hiện tại, boss 5%', () => {
   assert.equal(b.hp, 2500 * 0.95);
 });
 
-t('Đồ: sinh đủ 4 bậc, yêu cầu cấp chặn mặc đồ, chỉ số đồ cộng vào nhân vật', () => {
+t('Đồ: sinh đủ 5 bậc (cả đồ bộ), yêu cầu cấp chặn mặc đồ, chỉ số đồ cộng vào nhân vật', () => {
   const rng = new RNG(5);
   const seen = new Set();
   for (let i = 0; i < 400; i++) seen.add(I.generateItem(rng, data, 12).rarity);
-  assert.deepEqual([...seen].sort(), ['magic', 'normal', 'rare', 'unique']);
+  assert.deepEqual([...seen].sort(), ['magic', 'normal', 'rare', 'set', 'unique']);
   const ch = P.createCharacter(data);
   const it = I.generateItem(rng, data, 10, { rarity: 'unique', type: 'amulet' }); // Mắt Xác Sống, cần cấp 10
   ch.inventory[0] = it;
@@ -377,6 +377,120 @@ t('Nhân vật cũ (chưa có lớp) được đọc thành Pháp sư; mã của
   assert.equal(back.name, 'Thiết Hùng');
   assert.equal(back.uid, w.uid);
   assert.deepEqual(back.skills, { cleave: 3 });
+});
+
+t('Lỗ và rune: ghép rune cộng chỉ số theo loại đồ; hết lỗ thì không ghép được', () => {
+  const rng = new RNG(3);
+  const ch = P.createCharacter(data, 'mage');
+  const staff = I.generateItem(rng, data, 10, { rarity: 'normal', baseId: 'staff' });
+  staff.sockets = 1;
+  const helm = I.generateItem(rng, data, 10, { rarity: 'normal', baseId: 'cap' });
+  helm.sockets = 1;
+  ch.inventory[0] = I.generateRune(rng, data, 1, 'r_ash');
+  ch.inventory[1] = I.generateRune(rng, data, 1, 'r_ash');
+  ch.inventory[2] = I.generateRune(rng, data, 1, 'r_ash');
+  assert.equal(I.insertRune(ch, 0, staff, data), 'ok');
+  assert.equal(I.itemStats(staff).fireDmgPct, (staff.stats.fireDmgPct || 0) + 10); // vũ khí: +10% sát thương lửa
+  assert.equal(I.insertRune(ch, 1, staff, data), 'Món đồ không còn lỗ trống');
+  assert.equal(I.insertRune(ch, 1, helm, data), 'ok');
+  assert.equal(I.itemStats(helm).resFire, 12); // giáp: +12% kháng lửa
+  // mặc vào thì chỉ số rune có tác dụng (gậy cần cấp 5)
+  ch.level = 10;
+  ch.equipment.weapon = staff;
+  assert.ok(Math.abs(P.computeStats(ch, data).elemDmgPct.fire - (I.itemStats(staff).fireDmgPct) / 100) < 1e-9);
+});
+
+t('Ghép 3 rune cùng loại thành 1 rune bậc cao hơn', () => {
+  const rng = new RNG(4);
+  const ch = P.createCharacter(data);
+  ch.gold = 1000;
+  for (let i = 0; i < 3; i++) ch.inventory[i] = I.generateRune(rng, data, 1, 'r_frost');
+  assert.equal(I.combineRunes(ch, 'r_frost', data, rng), 'ok');
+  assert.deepEqual(I.runeCounts(ch), { r_storm: 1 });
+  assert.equal(ch.gold, 1000 - data.items.crafting.runeCombine.goldPerTier * 2);
+});
+
+t('Đồ bộ: mặc đủ 2 món và 3 món được thêm thưởng', () => {
+  const rng = new RNG(5);
+  const ch = P.createCharacter(data, 'mage');
+  ch.level = 20;
+  const set = data.items.setsById.set_fire;
+  const pieces = set.pieces.map((pc) => ({ uid: pc.id, base: pc.base, type: data.items.basesById[pc.base].type, rarity: 'set', set: set.id, piece: pc.id, name: pc.name, ilvl: 15, req: { level: pc.req, str: 0 }, stats: { ...pc.stats }, sockets: 0, runes: [] }));
+  const base = P.computeStats(ch, data).elemDmgPct.fire;
+  ch.equipment.head = pieces[0];
+  const one = P.computeStats(ch, data).elemDmgPct.fire;
+  ch.equipment.gloves = pieces[2];
+  const two = P.computeStats(ch, data);
+  assert.ok(Math.abs(two.elemDmgPct.fire - one - (pieces[2].stats.fireDmgPct + set.bonus['2'].fireDmgPct) / 100) < 1e-9);
+  ch.equipment.body = pieces[1];
+  const three = P.computeStats(ch, data);
+  assert.equal(three.skillBonus.fire, 1);
+  assert.deepEqual(three.sets.map((x) => [x.id, x.count]), [['set_fire', 3]]);
+  assert.ok(one > base);
+});
+
+t('Lò chế: phân giải ra mảnh, nâng bậc, đổi dòng, đục lỗ, gỡ rune', () => {
+  const rng = new RNG(6);
+  const ch = P.createCharacter(data);
+  const stash = newStash(data);
+  ch.inventory[0] = I.generateItem(rng, data, 10, { rarity: 'rare' });
+  const v = I.salvageValue(ch.inventory[0], data);
+  assert.equal(I.craft(ch, stash, { where: 'inv', key: 0 }, 'salvage', data, rng), 'ok');
+  assert.equal(ch.shards, v);
+  assert.equal(ch.inventory[0], null);
+  ch.shards = 100; ch.gold = 5000;
+  ch.inventory[1] = I.generateItem(rng, data, 10, { rarity: 'normal', baseId: 'staff' });
+  ch.inventory[1].sockets = 0;
+  assert.equal(I.craft(ch, stash, { where: 'inv', key: 1 }, 'upgrade', data, rng), 'ok');
+  assert.equal(ch.inventory[1].rarity, 'magic');
+  assert.equal(ch.inventory[1].base, 'staff');
+  assert.equal(I.craft(ch, stash, { where: 'inv', key: 1 }, 'reroll', data, rng), 'ok');
+  assert.equal(I.craft(ch, stash, { where: 'inv', key: 1 }, 'socket', data, rng), 'ok');
+  assert.equal(ch.inventory[1].sockets, 1);
+  ch.inventory[2] = I.generateRune(rng, data, 1, 'r_ash');
+  I.insertRune(ch, 2, ch.inventory[1], data);
+  assert.equal(I.craft(ch, stash, { where: 'inv', key: 1 }, 'unsocket', data, rng), 'ok');
+  assert.equal(ch.inventory[1].runes.length, 0);
+  ch.shards = 0;
+  assert.match(I.craft(ch, stash, { where: 'inv', key: 1 }, 'socket', data, rng), /Cần .* mảnh/);
+});
+
+t('Độ khó: Ác mộng mở sau khi qua hết Bình thường; quái mạnh hơn, có kháng; người chơi bị trừ kháng', () => {
+  const ch = P.createCharacter(data);
+  assert.deepEqual(P.unlockedDifficulties(ch, data), ['normal']);
+  assert.deepEqual(P.unlockedMaps(ch, data, 'nightmare'), []);
+  ch.mapProgress = 19;
+  const g = new Game(data, ch, { seed: 1, headless: true, mapId: '4-5' });
+  g.win();
+  assert.equal(g.result.newDifficulty, 'nightmare');
+  assert.deepEqual(P.unlockedMaps(ch, data, 'nightmare'), ['1-1']);
+  const n = data.difficultiesById.nightmare;
+  const gn = new Game(data, ch, { seed: 1, headless: true, mapId: '1-1', difficulty: 'nightmare' });
+  const gb = new Game(data, ch, { seed: 1, headless: true, mapId: '1-1' });
+  const zn = gn.spawnEnemy('zombie', 100, 100), zb = gb.spawnEnemy('zombie', 100, 100);
+  assert.ok(Math.abs(zn.maxHp / zb.maxHp - n.hpMult) < 1e-9);
+  assert.ok(Math.abs(zn.contact / zb.contact - n.dmgMult) < 1e-9);
+  assert.equal(zn.resist.fire, n.monsterResist);
+  gn.stats.dodge = 0; gn.stats.resist.fire = 0;
+  const hp = gn.player.hp;
+  gn.hurtPlayer(10, 'fire', 'test');
+  assert.ok(Math.abs(hp - gn.player.hp - 10 * (1 + n.playerResistPenalty)) < 1e-9);
+  // kỷ lục thời gian
+  gn.time = 300; gn.win();
+  assert.equal(ch.records['nightmare:1-1'], 300);
+  assert.equal(gn.result.newRecord, true);
+});
+
+t('Tìm cụm quái không trả về NaN khi quái vừa sinh chưa vào lưới (lỗi Nhảy Đập đưa người chơi về NaN)', () => {
+  const w = P.createCharacter(data, 'warrior');
+  w.skills = { leap_slam: 1 };
+  const g = new Game(data, w, { seed: 1, headless: true });
+  g.grid.rebuild(g.enemies); // lưới rỗng
+  g.spawnEnemy('zombie', g.player.x + 100, g.player.y); // sinh sau khi dựng lưới
+  const t = g.densestPoint(300, 110);
+  assert.ok(t === null || (Number.isFinite(t.x) && Number.isFinite(t.y)));
+  g.castLeap(data.skills.leap_slam, 1);
+  assert.ok(Number.isFinite(g.player.x) && Number.isFinite(g.player.y));
 });
 
 console.log(`\n${n} kiểm tra đều qua.`);

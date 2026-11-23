@@ -1,5 +1,5 @@
 {
-  "version": "1.2",
+  "version": "1.3",
   "testMode": true,
   "run": {
     "duration": 600,
@@ -117,5 +117,48 @@
   "eliteDmgBonus": {
     "lightning": 0.6,
     "appliesTo": "Tinh anh và trùm nhỏ (không gồm boss)"
-  }
+  },
+  "difficulties": [
+    {
+      "id": "normal",
+      "name": "Bình thường",
+      "hpMult": 1,
+      "dmgMult": 1,
+      "xpMult": 1,
+      "ilvlBonus": 0,
+      "monsterResist": 0,
+      "playerResistPenalty": 0,
+      "rareMult": 1,
+      "uniqueMult": 1,
+      "color": "#d9b35c"
+    },
+    {
+      "id": "nightmare",
+      "name": "Ác mộng",
+      "hpMult": 5,
+      "dmgMult": 3,
+      "xpMult": 2,
+      "ilvlBonus": 18,
+      "monsterResist": 0.2,
+      "playerResistPenalty": 0.25,
+      "rareMult": 1.5,
+      "uniqueMult": 1.5,
+      "color": "#c06cff",
+      "unlockAfter": "normal"
+    },
+    {
+      "id": "hell",
+      "name": "Địa ngục",
+      "hpMult": 14,
+      "dmgMult": 6,
+      "xpMult": 3.5,
+      "ilvlBonus": 32,
+      "monsterResist": 0.35,
+      "playerResistPenalty": 0.5,
+      "rareMult": 2,
+      "uniqueMult": 2,
+      "color": "#ff4040",
+      "unlockAfter": "nightmare"
+    }
+  ]
 }

@@ -5,6 +5,7 @@ export const DATA_FILES = {
   monsters: 'data/monsters.json',
   items: 'data/items.json',
   classes: 'data/classes.json',
+  runes: 'data/runes.json',
   campaign: 'data/maps/campaign.json',
   mapDir: 'data/maps/',
 };
@@ -40,13 +41,14 @@ export function buildCampaign(campaign, templates) {
 }
 
 export async function loadData(readJson) {
-  const [config, skillsFile, monsters, items, campaign, classesFile] = await Promise.all([
+  const [config, skillsFile, monsters, items, campaign, classesFile, runesFile] = await Promise.all([
     readJson(DATA_FILES.config),
     readJson(DATA_FILES.skills),
     readJson(DATA_FILES.monsters),
     readJson(DATA_FILES.items),
     readJson(DATA_FILES.campaign),
     readJson(DATA_FILES.classes),
+    readJson(DATA_FILES.runes),
   ]);
   const classes = {};
   for (const c of classesFile.classes) classes[c.id] = c;
@@ -74,6 +76,9 @@ export async function loadData(readJson) {
     classes,
     classList: classesFile.classes,
     tree: { className: skillsFile.className },
-    items: { ...items, basesById: bases, uniquesById: uniques },
+    items: { ...items, basesById: bases, uniquesById: uniques, setsById: Object.fromEntries((items.sets || []).map((x) => [x.id, x])) },
+    runes: { ...runesFile, list: runesFile.runes, byId: Object.fromEntries(runesFile.runes.map((r) => [r.id, r])) },
+    difficulties: config.difficulties,
+    difficultiesById: Object.fromEntries(config.difficulties.map((d) => [d.id, d])),
   };
 }
