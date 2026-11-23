@@ -13,7 +13,7 @@ export const DATA_FILES = {
 const clone = (o) => JSON.parse(JSON.stringify(o));
 
 // Dựng danh sách màn từ campaign.json: mỗi màn = màn gốc + thay đổi của chương + thay đổi riêng của màn.
-// Độ khó màn thứ i (đếm từ 0) = (1 + difficultyStep)^i, trừ khi màn tự ghi "difficulty".
+// Màn thứ i (đếm từ 0): máu quái ×(1 + hpStep)^i, sát thương ×(1 + dmgStep)^i.
 export function buildCampaign(campaign, templates) {
   const base = templates[campaign.base];
   const chapters = Object.fromEntries((campaign.chapters || []).map((c) => [c.id, c]));
@@ -30,7 +30,12 @@ export function buildCampaign(campaign, templates) {
     }
     map.index = i;
     map.chapterName = ch.name || '';
-    map.difficulty = m.difficulty ?? Math.pow(1 + campaign.difficultyStep, i);
+    // Máu quái +hpStep, sát thương +dmgStep mỗi màn (cộng dồn). "difficulty" giữ cho hiển thị = hệ số máu.
+    const hpStep = campaign.hpStep ?? campaign.difficultyStep ?? 0;
+    const dmgStep = campaign.dmgStep ?? campaign.difficultyStep ?? 0;
+    map.hpMult = m.hpMult ?? Math.pow(1 + hpStep, i);
+    map.dmgMult = m.dmgMult ?? Math.pow(1 + dmgStep, i);
+    map.difficulty = m.difficulty ?? map.hpMult;
     map.rewardMult = m.rewardMult ?? Math.pow(1 + (campaign.rewardStep ?? 0), i);
     map.itemLevelBonus = m.itemLevelBonus ?? i * (campaign.itemLevelPerMap ?? 0);
     if (campaign.randomObstacles?.enabled) map.obstacles.random = { countVariation: campaign.randomObstacles.countVariation };

@@ -254,24 +254,29 @@ t('Xuất mã rồi nhập lại vẫn đủ cấp, điểm, đồ và rương',
   assert.throws(() => importCode('xyz', data), /định dạng/);
 });
 
-t('20 màn, mỗi màn khó hơn màn trước 5% (máu, sát thương), kinh nghiệm +5%', () => {
+t('20 màn: máu quái +10% mỗi màn, sát thương +5%, kinh nghiệm +5% (cộng dồn)', () => {
   assert.equal(data.mapOrder.length, 20);
   data.mapOrder.forEach((id, i) => {
     const m = data.maps[id];
     assert.equal(m.index, i);
-    if (i > 0) assert.ok(Math.abs(m.difficulty / data.maps[data.mapOrder[i - 1]].difficulty - 1.05) < 1e-9, id);
+    if (i > 0) {
+      const prev = data.maps[data.mapOrder[i - 1]];
+      assert.ok(Math.abs(m.hpMult / prev.hpMult - 1.10) < 1e-9, id);
+      assert.ok(Math.abs(m.dmgMult / prev.dmgMult - 1.05) < 1e-9, id);
+    }
   });
   const ch = P.createCharacter(data);
   const g1 = new Game(data, ch, { seed: 1, headless: true, mapId: '1-1' });
   const g2 = new Game(data, ch, { seed: 1, headless: true, mapId: '1-2' });
   const g20 = new Game(data, ch, { seed: 1, headless: true, mapId: '4-5' });
   const z1 = g1.spawnEnemy('zombie', 100, 100), z2 = g2.spawnEnemy('zombie', 100, 100), z20 = g20.spawnEnemy('zombie', 100, 100);
-  assert.ok(Math.abs(z2.maxHp / z1.maxHp - 1.05) < 1e-9);
+  assert.ok(Math.abs(z2.maxHp / z1.maxHp - 1.10) < 1e-9);
   assert.ok(Math.abs(z2.contact / z1.contact - 1.05) < 1e-9);
   assert.ok(Math.abs(z2.xp / z1.xp - 1.05) < 1e-9);
-  assert.ok(Math.abs(z20.maxHp / z1.maxHp - Math.pow(1.05, 19)) < 1e-9);
+  assert.ok(Math.abs(z20.maxHp / z1.maxHp - Math.pow(1.10, 19)) < 1e-9);
+  assert.ok(Math.abs(z20.contact / z1.contact - Math.pow(1.05, 19)) < 1e-9);
   const b1 = g1.spawnEnemy('swamp_lord', 100, 100), b2 = g2.spawnEnemy('swamp_lord', 100, 100);
-  assert.ok(Math.abs(b2.maxHp / b1.maxHp - 1.05) < 1e-9);
+  assert.ok(Math.abs(b2.maxHp / b1.maxHp - 1.10) < 1e-9);
 });
 
 t('Qua màn thì mở màn sau; tiến độ được lưu trong mã nhân vật', () => {
@@ -491,6 +496,64 @@ t('Tìm cụm quái không trả về NaN khi quái vừa sinh chưa vào lướ
   assert.ok(t === null || (Number.isFinite(t.x) && Number.isFinite(t.y)));
   g.castLeap(data.skills.leap_slam, 1);
   assert.ok(Number.isFinite(g.player.x) && Number.isFinite(g.player.y));
+});
+
+t('Mỗi điểm Sức mạnh cộng thêm cho +2 sát thương vật lý mỗi đòn (không áp dụng cho phép)', () => {
+  const w = P.createCharacter(data, 'warrior');
+  w.attrPoints = 10;
+  assert.equal(P.computeStats(w, data).physFlat, 0);
+  P.addAttr(w, 'str', 10);
+  const st = P.computeStats(w, data);
+  assert.equal(st.physFlat, 20);
+  const [a, b] = P.damageRange(data.skills.cleave, 1);
+  assert.deepEqual(P.hitRange(data.skills.cleave, 1, st), [a + 20 * 0.6, b + 20 * 0.6]); // Chém Bổ nhận 60%
+  // Sức mạnh từ đồ cũng tính
+  w.equipment.ring1 = { uid: 'r', base: 'ring', type: 'ring', rarity: 'magic', name: 'r', ilvl: 1, req: { level: 1, str: 0 }, stats: { str: 5 }, sockets: 0, runes: [] };
+  assert.equal(P.computeStats(w, data).physFlat, 30);
+  // kỹ năng phép không được cộng
+  const m = P.createCharacter(data, 'mage');
+  m.attrs.str += 10;
+  const sm = P.computeStats(m, data);
+  assert.deepEqual(P.hitRange(data.skills.fireball, 1, sm), P.damageRange(data.skills.fireball, 1));
+  // trong trận: đòn chém nhận +12 (60% của +20) trước khi nhân hệ số
+  const g = new Game(data, w, { seed: 1, headless: true });
+  w.equipment.ring1 = null; g.refreshStats();
+  const mult = g.skillMult(data.skills.cleave);
+  for (let i = 0; i < 20; i++) {
+    const d = g.rollSkill(data.skills.cleave, 1, mult);
+    assert.ok(d >= (a + 12) * mult - 1e-9 && d <= (b + 12) * mult + 1e-9);
+  }
+});
+
+t('Năng lượng cộng thêm: +2 sát thương phép mỗi đòn, nhân hệ số flatScale của từng kỹ năng', () => {
+  const m = P.createCharacter(data, 'mage');
+  m.attrPoints = 10;
+  P.addAttr(m, 'ene', 10);
+  const st = P.computeStats(m, data);
+  assert.equal(st.spellFlat, 20);
+  assert.equal(st.physFlat, 0);
+  const [a, b] = P.damageRange(data.skills.fireball, 1);
+  assert.deepEqual(P.hitRange(data.skills.fireball, 1, st), [a + 20, b + 20]);         // đòn đơn: đủ 100%
+  const [oa] = P.damageRange(data.skills.frozen_orb, 1);
+  assert.ok(Math.abs(P.hitRange(data.skills.frozen_orb, 1, st)[0] - (oa + 2)) < 1e-9);  // mảnh Cầu Băng Xoay: 10%
+  const [ea] = P.damageRange(data.skills.ember_ring, 1);
+  assert.ok(Math.abs(P.hitRange(data.skills.ember_ring, 1, st)[0] - (ea + 5)) < 1e-9);  // Vòng Than: 25%
+  // vùng theo giây: Bão Tuyết nhận +20/giây
+  m.level = 10; m.skills.blizzard = 1;
+  const g = new Game(data, m, { seed: 1, headless: true });
+  g.spawnEnemy('zombie', g.player.x + 100, g.player.y);
+  g.grid.rebuild(g.enemies);
+  g.castStorm(data.skills.blizzard, 1);
+  assert.equal(g.zones[0].dps, P.lv(data.skills.blizzard.dps, 1) + 20);
+  // Sức mạnh cũng theo flatScale: Lốc Xoáy 35%
+  const w = P.createCharacter(data, 'warrior');
+  w.attrPoints = 10; P.addAttr(w, 'str', 10);
+  const sw = P.computeStats(w, data);
+  const [wa] = P.damageRange(data.skills.whirlwind, 1);
+  assert.ok(Math.abs(P.hitRange(data.skills.whirlwind, 1, sw)[0] - (wa + 7)) < 1e-9);
+  // Năng lượng không cộng cho kỹ năng vật lý
+  w.attrs.ene += 10;
+  assert.ok(Math.abs(P.hitRange(data.skills.whirlwind, 1, P.computeStats(w, data))[0] - (wa + 7)) < 1e-9);
 });
 
 console.log(`\n${n} kiểm tra đều qua.`);

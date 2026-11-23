@@ -433,13 +433,14 @@ class App {
         const open = unlocked.has(m.id);
         const cleared = (this.ch.mapClears?.[P.clearKey(diff, m.id)] || 0) > 0 || m.index < P.progressOf(this.ch, diff);
         const rec = this.ch.records?.[`${diff}:${m.id}`];
-        const pct = Math.round((m.difficulty - 1) * 100);
-        return `<button class="map ${open ? '' : 'locked'} ${cleared ? 'cleared' : ''} ${m.id === cur.id ? 'on' : ''}" ${open ? `data-map="${m.id}"` : 'disabled'} title="${esc(m.name)} · độ khó ×${m.difficulty.toFixed(2)}">
-          <b>${esc(m.id)}</b><span>${open ? esc(m.name) : 'Chưa mở'}</span><small>${cleared ? '✓ đã qua · ' : open ? '' : '🔒 '}${pct ? `+${pct}%` : 'gốc'}${rec ? ` · ⏱ ${fmtTime(rec)}` : ''}</small></button>`;
+        const pct = Math.round((m.hpMult - 1) * 100);
+        const dpct = Math.round((m.dmgMult - 1) * 100);
+        return `<button class="map ${open ? '' : 'locked'} ${cleared ? 'cleared' : ''} ${m.id === cur.id ? 'on' : ''}" ${open ? `data-map="${m.id}"` : 'disabled'} title="${esc(m.name)} · máu quái ×${m.hpMult.toFixed(2)}, sát thương ×${m.dmgMult.toFixed(2)}">
+          <b>${esc(m.id)}</b><span>${open ? esc(m.name) : 'Chưa mở'}</span><small>${cleared ? '✓ đã qua · ' : open ? '' : '🔒 '}${pct ? `máu +${pct}% · ST +${dpct}%` : 'gốc'}${rec ? ` · ⏱ ${fmtTime(rec)}` : ''}</small></button>`;
       }).join('')}</div></div>`;
     }
     const dInfo = D.id === 'normal' ? '' : ` · ${esc(D.name)}: máu quái ×${D.hpMult}, sát thương ×${D.dmgMult}, quái kháng +${Math.round(D.monsterResist * 100)}%, bạn bị trừ ${Math.round(D.playerResistPenalty * 100)}% kháng, kinh nghiệm ×${D.xpMult}, cấp đồ +${D.ilvlBonus}`;
-    return `<section class="tests mappicker"><div class="dtabs">${dtabs}</div><h3>Chọn màn <small>${done}/${total} màn đã qua · mỗi màn khó hơn màn trước 5% (máu, sát thương; kinh nghiệm cũng +5%)${dInfo} · bấm đúp để vào ngay</small></h3>${html}
+    return `<section class="tests mappicker"><div class="dtabs">${dtabs}</div><h3>Chọn màn <small>${done}/${total} màn đã qua · mỗi màn: máu quái +${Math.round((data.campaign.hpStep ?? 0) * 100)}%, sát thương +${Math.round((data.campaign.dmgStep ?? 0) * 100)}% (cộng dồn), kinh nghiệm +${Math.round((data.campaign.rewardStep ?? 0) * 100)}%${dInfo} · bấm đúp để vào ngay</small></h3>${html}
       ${this.recordsHtml(diff)}</section>`;
   }
 
@@ -481,7 +482,7 @@ class App {
       const extra = r.result === 'win'
         ? (r.newDifficulty ? `<div class="chest big">Đã mở độ khó mới: <b style="color:${data.difficultiesById[r.newDifficulty].color}">${esc(data.difficultiesById[r.newDifficulty].name)}</b>! Quái mạnh hơn nhiều, có kháng nguyên tố; đồ và kinh nghiệm tốt hơn.</div>` : '') +
           (r.newRecord ? `<div class="chest">Kỷ lục mới: hạ boss lúc ${fmtTime(r.timeSec)}!</div>` : '') +
-          (nm ? `<div class="chest">Đã mở màn mới: <b>${esc(nm.id)} ${esc(nm.name)}</b> (độ khó ×${nm.difficulty.toFixed(2)}).</div>` : '') +
+          (nm ? `<div class="chest">Đã mở màn mới: <b>${esc(nm.id)} ${esc(nm.name)}</b> (máu quái ×${nm.hpMult.toFixed(2)}).</div>` : '') +
           (r.flawless ? '<div class="chest">Hòm thưởng thêm: hoàn thành mà chưa chết lần nào ở bản đồ này!</div>' : '')
         : `<div>Nguyên nhân: <b>${esc(r.cause || '-')}</b>. Kinh nghiệm, cấp và đồ đã nhặt vẫn được giữ; màn phải chơi lại từ đầu.</div>`;
       const loot = (r.itemsPicked || []).filter((x) => x.rarity !== 'normal');

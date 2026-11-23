@@ -78,7 +78,8 @@
           "from": "meteor",
           "pct": 0.06
         }
-      ]
+      ],
+      "flatScale": 1
     },
     {
       "id": "ember_ring",
@@ -113,7 +114,8 @@
           "from": "firewall",
           "pct": 0.04
         }
-      ]
+      ],
+      "flatScale": 0.25
     },
     {
       "id": "fire_mastery",
@@ -175,7 +177,9 @@
           "from": "firewall",
           "pct": 0.05
         }
-      ]
+      ],
+      "flatScale": 1,
+      "burnFlatScale": 1
     },
     {
       "id": "firewall",
@@ -208,7 +212,8 @@
       "placeDistance": 140,
       "searchRange": 450,
       "clusterRadius": 150,
-      "synergies": []
+      "synergies": [],
+      "flatScale": 1
     },
     {
       "id": "inferno_burst",
@@ -273,7 +278,8 @@
           "from": "frozen_orb",
           "pct": 0.05
         }
-      ]
+      ],
+      "flatScale": 1
     },
     {
       "id": "frost_nova",
@@ -309,7 +315,8 @@
           "from": "blizzard",
           "pct": 0.04
         }
-      ]
+      ],
+      "flatScale": 1
     },
     {
       "id": "cold_mastery",
@@ -369,7 +376,8 @@
           "from": "frozen_orb",
           "pct": 0.05
         }
-      ]
+      ],
+      "flatScale": 1
     },
     {
       "id": "frozen_orb",
@@ -412,7 +420,8 @@
           "from": "ice_bolt",
           "pct": 0.05
         }
-      ]
+      ],
+      "flatScale": 0.1
     },
     {
       "id": "shatter",
@@ -477,7 +486,8 @@
           "from": "chain_lightning",
           "pct": 0.06
         }
-      ]
+      ],
+      "flatScale": 0.35
     },
     {
       "id": "lightning",
@@ -515,7 +525,8 @@
           "from": "chain_lightning",
           "pct": 0.05
         }
-      ]
+      ],
+      "flatScale": 1
     },
     {
       "id": "chain_lightning",
@@ -555,7 +566,8 @@
           "from": "lightning",
           "pct": 0.05
         }
-      ]
+      ],
+      "flatScale": 1
     },
     {
       "id": "lightning_mastery",
@@ -633,7 +645,8 @@
           "from": "chain_lightning",
           "pct": 0.04
         }
-      ]
+      ],
+      "flatScale": 1
     },
     {
       "id": "cleave",
@@ -666,7 +679,8 @@
           "from": "leap_slam",
           "pct": 0.05
         }
-      ]
+      ],
+      "flatScale": 0.6
     },
     {
       "id": "whirlwind",
@@ -701,7 +715,8 @@
           "from": "cleave",
           "pct": 0.04
         }
-      ]
+      ],
+      "flatScale": 0.35
     },
     {
       "id": "weapon_mastery",
@@ -754,7 +769,8 @@
           "from": "cleave",
           "pct": 0.06
         }
-      ]
+      ],
+      "flatScale": 1
     },
     {
       "id": "throwing_axe",
@@ -795,7 +811,8 @@
           "from": "whirlwind",
           "pct": 0.05
         }
-      ]
+      ],
+      "flatScale": 1
     },
     {
       "id": "frenzy",
@@ -853,7 +870,8 @@
       "synergies": [],
       "minCrowd": 6,
       "closeRadius": 90,
-      "lowHpPct": 0.5
+      "lowHpPct": 0.5,
+      "flatScale": 1
     },
     {
       "id": "battle_cry",
@@ -939,7 +957,8 @@
           "from": "howl",
           "pct": 0.05
         }
-      ]
+      ],
+      "flatScale": 1
     },
     {
       "id": "earthquake",
@@ -977,7 +996,8 @@
           "from": "stomp",
           "pct": 0.05
         }
-      ]
+      ],
+      "flatScale": 1
     },
     {
       "id": "unbroken",
@@ -1031,7 +1051,8 @@
           "from": "chain_cleave",
           "pct": 0.05
         }
-      ]
+      ],
+      "flatScale": 1
     },
     {
       "id": "life_leech",
@@ -1087,7 +1108,8 @@
           "from": "thrust",
           "pct": 0.05
         }
-      ]
+      ],
+      "flatScale": 1
     },
     {
       "id": "berserk",

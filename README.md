@@ -106,6 +106,42 @@ Chỉ số cấp 1 so với pháp sư:
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
 
+## Sát thương cộng thẳng từ Sức mạnh / Năng lượng và máu quái +10% mỗi màn (bản 1.5–1.6)
+
+**Cộng thẳng mỗi đòn:**
+- Mỗi điểm **Sức mạnh cộng thêm** cho +2 sát thương mỗi đòn của kỹ năng vật lý. Mỗi điểm **Năng lượng cộng thêm** cho +2 sát thương mỗi đòn của kỹ năng phép.
+  - "Cộng thêm" là phần vượt mức khởi đầu của lớp, tính cả điểm tự cộng lẫn điểm từ đồ.
+  - Phần cộng thẳng được cộng vào sát thương gốc trước khi nhân hệ số %.
+- Số liệu: `config.json` → `attributes.str.physFlatPerPoint`, `attributes.ene.spellFlatPerPoint`.
+- **Hệ số `flatScale` của từng kỹ năng** (`skills.json`): kỹ năng đánh nhanh hoặc nhiều đòn nhỏ chỉ nhận một phần, để phần cộng thẳng không lấn át sát thương gốc:
+
+  | Kỹ năng | Hệ số |
+  |---|---|
+  | Đòn đơn, đòn chính (Cầu Lửa, Tia Băng, Tia Chớp, Sét Lan, Mưa Thiên Thạch, Vòng Sương Giá, Bão Sấm, Nhảy Đập, Ném Rìu, Dậm Đất, Đâm Xuyên…) | 100% |
+  | Chém Bổ | 60% |
+  | Tia Điện Tích | 35% |
+  | Lốc Xoáy | 35% |
+  | Vòng Than | 25% |
+  | Mảnh Cầu Băng Xoay | 10% |
+
+  Vùng gây sát thương theo giây (Bão Tuyết, Tường Lửa, Động Đất, vết cháy thiên thạch) nhận phần cộng thẳng tính theo giây. Mô tả kỹ năng trong bảng ghi rõ tỉ lệ nhận.
+- Bảng nhân vật hiện dòng "Sát thương vật lý / phép mỗi đòn".
+- So sánh hai lớp (`balance.mjs --arena close`, trung bình 3 nhánh mỗi lớp, Chiến Binh / Pháp sư):
+
+  | Cấp | Một mục tiêu | Đám đông | Hạ tinh anh 600 máu |
+  |---|---|---|---|
+  | 4 | 110 / 92 | 256 / 311 | 18,1 / 11,1 giây |
+  | 10 | 331 / 318 | 526 / 539 | 3,3 / 2,9 giây |
+  | 14 | 480 / 502 | 524 / 597 | 2,3 / 1,9 giây |
+
+  Hai lớp giờ gần ngang nhau. Chiến Binh không còn sát thương cao hơn rõ rệt như trước (trước khi có phần cộng thẳng, hơn khoảng 40%). Muốn Chiến Binh nhỉnh hơn thì giảm `spellFlatPerPoint` hoặc tăng `physFlatPerPoint`.
+
+**Máu quái +10% mỗi màn** (`campaign.json`):
+- `hpStep` = 0,10: máu quái ×1,1 mỗi màn, cộng dồn. Màn 10 ×2,36, màn 20 ×6,12.
+- `dmgStep` = 0,05: sát thương quái giữ +5% mỗi màn, màn 20 ×2,53.
+- Áp dụng cho mọi quái, kể cả trùm nhỏ và boss, và nhân chồng lên hệ số của độ khó (Ác mộng, Địa ngục).
+- Ô chọn màn hiện riêng mức tăng máu và mức tăng sát thương.
+
 ## Thời lượng màn và kinh nghiệm (bản 1.4)
 
 - **Mỗi màn 7 phút** (`config.json` → `run.duration`). Mọi mốc thời gian trong `maps/1-1.json` rút về khoảng 70%:
@@ -179,9 +215,7 @@ Chỉ số cấp 1 so với pháp sư:
 
 Danh sách màn nằm trong `data/maps/campaign.json`. Mỗi màn = màn gốc `1-1.json` + thay đổi của chương (màu nền, kiểu vật cản) + thay đổi riêng của màn (nếu có).
 
-- **Độ khó tăng 5% mỗi màn, cộng dồn:** máu và sát thương của mọi quái, kể cả trùm nhỏ và boss, nhân `1,05^(số thứ tự màn − 1)`. Màn 2 là ×1,05, màn 5 là ×1,22, màn 10 là ×1,55, màn 20 là ×2,53.
-  - Đổi bước tăng ở `difficultyStep`.
-  - Muốn một màn có độ khó riêng thì ghi `"difficulty"` vào màn đó.
+- **Độ khó tăng dần, cộng dồn:** máu quái +10% mỗi màn (`hpStep`), sát thương quái +5% mỗi màn (`dmgStep`). Muốn một màn có hệ số riêng thì ghi `"hpMult"` / `"dmgMult"` vào màn đó.
 - **Phần thưởng tăng theo:** kinh nghiệm của quái +5% mỗi màn (`rewardStep`), cấp đồ rơi +1 mỗi màn (`itemLevelPerMap`).
 - **Mở khoá theo thứ tự:** hạ boss màn hiện tại thì mở màn sau.
   - Màn đã mở có thể chơi lại bất kỳ lúc nào.
