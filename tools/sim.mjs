@@ -104,7 +104,7 @@ for (let r = 0; r < totalRuns; r++) {
     console.log(`   HẾT GIỜ: người chơi (${p.x | 0},${p.y | 0}) máu ${p.hp | 0}; boss (${b.x | 0},${b.y | 0}) trạng thái ${b.b.state}, cách ${Math.hypot(b.x - p.x, b.y - p.y) | 0}px; quái còn ${g.enemies.length}`);
   } else if (campaign && !g.over) console.log(`   HẾT GIỜ khi chưa có boss: t=${g.time | 0}, bossSpawned=${g.bossSpawned}, sự kiện ${g.eventIdx}/${g.events.length}`);
   if (campaign) {
-    if (verbose || res.result !== 'THẮNG' || mapId.endsWith('-5')) console.log(`${data.difficultiesById[diff].name} ${mapId} (×${g.map.difficulty.toFixed(2)}) lần ${attempts[ak]}: ${res.result} lúc ${res.time}, cấp ${res.level}, boss còn ${res.boss}, nguyên nhân ${res.cause}`);
+    if (verbose || res.result !== 'THẮNG' || mapId.endsWith('-5')) console.log(`${data.difficultiesById[diff].name} ${mapId} (máu ×${g.map.hpMult.toFixed(2)}) lần ${attempts[ak]}: ${res.result} lúc ${res.time}, cấp ${res.level}, boss còn ${res.boss}, nguyên nhân ${res.cause}`);
     continue;
   }
   console.log(`Lượt ${res.run}: ${res.result} lúc ${res.time}, cấp ${res.level}, giết ${res.kills}, nguyên nhân: ${res.cause}, boss còn ${res.boss}, quái tối đa ${maxAlive}, thiếu mana ${res.noManaSec}s, đồ ${res.items}, vàng ${g.log.gold}, đóng băng ${g.log.freezes} (${ms.toFixed(0)}ms)`);

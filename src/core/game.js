@@ -333,10 +333,9 @@ export class Game {
     const lvl = this.map.level;
     const sc = this.cfg.monsterScaling;
     // Độ khó của màn (×1,05 mỗi màn) nhân vào máu và sát thương của mọi quái.
-    const diff = this.map.difficulty || 1;
     const D = this.diff;
-    const hp = def.hp * (1 + sc.hpPerLevel * (lvl - 1)) * diff * D.hpMult;
-    const dmgMult = (1 + sc.dmgPerLevel * (lvl - 1)) * diff * D.dmgMult;
+    const hp = def.hp * (1 + sc.hpPerLevel * (lvl - 1)) * (this.map.hpMult ?? this.map.difficulty ?? 1) * D.hpMult;
+    const dmgMult = (1 + sc.dmgPerLevel * (lvl - 1)) * (this.map.dmgMult ?? this.map.difficulty ?? 1) * D.dmgMult;
     const e = {
       id: this.nextId++, type: typeId, def, name: def.name, ai: def.ai,
       x, y, r: def.radius, hp, maxHp: hp,
@@ -792,7 +791,7 @@ export class Game {
     this.zones.push({
       kind: 'firewall', x1: cx - hx, y1: cy - hy, x2: cx + hx, y2: cy + hy, cx, cy,
       half: sk.thickness / 2, t: 0, dur: sk.duration, tickT: 0, tick: sk.tickInterval,
-      dps: P.lv(sk.dps, lvl), slow: sk.slowPct, skill: sk, lvl,
+      dps: P.lv(sk.dps, lvl) + P.flatFor(sk, this.stats), slow: sk.slowPct, skill: sk, lvl,
     });
     return true;
   }
@@ -811,7 +810,7 @@ export class Game {
     if (!t) return false;
     this.zones.push({
       kind: 'area', look: 'blizzard', x: t.x, y: t.y, r: sk.radius, t: 0, dur: sk.duration, tick: sk.tick, tickT: 0.05,
-      dps: P.lv(sk.dps, lvl), skill: sk, element: sk.element, slow: sk.slow,
+      dps: P.lv(sk.dps, lvl) + P.flatFor(sk, this.stats), skill: sk, element: sk.element, slow: sk.slow,
     });
     return true;
   }
@@ -823,7 +822,7 @@ export class Game {
     const a = Math.atan2(t.y - p.y, t.x - p.x);
     this.orbs.push({
       x: p.x, y: p.y, vx: Math.cos(a) * sk.orbSpeed, vy: Math.sin(a) * sk.orbSpeed, life: sk.orbLife,
-      emitT: 0, ang: a, skill: sk, lvl, mult: this.skillMult(sk), dmg: P.damageRange(sk, lvl),
+      emitT: 0, ang: a, skill: sk, lvl, mult: this.skillMult(sk), dmg: P.hitRange(sk, lvl, this.stats),
     });
     return true;
   }
@@ -853,7 +852,7 @@ export class Game {
     const p = this.player;
     const base = Math.atan2(t.y - p.y, t.x - p.x);
     const mult = this.skillMult(sk);
-    const dmg = P.damageRange(sk, lvl);
+    const dmg = P.hitRange(sk, lvl, this.stats);
     for (let k = 0; k < sk.count; k++) {
       const a = base + this.rng.range(-sk.spread, sk.spread);
       this.addProjectile({
@@ -1224,7 +1223,7 @@ export class Game {
         const sk = pd.skill;
         const mult = this.skillMult(sk);
         this.areaDamage(pd.x, pd.y, pd.r, () => this.rollSkill(sk, pd.lvl, mult), sk.element);
-        this.zones.push({ kind: 'area', look: 'burn', x: pd.x, y: pd.y, r: pd.r, t: 0, dur: sk.burnDuration, tickT: sk.burnTick, tick: sk.burnTick, dps: P.lv(sk.burnDps, pd.lvl), skill: sk, element: sk.element });
+        this.zones.push({ kind: 'area', look: 'burn', x: pd.x, y: pd.y, r: pd.r, t: 0, dur: sk.burnDuration, tickT: sk.burnTick, tick: sk.burnTick, dps: P.lv(sk.burnDps, pd.lvl) + P.flatFor(sk, this.stats, 'burnFlatScale'), skill: sk, element: sk.element });
         this.addFx({ kind: 'burst', x: pd.x, y: pd.y, dur: 0.4, r: pd.r, color: '#ff7a2a' });
         this.emit({ type: 'shake', amount: 4 });
         break;

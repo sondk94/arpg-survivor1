@@ -11,9 +11,17 @@ export function lv(param, level) {
 }
 
 // Khoảng sát thương một đòn, kèm sát thương vật lý cộng thẳng từ Sức mạnh cộng thêm (chỉ kỹ năng vật lý).
+// Sát thương cộng thẳng mỗi đòn: Sức mạnh cộng thêm cho kỹ năng vật lý, Năng lượng cộng thêm cho kỹ năng phép,
+// nhân hệ số flatScale của từng kỹ năng (kỹ năng đánh nhanh, nhiều đòn nhỏ nhận ít hơn).
+export function flatFor(skill, stats, scaleKey = 'flatScale') {
+  if (!stats) return 0;
+  const base = skill.element === 'physical' ? stats.physFlat || 0 : stats.spellFlat || 0;
+  return base * (skill[scaleKey] ?? 1);
+}
+
 export function hitRange(skill, level, stats) {
   const [a, b] = damageRange(skill, level);
-  const f = skill.element === 'physical' && stats ? stats.physFlat || 0 : 0;
+  const f = flatFor(skill, stats);
   return [a + f, b + f];
 }
 
@@ -136,6 +144,8 @@ export function computeStats(ch, data) {
     physDmgPct: at.str * a.str.physDmgPct + pct('physDmgPct'),
     // +2 sát thương vật lý mỗi đòn cho mỗi điểm Sức mạnh vượt mức khởi đầu của lớp (từ điểm cộng và từ đồ).
     physFlat: Math.max(0, at.str - ((getClass(ch, data).startAttributes || p.startAttributes || {}).str ?? 0)) * (a.str.physFlatPerPoint || 0),
+    // +2 sát thương phép mỗi đòn cho mỗi điểm Năng lượng vượt mức khởi đầu của lớp.
+    spellFlat: Math.max(0, at.ene - ((getClass(ch, data).startAttributes || p.startAttributes || {}).ene ?? 0)) * (a.ene.spellFlatPerPoint || 0),
     spellDmgPct: at.ene * a.ene.spellDmgPct + pct('spellDmgPct'),
     elemDmgPct: { fire: pct('fireDmgPct'), cold: pct('coldDmgPct'), lightning: pct('lightningDmgPct') },
     // +% sát thương lên tinh anh và trùm nhỏ theo nguyên tố (mặc định của nhánh + từ đồ).

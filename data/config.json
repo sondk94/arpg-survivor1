@@ -1,5 +1,5 @@
 {
-  "version": "1.5",
+  "version": "1.6",
   "testMode": true,
   "run": {
     "duration": 420,
@@ -64,7 +64,8 @@
       "key": "4",
       "mana": 2,
       "spellDmgPct": 0.005,
-      "desc": "+2 mana tối đa, +0,5% sát thương phép"
+      "desc": "+2 mana tối đa, +0,5% sát thương phép; mỗi điểm cộng thêm (so với lúc tạo nhân vật) +2 sát thương phép mỗi đòn",
+      "spellFlatPerPoint": 2
     }
   },
   "caps": {
