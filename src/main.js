@@ -217,13 +217,20 @@ class App {
 
   // ---------- Lượt chơi ----------
   // Màn mặc định: màn đã mở xa nhất.
+  currentDiff() {
+    const u = P.unlockedDifficulties(this.ch, this.data);
+    if (!u.includes(this.selectedDiff)) this.selectedDiff = u[u.length - 1];
+    return this.selectedDiff;
+  }
+
   defaultMap() {
-    const u = P.unlockedMaps(this.ch, this.data);
+    const u = P.unlockedMaps(this.ch, this.data, this.currentDiff());
     return u[u.length - 1];
   }
 
   startRun(mapId = this.selectedMap) {
-    if (!mapId || !P.unlockedMaps(this.ch, this.data).includes(mapId)) mapId = this.defaultMap();
+    const diff = this.currentDiff();
+    if (!mapId || !P.unlockedMaps(this.ch, this.data, diff).includes(mapId)) mapId = this.defaultMap();
     this.selectedMap = mapId;
     if (!P.hasActiveSkill(this.ch)) {
       this.panel.open('char');
@@ -232,7 +239,7 @@ class App {
     }
     if (this.panel.isOpen) this.panel.close();
     this.ch.runs++;
-    this.game = new Game(this.data, this.ch, { mapId, viewW: this.renderer.w, viewH: this.renderer.h });
+    this.game = new Game(this.data, this.ch, { mapId, difficulty: diff, viewW: this.renderer.w, viewH: this.renderer.h });
     this.game.god = this.ui.god;
     this.game.showDamage = this.ui.showDamage;
     this.state = 'run';
@@ -269,6 +276,9 @@ class App {
       classId: this.ch.classId,
       charName: this.ch.name,
       map: g.map.id,
+      mode: g.diff.id,
+      newRecord: !!r.newRecord,
+      newDifficulty: r.newDifficulty || null,
       difficulty: Math.round(g.map.difficulty * 1000) / 1000,
       nextMapUnlocked: r.nextMap || null,
       seed: g.seed,
@@ -304,6 +314,7 @@ class App {
     T.saveRun(rec);
     this.lastResult = rec;
     if (r.nextMap) this.selectedMap = r.nextMap;
+    if (r.newDifficulty) { this.selectedDiff = r.newDifficulty; this.selectedMap = this.data.mapOrder[0]; }
     this.save();
     this.state = 'village';
     this.game = null;
@@ -392,15 +403,22 @@ class App {
   }
 
   currentMap() {
-    const u = P.unlockedMaps(this.ch, this.data);
+    const u = P.unlockedMaps(this.ch, this.data, this.currentDiff());
     if (!u.includes(this.selectedMap)) this.selectedMap = u[u.length - 1];
     return this.data.maps[this.selectedMap];
   }
 
   mapPickerHtml() {
     const data = this.data;
-    const unlocked = new Set(P.unlockedMaps(this.ch, data));
+    const diff = this.currentDiff();
+    const unlocked = new Set(P.unlockedMaps(this.ch, data, diff));
     const cur = this.currentMap();
+    const udiffs = P.unlockedDifficulties(this.ch, data);
+    const dtabs = data.difficulties.map((d) => {
+      const open = udiffs.includes(d.id);
+      return `<button class="tab dtab ${d.id === diff ? 'on' : ''}" ${open ? `data-diff="${d.id}"` : 'disabled'} style="--dc:${d.color}" title="${open ? '' : `Mở khi qua hết 20 màn ${esc(data.difficultiesById[d.unlockAfter].name)}`}">${open ? '' : '🔒 '}${esc(d.name)} <small>${P.progressOf(this.ch, d.id)}/${data.mapOrder.length}</small></button>`;
+    }).join('');
+    const D = data.difficultiesById[diff];
     const byCh = new Map();
     for (const id of data.mapOrder) {
       const m = data.maps[id];
@@ -408,18 +426,42 @@ class App {
       byCh.get(m.chapterName).push(m);
     }
     const total = data.mapOrder.length;
-    const done = Math.min(total, this.ch.mapProgress || 0);
+    const done = Math.min(total, P.progressOf(this.ch, diff));
     let html = '';
     for (const [name, maps] of byCh) {
       html += `<div class="chap"><div class="chap-name">${esc(name)}</div><div class="maps">${maps.map((m) => {
         const open = unlocked.has(m.id);
-        const cleared = (this.ch.mapClears?.[m.id] || 0) > 0 || m.index < (this.ch.mapProgress || 0);
+        const cleared = (this.ch.mapClears?.[P.clearKey(diff, m.id)] || 0) > 0 || m.index < P.progressOf(this.ch, diff);
+        const rec = this.ch.records?.[`${diff}:${m.id}`];
         const pct = Math.round((m.difficulty - 1) * 100);
         return `<button class="map ${open ? '' : 'locked'} ${cleared ? 'cleared' : ''} ${m.id === cur.id ? 'on' : ''}" ${open ? `data-map="${m.id}"` : 'disabled'} title="${esc(m.name)} · độ khó ×${m.difficulty.toFixed(2)}">
-          <b>${esc(m.id)}</b><span>${open ? esc(m.name) : 'Chưa mở'}</span><small>${cleared ? '✓ đã qua · ' : open ? '' : '🔒 '}${pct ? `+${pct}%` : 'gốc'}</small></button>`;
+          <b>${esc(m.id)}</b><span>${open ? esc(m.name) : 'Chưa mở'}</span><small>${cleared ? '✓ đã qua · ' : open ? '' : '🔒 '}${pct ? `+${pct}%` : 'gốc'}${rec ? ` · ⏱ ${fmtTime(rec)}` : ''}</small></button>`;
       }).join('')}</div></div>`;
     }
-    return `<section class="tests mappicker"><h3>Chọn màn <small>${done}/${total} màn đã qua · mỗi màn khó hơn màn trước 5% (máu, sát thương; kinh nghiệm cũng +5%) · bấm đúp để vào ngay</small></h3>${html}</section>`;
+    const dInfo = D.id === 'normal' ? '' : ` · ${esc(D.name)}: máu quái ×${D.hpMult}, sát thương ×${D.dmgMult}, quái kháng +${Math.round(D.monsterResist * 100)}%, bạn bị trừ ${Math.round(D.playerResistPenalty * 100)}% kháng, kinh nghiệm ×${D.xpMult}, cấp đồ +${D.ilvlBonus}`;
+    return `<section class="tests mappicker"><div class="dtabs">${dtabs}</div><h3>Chọn màn <small>${done}/${total} màn đã qua · mỗi màn khó hơn màn trước 5% (máu, sát thương; kinh nghiệm cũng +5%)${dInfo} · bấm đúp để vào ngay</small></h3>${html}
+      ${this.recordsHtml(diff)}</section>`;
+  }
+
+  // Bảng kỷ lục thời gian hạ boss của mọi nhân vật trên trình duyệt này.
+  recordsHtml(diff) {
+    const data = this.data;
+    const rows = [];
+    for (const c of this.roster.chars) {
+      const cc = c.uid === this.ch?.uid ? this.ch : c;
+      for (const [k, v] of Object.entries(cc.records || {})) {
+        const [d, map] = k.split(':');
+        if (d === diff) rows.push({ map, t: v, name: cc.name, cls: P.getClass(cc, data).short, lvl: cc.level });
+      }
+    }
+    if (!rows.length) return '<details class="records"><summary>Bảng kỷ lục</summary><p class="muted">Chưa có kỷ lục ở độ khó này. Hạ boss để ghi thời gian.</p></details>';
+    const best = {};
+    for (const r of rows) if (!best[r.map] || r.t < best[r.map].t) best[r.map] = r;
+    const list = data.mapOrder.filter((id) => best[id]).map((id) => best[id]);
+    return `<details class="records"><summary>Bảng kỷ lục (${esc(data.difficultiesById[diff].name)}, trên trình duyệt này)</summary>
+      <table class="hist"><thead><tr><th>Màn</th><th>Thời gian hạ boss</th><th>Nhân vật</th></tr></thead><tbody>
+      ${list.map((r) => `<tr><td>${esc(r.map)} ${esc(data.maps[r.map].name)}</td><td>${fmtTime(r.t)}</td><td>${esc(r.name)} (${esc(r.cls)}, cấp ${r.lvl})</td></tr>`).join('')}
+      </tbody></table><p class="muted" style="font-size:11px">Bảng xếp hạng chung với người chơi khác cần có server, chưa có trong bản này.</p></details>`;
   }
 
   renderVillage() {
@@ -433,10 +475,13 @@ class App {
     let resultHtml = '';
     if (r) {
       const rm = data.maps[r.map];
-      const title = r.result === 'win' ? `Hoàn thành màn ${esc(r.map)}: ${esc(rm ? rm.name : '')}!` : r.result === 'quit' ? 'Đã bỏ lượt' : `Bạn đã gục ngã ở màn ${esc(r.map)}`;
+      const dn = data.difficultiesById[r.mode || 'normal'];
+      const title = r.result === 'win' ? `Hoàn thành màn ${esc(r.map)}: ${esc(rm ? rm.name : '')} (${esc(dn.name)})!` : r.result === 'quit' ? 'Đã bỏ lượt' : `Bạn đã gục ngã ở màn ${esc(r.map)}`;
       const nm = r.nextMapUnlocked && data.maps[r.nextMapUnlocked];
       const extra = r.result === 'win'
-        ? (nm ? `<div class="chest">Đã mở màn mới: <b>${esc(nm.id)} ${esc(nm.name)}</b> (độ khó ×${nm.difficulty.toFixed(2)}).</div>` : '') +
+        ? (r.newDifficulty ? `<div class="chest big">Đã mở độ khó mới: <b style="color:${data.difficultiesById[r.newDifficulty].color}">${esc(data.difficultiesById[r.newDifficulty].name)}</b>! Quái mạnh hơn nhiều, có kháng nguyên tố; đồ và kinh nghiệm tốt hơn.</div>` : '') +
+          (r.newRecord ? `<div class="chest">Kỷ lục mới: hạ boss lúc ${fmtTime(r.timeSec)}!</div>` : '') +
+          (nm ? `<div class="chest">Đã mở màn mới: <b>${esc(nm.id)} ${esc(nm.name)}</b> (độ khó ×${nm.difficulty.toFixed(2)}).</div>` : '') +
           (r.flawless ? '<div class="chest">Hòm thưởng thêm: hoàn thành mà chưa chết lần nào ở bản đồ này!</div>' : '')
         : `<div>Nguyên nhân: <b>${esc(r.cause || '-')}</b>. Kinh nghiệm, cấp và đồ đã nhặt vẫn được giữ; màn phải chơi lại từ đầu.</div>`;
       const loot = (r.itemsPicked || []).filter((x) => x.rarity !== 'normal');
@@ -464,7 +509,7 @@ class App {
     v.innerHTML = `
       <div class="village-box">
         <header>
-          <h1>ARPG Survivor <small>Giai đoạn 1 · bản ${esc(data.config.version)} · Làng</small></h1>
+          <h1>ARPG Survivor <small>Bản ${esc(data.config.version)} · Làng</small></h1>
         </header>
         ${resultHtml}
         ${this.mapPickerHtml()}
@@ -479,7 +524,7 @@ class App {
             ${!P.hasActiveSkill(ch) ? '<div class="warn">Chưa có kỹ năng chủ động nào: mở bảng cộng điểm và chọn kỹ năng cấp 1 của nhánh Lửa, Băng hoặc Sét.</div>' : ''}
           </div>
           <div class="char-btns">
-            <button id="v-start" class="primary">Vào màn ${esc(this.currentMap().id)}: ${esc(this.currentMap().name)}</button>
+            <button id="v-start" class="primary">Vào màn ${esc(this.currentMap().id)}: ${esc(this.currentMap().name)}${this.currentDiff() !== 'normal' ? ` · ${esc(data.difficultiesById[this.currentDiff()].name)}` : ''}</button>
             <button id="v-panel">Cộng điểm (Tab / C)</button>
             <button id="v-items">Đồ đạc (I) · ${invUsed}/${ch.inventory.length}</button>
             <button id="v-stash">Rương chung · ${this.stash.filter(Boolean).length}/${this.stash.length}</button>
@@ -525,6 +570,7 @@ class App {
         </section>
       </div>`;
     $('#v-start').onclick = () => this.startRun();
+    v.querySelectorAll('[data-diff]').forEach((b) => (b.onclick = () => { this.selectedDiff = b.dataset.diff; this.selectedMap = null; this.renderVillage(); }));
     v.querySelectorAll('[data-map]').forEach((b) => {
       b.onclick = () => { this.selectedMap = b.dataset.map; this.renderVillage(); };
       b.ondblclick = () => { this.selectedMap = b.dataset.map; this.startRun(); };

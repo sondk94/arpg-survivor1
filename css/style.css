@@ -255,3 +255,29 @@ body:has(#panel:not(.hidden)) #debug { display: none; }
 .classcard b { font-size: 16px; color: var(--cc); }
 .classcard p { margin: 4px 0; font-size: 13px; }
 .classcard small { color: var(--muted); }
+
+/* Lỗ, rune, đồ bộ, lò chế, độ khó */
+.cell { position: relative; }
+.cell .sk { display: flex; gap: 2px; position: absolute; bottom: 2px; }
+.cell .sk i { width: 6px; height: 6px; border-radius: 50%; border: 1px solid #8a7f60; background: #000; }
+.cell .sk i.full { background: var(--ruc); border-color: var(--ruc); }
+.istats.runes { color: #ffb36a; }
+.sockets { margin-top: 4px; font-size: 11px; }
+.setinfo { margin-top: 6px; font-size: 11px; color: #6a8a6a; border-top: 1px solid #23301f; padding-top: 4px; }
+.setinfo b { color: #3fd16a; }
+.setinfo .on { color: #8ff0a8; }
+.craft-btns { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; max-width: 320px; }
+.craft-btns button { text-align: left; }
+.craft-btns small { color: #ffd76a; }
+.runes-list { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.rune-row { display: grid; grid-template-columns: 110px 36px 1fr; align-items: center; gap: 6px; }
+.rune-row button { padding: 2px 8px; font-size: 11px; }
+.rune-row small { color: #ffd76a; }
+.dtabs { display: flex; gap: 6px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
+.dtab.on { color: var(--dc); border-bottom-color: var(--panel2); }
+.dtab small { color: var(--muted); font-weight: 400; }
+.records { margin-top: 10px; }
+.records summary { cursor: pointer; color: var(--gold); font-weight: 700; }
+.chest.big { font-size: 15px; }
+#panel-tabs .tab { white-space: nowrap; }
+#panel-tabs .gold { white-space: nowrap; font-size: 13px; }

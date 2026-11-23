@@ -60,8 +60,11 @@ export function createCharacter(data, classId = data.classList[0].id, name = '')
     deaths: 0,
     clears: 0,
     mapDeaths: {},
-    mapProgress: 0, // số màn đã mở khoá thêm (hạ boss màn i thì mở màn i+1)
+    mapProgress: 0, // số màn đã qua ở độ khó Bình thường (hạ boss màn i thì mở màn i+1)
     mapClears: {},
+    diffProgress: {}, // số màn đã qua ở Ác mộng / Địa ngục
+    records: {}, // kỷ lục thời gian hạ boss: { "normal:1-1": giây }
+    shards: 0, // mảnh (nguyên liệu lò chế)
   };
   applyStartSkills(ch, data);
   return ch;
@@ -77,8 +80,8 @@ function applyStartSkills(ch, data) {
   }
 }
 
-export function totalAttrs(ch, gear) {
-  const g = gear || sumGear(ch).stats;
+export function totalAttrs(ch, gear, data) {
+  const g = gear || sumGear(ch, data).stats;
   const o = {};
   for (const k of ATTRS) o[k] = ch.attrs[k] + (g[k] || 0);
   return o;
@@ -105,7 +108,7 @@ export function computeStats(ch, data) {
   const c = data.config;
   const p = playerCfg(ch, data);
   const a = c.attributes;
-  const gear = sumGear(ch);
+  const gear = sumGear(ch, data);
   const g = gear.stats;
   const at = totalAttrs(ch, g);
   const pct = (k) => (g[k] || 0) / 100;
@@ -144,6 +147,7 @@ export function computeStats(ch, data) {
     hpOnKill: g.hpOnKill || 0,
     freezeHitsReduce: g.freezeHits || 0,
     inactiveGear: gear.inactive,
+    sets: gear.sets,
   };
 }
 
@@ -224,9 +228,26 @@ export function equipSkill(ch, id, slot) {
   return true;
 }
 
-// Các màn đã mở: màn đầu luôn mở, hạ boss màn i thì mở màn i+1.
-export function unlockedMaps(ch, data) {
-  return data.mapOrder.slice(0, Math.min(data.mapOrder.length, (ch.mapProgress || 0) + 1));
+// ---------- Độ khó và tiến độ ----------
+export function progressOf(ch, diff = 'normal') {
+  return diff === 'normal' ? ch.mapProgress || 0 : ch.diffProgress?.[diff] || 0;
+}
+export function setProgress(ch, diff, n) {
+  if (diff === 'normal') ch.mapProgress = Math.max(ch.mapProgress || 0, n);
+  else { ch.diffProgress = ch.diffProgress || {}; ch.diffProgress[diff] = Math.max(ch.diffProgress[diff] || 0, n); }
+}
+export function clearKey(diff, mapId) {
+  return diff === 'normal' ? mapId : `${diff}:${mapId}`;
+}
+// Ác mộng mở khi qua hết 20 màn Bình thường; Địa ngục mở khi qua hết Ác mộng.
+export function unlockedDifficulties(ch, data) {
+  return data.difficulties.filter((d) => !d.unlockAfter || progressOf(ch, d.unlockAfter) >= data.mapOrder.length).map((d) => d.id);
+}
+
+// Các màn đã mở ở một độ khó: màn đầu luôn mở, hạ boss màn i thì mở màn i+1.
+export function unlockedMaps(ch, data, diff = 'normal') {
+  if (!unlockedDifficulties(ch, data).includes(diff)) return [];
+  return data.mapOrder.slice(0, Math.min(data.mapOrder.length, progressOf(ch, diff) + 1));
 }
 
 export function hasActiveSkill(ch) {

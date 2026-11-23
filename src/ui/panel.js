@@ -4,6 +4,7 @@ import * as P from '../core/progression.js';
 import * as I from '../core/items.js';
 import { drawSkillIcon } from './render.js';
 import { describeSkill, synergyText } from './skilltext.js';
+import { RNG } from '../core/rng.js';
 
 const NODE = 78, COL_W = 104, ROW_H = 100;
 const pctStr = (v) => `${Math.round(v * 1000) / 10}%`;
@@ -130,9 +131,13 @@ export class Panel {
       return;
     }
     if (d.act) this.itemAction(d.act);
+    if (d.rune) this.socketRune(d.rune);
+    if (d.craft) this.doCraft(d.craft);
+    if (d.combine) this.doCombine(d.combine);
   }
 
   doubleAction() {
+    if (this.tab === 'craft') { this.render(); return; }
     const where = this.sel.where;
     if (where === 'eq') this.itemAction('unequip');
     else if (where === 'stash') this.itemAction('take');
@@ -190,6 +195,39 @@ export class Panel {
     this.changed();
   }
 
+  // Ghép rune đang chọn (ở kho đồ) vào món "where:key".
+  socketRune(target) {
+    const [where, key] = target.split(':');
+    const tgt = where === 'eq' ? this.ch.equipment[key] : this.ch.inventory[key];
+    const res = I.insertRune(this.ch, Number(this.sel.key), tgt, this.data);
+    if (res !== 'ok') { this.flash(res); return; }
+    this.flash('Đã ghép rune');
+    this.sel = where === 'eq' ? { where, key } : { where: 'inv', key: String(key) };
+    this.changed();
+  }
+
+  rng() {
+    return (this._rng ||= new RNG((Date.now() >>> 0) || 1));
+  }
+
+  doCraft(action) {
+    if (!this.sel) return;
+    const it = this.selItem();
+    if (action === 'salvage' && it && (it.rarity === 'unique' || it.rarity === 'set' || it.runes?.length) && !confirm(`Phân giải "${it.name}"? Món đồ${it.runes?.length ? ' và rune đã ghép' : ''} sẽ mất.`)) return;
+    const res = I.craft(this.ch, this.hooks.getStash(), this.sel, action, this.data, this.rng());
+    if (res !== 'ok') { this.flash(res); return; }
+    if (action === 'salvage') this.sel = null;
+    this.flash({ salvage: 'Đã phân giải', reroll: 'Đã đổi dòng chỉ số', upgrade: 'Đã nâng bậc', socket: 'Đã đục thêm lỗ', unsocket: 'Đã gỡ rune' }[action]);
+    this.changed();
+  }
+
+  doCombine(runeId) {
+    const res = I.combineRunes(this.ch, runeId, this.data, this.rng());
+    if (res !== 'ok') { this.flash(res); return; }
+    this.flash('Đã ghép rune bậc cao hơn');
+    this.changed();
+  }
+
   // ---------- Vẽ ----------
   render() {
     const ch = this.ch;
@@ -201,12 +239,14 @@ export class Panel {
       this.selected = this.data.skillList.find((x) => x.tree === this.tree).id;
     }
     const tabs = [['char', 'Nhân vật'], ['items', 'Đồ đạc']];
-    if (this.village) tabs.push(['stash', 'Rương chung']);
+    if (this.village) tabs.push(['stash', 'Rương chung'], ['craft', 'Lò chế']);
+    if (!this.village && (this.tab === 'stash' || this.tab === 'craft')) this.tab = 'items';
     const pts = ch.attrPoints + ch.skillPoints;
     this.tabsEl.innerHTML = tabs.map(([id, n]) => `<button class="tab ${this.tab === id ? 'on' : ''}" data-tab="${id}">${n}${id === 'char' && pts ? ` <span class="badge">${pts}</span>` : ''}</button>`).join('') +
-      `<span class="gold">${ch.gold.toLocaleString('vi-VN')} vàng</span>`;
+      `<span class="gold">${ch.gold.toLocaleString('vi-VN')} vàng · ${(ch.shards || 0).toLocaleString('vi-VN')} mảnh</span>`;
     if (this.tab === 'char') this.renderChar();
     else if (this.tab === 'items') this.renderItems(false);
+    else if (this.tab === 'craft') this.renderCraft();
     else this.renderItems(true);
     const hasChanges = JSON.stringify(P.snapshot(ch)) !== JSON.stringify(this.snap);
     this.root.querySelector('#btn-undo').disabled = !hasChanges;
@@ -377,15 +417,37 @@ export class Panel {
     const ch = this.ch;
     const sel = this.sel && this.sel.where === where && String(this.sel.key) === String(key);
     if (!it) return `<div class="cell empty ${sel ? 'sel' : ''}" data-cell="${where}:${key}">${label ? `<span>${esc(label)}</span>` : ''}</div>`;
-    const col = this.data.items.rarities[it.rarity].color;
+    const col = it.type === 'rune' ? this.data.runes.byId[it.rune].color : this.data.items.rarities[it.rarity].color;
     const ok = I.meetsReq(it, ch.level, I.totalStr(ch));
+    const dots = it.sockets ? `<span class="sk">${Array.from({ length: it.sockets }, (_, i) => `<i class="${it.runes?.[i] ? 'full' : ''}" style="${it.runes?.[i] ? `--ruc:${this.data.runes.byId[it.runes[i].id].color}` : ''}"></i>`).join('')}</span>` : '';
     return `<div class="cell ${sel ? 'sel' : ''} ${ok ? '' : 'unmet'}" data-cell="${where}:${key}" style="--rc:${col}" title="${esc(it.name)}">
-      <span class="ic">${esc(typeIcon(it.type))}</span><span class="nm">${esc(it.name)}</span></div>`;
+      <span class="ic">${esc(typeIcon(it.type))}</span><span class="nm">${esc(it.name)}</span>${dots}</div>`;
   }
 
   itemCard(it, title = '') {
     const ch = this.ch;
-    const R = this.data.items.rarities[it.rarity];
+    const data = this.data;
+    const R = data.items.rarities[it.rarity];
+    if (it.type === 'rune') {
+      const r = data.runes.byId[it.rune];
+      const f = (o) => Object.entries(o).map(([k, v]) => I.formatStat(k, v, data)).join(', ');
+      return `<div class="card" style="--rc:${r.color}">
+        ${title ? `<div class="card-title">${esc(title)}</div>` : ''}
+        <div class="iname">${esc(r.name)}</div><div class="ibase">Rune bậc ${r.tier} · ghép vào đồ có lỗ trống</div>
+        <div class="istats"><div>Vũ khí: ${esc(f(r.weapon))}</div><div>Giáp, mũ, tay phụ: ${esc(f(r.armor))}</div></div>
+        <div class="muted" style="font-size:11px;margin-top:4px">Ghép rồi không lấy lại được. Lò chế ghép 3 rune cùng loại thành 1 rune bậc cao hơn.</div>
+      </div>`;
+    }
+    let setHtml = '';
+    if (it.set) {
+      const set = data.items.setsById[it.set];
+      const n = I.equippedSetCount(ch, it.set);
+      setHtml = `<div class="setinfo"><b>${esc(set.name)}</b> (${n}/${set.pieces.length} đang mặc)
+        ${set.pieces.map((pc) => `<div class="${Object.values(ch.equipment).some((e) => e && e.piece === pc.id) ? 'on' : ''}">${esc(pc.name)}</div>`).join('')}
+        ${Object.entries(set.bonus).map(([need, b]) => `<div class="${n >= Number(need) ? 'on' : ''}">Đủ ${need} món: ${esc(Object.entries(b).map(([k, v]) => I.formatStat(k, v, data)).join(', '))}</div>`).join('')}</div>`;
+    }
+    const sockets = it.sockets ? `<div class="sockets">Lỗ: ${Array.from({ length: it.sockets }, (_, i) => it.runes?.[i] ? `<span style="color:${data.runes.byId[it.runes[i].id].color}">[${esc(data.runes.byId[it.runes[i].id].name)}]</span>` : '<span class="muted">[trống]</span>').join(' ')}</div>` : '';
+    const rl = I.runeLines(it, data);
     const lvlOk = ch.level >= it.req.level;
     const strOk = I.totalStr(ch) >= (it.req.str || 0);
     return `<div class="card" style="--rc:${R.color}">
@@ -394,22 +456,61 @@ export class Panel {
       <div class="ibase">${esc(it.baseName)} · ${esc(R.name)} · cấp đồ ${it.ilvl}</div>
       <div class="req ${lvlOk ? '' : 'bad'}">Cần cấp ${it.req.level}</div>
       ${it.req.str ? `<div class="req ${strOk ? '' : 'bad'}">Cần ${it.req.str} Sức mạnh</div>` : ''}
-      <div class="istats">${I.itemLines(it, this.data).map((l) => `<div>${esc(l)}</div>`).join('')}</div>
-      ${this.village ? `<div class="ival">Bán được ${I.sellValue(it, this.data)} vàng</div>` : ''}
+      <div class="istats">${I.itemLines(it, data).map((l) => `<div>${esc(l)}</div>`).join('')}</div>
+      ${rl.length ? `<div class="istats runes">${rl.map((l) => `<div>${esc(l)}</div>`).join('')}</div>` : ''}
+      ${sockets}${setHtml}
+      ${this.village ? `<div class="ival">Bán được ${I.sellValue(it, data)} vàng · phân giải ra ${I.salvageValue(it, data)} mảnh</div>` : ''}
     </div>`;
   }
 
   compareHtml(it) {
+    if (it.type === 'rune') return '';
     const slots = I.slotsForType(it.type, this.data);
     const eqs = slots.map((s) => this.ch.equipment[s]).filter(Boolean);
     if (!eqs.length) return '<div class="cmp muted">Ô này đang trống.</div>';
     return eqs.map((eq) => {
-      const keys = new Set([...Object.keys(it.stats), ...Object.keys(eq.stats)]);
-      const diffs = [...keys].map((k) => [k, (it.stats[k] || 0) - (eq.stats[k] || 0)]).filter(([, v]) => v);
+      const a = I.itemStats(it), b = I.itemStats(eq);
+      const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+      const diffs = [...keys].map((k) => [k, (a[k] || 0) - (b[k] || 0)]).filter(([, v]) => v);
       return `<div class="cmp">${this.itemCard(eq, 'Đang mặc')}
         <div class="diff"><h5>Nếu thay</h5>${diffs.length ? diffs.map(([k, v]) => `<div class="${v > 0 ? 'up' : 'down'}">${esc(I.formatStat(k, v, this.data).replace('+-', '−'))}</div>`).join('') : '<div class="muted">Không đổi chỉ số</div>'}</div>
       </div>`;
     }).join('');
+  }
+
+  // ---------- Lò chế (chỉ ở làng) ----------
+  renderCraft() {
+    const ch = this.ch;
+    const data = this.data;
+    const C = data.items.crafting;
+    const eqHtml = data.items.slots.map((s) => `<div class="eqslot eq-${s.id}">${this.cellHtml(ch.equipment[s.id], 'eq', s.id, s.name)}</div>`).join('');
+    const invHtml = ch.inventory.map((it, i) => this.cellHtml(it, 'inv', i)).join('');
+    const it = this.selItem();
+    let detail = '<div class="muted">Chọn một món đồ (đang mặc hoặc trong kho) để chế tác.</div>';
+    if (it && it.type !== 'rune') {
+      const c = I.craftCosts(it, data);
+      const b = (act, label, cost, why) => `<button data-craft="${act}" ${cost ? '' : 'disabled'} title="${esc(why || '')}">${label}${cost ? ` <small>${[cost.shards ? `${cost.shards} mảnh` : '', cost.gold ? `${cost.gold} vàng` : ''].filter(Boolean).join(' + ')}</small>` : ''}</button>`;
+      detail = `<div class="item-detail">${this.itemCard(it)}</div>
+        <div class="craft-btns">
+          ${this.sel.where !== 'eq' ? `<button data-craft="salvage" class="ghost">Phân giải → +${c.salvage} mảnh</button>` : ''}
+          ${b('upgrade', c.upgrade ? `Nâng bậc lên ${data.items.rarities[c.upgrade.to].name}` : 'Nâng bậc', c.upgrade, 'Chỉ đồ Thường và Ma thuật')}
+          ${b('reroll', 'Đổi dòng chỉ số', c.reroll, 'Chỉ đồ Ma thuật và Hiếm')}
+          ${b('socket', 'Đục thêm 1 lỗ', c.socket, 'Đã đủ lỗ tối đa, hoặc đồ Độc nhất / đồ bộ')}
+          ${b('unsocket', 'Gỡ hết rune (rune bị mất)', c.unsocket, 'Không có rune')}
+        </div>`;
+    } else if (it) detail = `<div class="item-detail">${this.itemCard(it)}</div>${this.sel.where === 'inv' ? '<div class="craft-btns"><button data-craft="salvage" class="ghost">Vứt rune</button></div>' : ''}`;
+    const counts = I.runeCounts(ch);
+    const runeRows = data.runes.list.map((r) => {
+      const n = counts[r.id] || 0;
+      const next = data.runes.list.find((x) => x.tier === r.tier + 1);
+      return `<div class="rune-row"><span style="color:${r.color}">${esc(r.name)}</span><b>×${n}</b>${next ? `<button data-combine="${r.id}" ${n >= C.runeCombine.count ? '' : 'disabled'}>${C.runeCombine.count} → 1 ${esc(next.name)} <small>${C.runeCombine.goldPerTier * r.tier} vàng</small></button>` : '<span class="muted">bậc cao nhất</span>'}</div>`;
+    }).join('');
+    this.body.innerHTML = `<div class="items-wrap craft-mode">
+      <section class="paperdoll"><h4>Trang bị</h4><div class="eqgrid">${eqHtml}</div></section>
+      <section class="inv"><h4>Kho đồ <small>Mảnh: <b>${(ch.shards || 0).toLocaleString('vi-VN')}</b></small></h4><div class="grid inv-grid">${invHtml}</div>
+        <h4 style="margin-top:12px">Ghép rune</h4><div class="runes-list">${runeRows}</div></section>
+      <section class="idetail">${detail}</section>
+    </div>`;
   }
 
   renderItems(stashMode) {
@@ -424,7 +525,14 @@ export class Panel {
     if (it) {
       const s = this.sel;
       const btn = [];
-      if (s.where === 'inv' && !stashMode) btn.push('<button data-act="wear" class="primary">Mặc</button>');
+      if (s.where === 'inv' && !stashMode && it.type !== 'rune') btn.push('<button data-act="wear" class="primary">Mặc</button>');
+      if (s.where === 'inv' && it.type === 'rune') {
+        const targets = [];
+        for (const sl of data.items.slots) { const e = ch.equipment[sl.id]; if (e && I.freeSockets(e) > 0) targets.push([`eq:${sl.id}`, `${e.name} (đang mặc)`]); }
+        ch.inventory.forEach((e, i) => { if (e && e.type !== 'rune' && I.freeSockets(e) > 0) targets.push([`inv:${i}`, e.name]); });
+        if (targets.length) btn.push(...targets.map(([k, n]) => `<button data-rune="${k}" class="primary">Ghép vào ${esc(n)}</button>`));
+        else btn.push('<span class="muted">Không có món đồ nào còn lỗ trống.</span>');
+      }
       if (s.where === 'eq') btn.push('<button data-act="unequip">Tháo</button>');
       if (s.where === 'inv' && stashMode) btn.push('<button data-act="store" class="primary">Cất vào rương</button>');
       if (s.where === 'stash') btn.push('<button data-act="take" class="primary">Lấy ra kho đồ</button>');
@@ -446,5 +554,5 @@ export class Panel {
 }
 
 function typeIcon(t) {
-  return { weapon: '⚚', offhand: '◉', head: '⛑', body: '▣', gloves: '✋', belt: '═', boots: '▟', amulet: '◈', ring: '○' }[t] || '?';
+  return { weapon: '⚚', offhand: '◉', head: '⛑', body: '▣', gloves: '✋', belt: '═', boots: '▟', amulet: '◈', ring: '○', rune: 'ᚱ' }[t] || '?';
 }

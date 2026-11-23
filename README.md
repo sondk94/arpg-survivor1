@@ -45,7 +45,8 @@ data/                 ← TOÀN BỘ số liệu, sửa không cần đụng cod
   classes.json        2 lớp nhân vật: chỉ số khởi đầu, máu/mana/giáp riêng, các nhánh kỹ năng
   skills.json         6 nhánh × 6 kỹ năng (3 nhánh mỗi lớp), synergy, mốc mở (thật + thử nghiệm)
   monsters.json       quái thường, tinh anh, trùm nhỏ, boss; kháng Lửa/Băng/Sét/Độc của từng quái
-  items.json          ô trang bị, bậc đồ, đồ gốc, dòng chỉ số, 10 món độc nhất, tỉ lệ rơi, giá bán, giá tẩy điểm
+  items.json          ô trang bị, bậc đồ, đồ gốc, dòng chỉ số, đồ độc nhất, đồ bộ, lỗ, giá lò chế, tỉ lệ rơi
+  runes.json          10 loại rune: chỉ số khi ghép vào vũ khí / giáp, cấp rơi
   maps/1-1.json       màn gốc: kích thước, vật cản, nhịp sinh quái, sự kiện theo thời gian
   maps/campaign.json  danh sách 20 màn, chương, độ khó tăng dần, vật cản ngẫu nhiên
 src/core/             lõi, không dùng DOM (chạy được trong Node)
@@ -104,6 +105,51 @@ Chỉ số cấp 1 so với pháp sư:
 | 4 | 211 / 239 (−12%) | 75 / 50 (+50%) | 20 / 27 giây |
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
+
+## Rune, đồ bộ, lò chế
+
+- **Lỗ:** đồ rơi ra có thể có 1–3 lỗ (vũ khí, áo: tối đa 3; mũ, tay phụ: tối đa 2). Đồ Thường hay có lỗ nhất (35%), Ma thuật 15%, Hiếm 10%. Đồ Độc nhất và đồ bộ không có lỗ.
+- **10 loại rune** (`data/runes.json`), từ Rune Tro (bậc 1) đến Rune Vĩnh Hằng (bậc 10).
+  - Rune ghép vào vũ khí cho một chỉ số; ghép vào mũ, áo hoặc tay phụ cho chỉ số khác. Ví dụ Rune Tro: vũ khí +10% sát thương lửa, giáp +12% kháng lửa.
+  - Rune bậc cao chỉ rơi ở cấp đồ cao. Quái thường rơi rune 0,25%, tinh anh 12%, trùm nhỏ 50%, boss luôn rơi.
+- **6 bộ đồ, mỗi bộ 3 món**, mỗi nhánh kỹ năng một bộ. Mặc đủ 2 món và đủ 3 món được thêm thưởng (ví dụ +1 cấp kỹ năng của nhánh). Thẻ đồ hiện các món đang mặc và các mức thưởng của bộ.
+- **Lò chế** (thẻ trong bảng, chỉ có ở làng). Nguyên liệu là **mảnh**, có được khi phân giải đồ. Món càng hiếm, càng cao cấp thì ra càng nhiều mảnh.
+  - Nâng bậc: Thường → Ma thuật (5 mảnh), Ma thuật → Hiếm (15 mảnh).
+  - Đổi dòng chỉ số của đồ Ma thuật hoặc Hiếm: 6 mảnh + 15 vàng × cấp đồ.
+  - Đục thêm 1 lỗ: 10 mảnh.
+  - Gỡ hết rune: 60 vàng, rune bị mất.
+  - Ghép 3 rune cùng loại thành 1 rune bậc cao hơn: 40 vàng × bậc.
+- Giá và tỉ lệ nằm trong `items.json` (`crafting`, `socketChance`, `sets`).
+
+## Độ khó Ác mộng / Địa ngục và bảng kỷ lục
+
+- **3 mức độ khó**, mỗi mức có đủ 20 màn và tiến độ riêng. Qua hết 20 màn Bình thường thì mở Ác mộng; qua hết Ác mộng thì mở Địa ngục.
+
+  | | Bình thường | Ác mộng | Địa ngục |
+  |---|---|---|---|
+  | Máu quái | ×1 | ×5 | ×14 |
+  | Sát thương quái | ×1 | ×3 | ×6 |
+  | Kháng nguyên tố của quái | 0 | +20% | +35% |
+  | Kháng vật lý của quái | 0 | +10% | +17,5% |
+  | Trừ kháng của người chơi | 0 | −25% | −50% |
+  | Kinh nghiệm | ×1 | ×2 | ×3,5 |
+  | Cấp đồ rơi | +0 | +18 | +32 |
+  | Đồ Hiếm / Độc nhất | ×1 | ×1,5 | ×2 |
+
+  Số liệu nằm trong `config.json` (`difficulties`).
+- **Bậc chỉ số mới:** đồ cấp cao có thêm bậc chỉ số 4–5 (cần cấp 25 / 40), +3 cấp kỹ năng (cần cấp 30), và 10 đồ gốc cấp cao (cần cấp 22–35).
+- **Bảng kỷ lục:** mỗi lần hạ boss sẽ ghi thời gian, và lưu thời gian nhanh nhất theo từng màn, từng độ khó. Thời gian kỷ lục hiện trên ô màn. Mục "Bảng kỷ lục" ở làng liệt kê thời gian nhanh nhất của mọi nhân vật trên trình duyệt này. Bảng xếp hạng chung với người chơi khác cần có server, chưa có.
+- **Mô phỏng cả 3 độ khó** (bot có né đòn, tự mặc đồ, tự ghép rune):
+
+  ```bash
+  node tools/sim.mjs --campaign --build weapon --items
+  ```
+
+  | Nhánh | Kết quả |
+  |---|---|
+  | Lửa | Qua hết 60 màn sau 61 lượt, cấp 77 |
+  | Chiến Binh (Vũ Khí) | Qua hết sau 112 lượt, chạm cấp 99; cuối Địa ngục rất khó (4-4: 20 lần thử, 4-5: 13 lần) |
+  | Băng | Vấp ở Địa ngục 4-1 |
 
 ## 20 màn chơi
 
@@ -223,7 +269,8 @@ node tools/sim.mjs --runs 4 --build cold --items --verbose
 Tuỳ chọn của `sim.mjs`:
 
 - `--map 2-3`: chọn màn.
-- `--campaign`: chơi lần lượt các màn.
+- `--campaign`: chơi lần lượt các màn qua cả 3 độ khó (`--until nightmare` để dừng sớm).
+- `--difficulty nightmare`: chọn độ khó khi chạy một màn.
 
 - `--build fire|fire_ring|cold|lightning|hybrid|weapon|shout|blood` (3 kiểu sau là Chiến Binh)
 - `--items`: bot nhặt và tự mặc đồ.

@@ -1,6 +1,6 @@
 // Bot đơn giản cho mô phỏng và chế độ debug "bot tự chơi".
 import * as P from './progression.js';
-import { itemScore, equipFromInventory, meetsReq, totalStr, slotsForType } from './items.js';
+import { itemScore, equipFromInventory, meetsReq, totalStr, slotsForType, insertRune, freeSockets } from './items.js';
 
 // Các kiểu cộng điểm. attrs: tỉ lệ chia mỗi 5 điểm. skills: [id, cấp mục tiêu] ưu tiên từ trên xuống.
 export const BUILDS = {
@@ -192,6 +192,13 @@ export function botManageItems(ch, data, buildName = 'fire') {
       if (sc < worst) { worst = sc; target = s; }
     }
     if (target && itemScore(it, tree, physical) > worst && equipFromInventory(ch, i, data, target) === 'ok') changed = true;
+  }
+  // Ghép rune vào đồ đang mặc còn lỗ trống (vũ khí trước).
+  for (let i = 0; i < ch.inventory.length; i++) {
+    const ru = ch.inventory[i];
+    if (!ru || ru.type !== 'rune') continue;
+    const target = ['weapon', 'body', 'head', 'offhand'].map((sl) => ch.equipment[sl]).find((it) => it && freeSockets(it) > 0);
+    if (target && insertRune(ch, i, target, data) === 'ok') changed = true;
   }
   return changed;
 }

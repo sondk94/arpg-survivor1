@@ -1,0 +1,140 @@
+{
+  "runes": [
+    {
+      "id": "r_ash",
+      "name": "Rune Tro",
+      "tier": 1,
+      "dropIlvl": 1,
+      "color": "#ff7a2a",
+      "weapon": {
+        "fireDmgPct": 10
+      },
+      "armor": {
+        "resFire": 12
+      }
+    },
+    {
+      "id": "r_frost",
+      "name": "Rune Sương",
+      "tier": 2,
+      "dropIlvl": 1,
+      "color": "#9fe3ff",
+      "weapon": {
+        "coldDmgPct": 10
+      },
+      "armor": {
+        "resCold": 12
+      }
+    },
+    {
+      "id": "r_storm",
+      "name": "Rune Sấm",
+      "tier": 3,
+      "dropIlvl": 3,
+      "color": "#ffe14d",
+      "weapon": {
+        "lightningDmgPct": 10
+      },
+      "armor": {
+        "resLightning": 12
+      }
+    },
+    {
+      "id": "r_stone",
+      "name": "Rune Đá",
+      "tier": 4,
+      "dropIlvl": 5,
+      "color": "#b0a090",
+      "weapon": {
+        "physDmgPct": 10
+      },
+      "armor": {
+        "armor": 15
+      }
+    },
+    {
+      "id": "r_blood",
+      "name": "Rune Huyết",
+      "tier": 5,
+      "dropIlvl": 8,
+      "color": "#e0504a",
+      "weapon": {
+        "hpOnKill": 2
+      },
+      "armor": {
+        "maxHp": 20
+      }
+    },
+    {
+      "id": "r_wind",
+      "name": "Rune Gió",
+      "tier": 6,
+      "dropIlvl": 12,
+      "color": "#a0e0b0",
+      "weapon": {
+        "cdSpeedPct": 6
+      },
+      "armor": {
+        "moveSpeedPct": 5
+      }
+    },
+    {
+      "id": "r_soul",
+      "name": "Rune Hồn",
+      "tier": 7,
+      "dropIlvl": 16,
+      "color": "#b48cff",
+      "weapon": {
+        "spellDmgPct": 12
+      },
+      "armor": {
+        "maxMana": 25
+      }
+    },
+    {
+      "id": "r_shadow",
+      "name": "Rune Bóng",
+      "tier": 8,
+      "dropIlvl": 22,
+      "color": "#7a6a9a",
+      "weapon": {
+        "critChance": 4
+      },
+      "armor": {
+        "dex": 10
+      }
+    },
+    {
+      "id": "r_god",
+      "name": "Rune Thần",
+      "tier": 9,
+      "dropIlvl": 30,
+      "color": "#ffd76a",
+      "weapon": {
+        "allSkills": 1
+      },
+      "armor": {
+        "resAll": 10
+      }
+    },
+    {
+      "id": "r_eternal",
+      "name": "Rune Vĩnh Hằng",
+      "tier": 10,
+      "dropIlvl": 40,
+      "color": "#ffffff",
+      "weapon": {
+        "spellDmgPct": 25,
+        "physDmgPct": 25
+      },
+      "armor": {
+        "vit": 15,
+        "resAll": 15
+      }
+    }
+  ],
+  "weaponTypes": [
+    "weapon"
+  ],
+  "tierDropFalloff": 0.55
+}
