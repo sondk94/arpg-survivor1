@@ -1,5 +1,6 @@
 // Lưu nhân vật + rương chung, và mã sao lưu để chuyển sang máy khác.
 import { createCharacter, getClass } from './progression.js';
+import { upgradeLegacyItem, mergeRuneStacks } from './items.js';
 
 const FIELDS = ['uid', 'name', 'classId', 'level', 'xp', 'attrs', 'attrPoints', 'skillPoints', 'skills', 'slots', 'gold', 'inventory', 'equipment', 'runs', 'deaths', 'clears', 'mapDeaths', 'mapProgress', 'mapClears', 'diffProgress', 'records', 'shards', 'lootFilter', 'buyback', 'overflow'];
 
@@ -31,6 +32,10 @@ function validItem(it, data) {
   it.sockets = Math.max(0, Math.min(data.items.basesById[it.base].maxSockets || 0, Math.floor(Number(it.sockets) || 0)));
   it.runes = Array.isArray(it.runes) ? it.runes.filter((r) => r && data.runes.byId[r.id] && r.stats && typeof r.stats === 'object').slice(0, it.sockets) : [];
   if (it.set && !data.items.setsById[it.set]) delete it.set;
+  if (it.type === 'rune') it.qty = Math.max(1, Math.min(9999, Math.floor(Number(it.qty) || 1)));
+  else delete it.qty;
+  if (it.power !== undefined) it.power = Math.max(1, Math.min(3, Number(it.power) || 1));
+  upgradeLegacyItem(it, data); // độc nhất / đồ bộ cũ: tính lại theo cấp đồ
   return true;
 }
 
@@ -87,6 +92,7 @@ export function normalizeCharacter(raw, data) {
   };
   ch.buyback = (Array.isArray(ch.buyback) ? ch.buyback : []).filter((b) => b && validItem(b.item, data) && Number.isFinite(b.price) && b.price >= 0).slice(0, 10);
   ch.overflow = (Array.isArray(ch.overflow) ? ch.overflow : []).filter((it) => validItem(it, data)).slice(0, 40);
+  mergeRuneStacks(ch.inventory);
   for (const it of [...ch.inventory, ...Object.values(ch.equipment), ...ch.overflow]) {
     if (!it) continue;
     if (it.locked !== undefined) it.locked = !!it.locked;
@@ -97,7 +103,9 @@ export function normalizeCharacter(raw, data) {
 
 export function normalizeStash(raw, data) {
   const arr = Array.isArray(raw) ? raw : [];
-  return Array.from({ length: data.items.stashSize }, (_, i) => (validItem(arr[i], data) ? arr[i] : null));
+  const st = Array.from({ length: data.items.stashSize }, (_, i) => (validItem(arr[i], data) ? arr[i] : null));
+  mergeRuneStacks(st);
+  return st;
 }
 
 export function newStash(data) {

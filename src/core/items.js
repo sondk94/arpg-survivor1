@@ -23,6 +23,45 @@ export function rollRarity(rng, data, opts = {}) {
   return rng.weighted(w);
 }
 
+// ---------- Sức mạnh theo cấp đồ ----------
+// Hệ số = 1 + perLevel × (cấp đồ − yêu cầu cấp gốc), tối đa 1 + max. Độc nhất / đồ bộ tăng nhanh hơn.
+export function powerFor(rarity, ilvl, baseReq, data) {
+  const S = data.items.ilvlScaling;
+  if (!S) return 1;
+  const c = S[rarity] || S.default;
+  return 1 + Math.min(c.max, c.perLevel * Math.max(0, ilvl - baseReq));
+}
+
+// Nhân các chỉ số (trừ +cấp kỹ năng, giảm số đòn đóng băng, % hồi chiêu, % tốc chạy), làm tròn.
+export function scaleStats(stats, mult, data) {
+  if (mult === 1) return { ...stats };
+  const ex = data.items.ilvlScaling?.exclude || [];
+  const o = {};
+  for (const [k, v] of Object.entries(stats)) o[k] = ex.includes(k) ? v : Math.round(v * mult);
+  return o;
+}
+
+// Áp sức mạnh theo cấp đồ cho món vừa tạo: nhân chỉ số, ghi hệ số, nâng yêu cầu cấp (cấp đồ − 10).
+function applyPower(item, baseStats, baseReq, data) {
+  const mult = powerFor(item.rarity, item.ilvl, baseReq, data);
+  item.stats = scaleStats(baseStats, mult, data);
+  item.power = Math.round(mult * 1000) / 1000;
+  if (mult > 1) item.req.level = Math.max(baseReq, item.ilvl - (data.items.ilvlScaling?.reqOffset ?? 10));
+  return item;
+}
+
+// Đồ độc nhất / đồ bộ cũ (lưu trước khi có sức mạnh theo cấp đồ): tính lại từ chỉ số gốc theo cấp đồ đã lưu.
+export function upgradeLegacyItem(it, data) {
+  if (!it || it.power !== undefined) return;
+  const I = data.items;
+  let def = null;
+  if (it.rarity === 'unique') def = I.uniquesById?.[it.unique];
+  else if (it.rarity === 'set') def = I.setsById?.[it.set]?.pieces.find((p) => p.id === it.piece);
+  if (!def) return;
+  it.req = { ...it.req, level: def.req };
+  applyPower(it, def.stats, def.req, data);
+}
+
 export function generateItem(rng, data, ilvl, opts = {}) {
   const I = data.items;
   let rarity = opts.rarity || rollRarity(rng, data, opts);
@@ -33,12 +72,12 @@ export function generateItem(rng, data, ilvl, opts = {}) {
     if (pool.length) {
       const [set, pc] = rng.pick(pool);
       const base = I.basesById[pc.base];
-      return {
+      return applyPower({
         uid: newUid(rng), base: base.id, type: base.type, rarity, set: set.id, piece: pc.id,
         name: pc.name, baseName: base.name, ilvl,
         req: { level: pc.req, str: base.reqStr || 0 },
-        stats: { ...pc.stats }, sockets: 0, runes: [],
-      };
+        stats: {}, sockets: 0, runes: [],
+      }, pc.stats, pc.req, data);
     }
     rarity = 'rare';
   }
@@ -47,12 +86,12 @@ export function generateItem(rng, data, ilvl, opts = {}) {
     if (pool.length) {
       const u = rng.pick(pool);
       const base = I.basesById[u.base];
-      return {
+      return applyPower({
         uid: newUid(rng), base: base.id, type: base.type, rarity, unique: u.id,
         name: u.name, baseName: base.name, ilvl,
         req: { level: u.req, str: base.reqStr || 0 },
-        stats: { ...u.stats }, sockets: 0, runes: [],
-      };
+        stats: {}, sockets: 0, runes: [],
+      }, u.stats, u.req, data);
     }
     rarity = 'rare';
   }
@@ -69,8 +108,14 @@ export function generateItem(rng, data, ilvl, opts = {}) {
   for (let i = 0; i < count && pool.length; i++) {
     const idx = Math.floor(rng.next() * pool.length);
     const af = pool.splice(idx, 1)[0];
-    const tiers = af.tiers.filter((t) => t[0] <= ilvl);
-    const t = tiers[Math.floor(rng.next() * tiers.length)];
+    // Bậc cao nhất đã mở có tỉ trọng cao hơn (mặc định 3 / 2 / 1).
+    const tiers = af.tiers.filter((t) => t[0] <= ilvl).sort((x, y) => y[0] - x[0]);
+    const tw = data.items.ilvlScaling?.tierWeights || [1];
+    const ws = tiers.map((_, i) => tw[Math.min(i, tw.length - 1)]);
+    let roll = rng.next() * ws.reduce((a, b) => a + b, 0);
+    let ti = 0;
+    while (ti < tiers.length - 1 && roll >= ws[ti]) { roll -= ws[ti]; ti++; }
+    const t = tiers[ti];
     stats[af.stat] = (stats[af.stat] || 0) + rng.int(t[2], t[3]);
     reqLevel = Math.max(reqLevel, t[1]);
     names.push(af.name);
@@ -81,11 +126,11 @@ export function generateItem(rng, data, ilvl, opts = {}) {
   // Lỗ: đồ thường hay có lỗ nhất (để ghép rune), số lỗ tối đa tuỳ loại đồ.
   let sockets = 0;
   if (base.maxSockets && rng.next() < (I.socketChance?.[rarity] || 0)) sockets = rng.int(1, base.maxSockets);
-  return {
+  return applyPower({
     uid: newUid(rng), base: base.id, type: base.type, rarity, name, baseName: base.name, ilvl,
     req: { level: reqLevel, str: base.reqStr || 0 },
-    stats, sockets, runes: [],
-  };
+    stats: {}, sockets, runes: [],
+  }, stats, reqLevel, data);
 }
 
 // ---------- Rune ----------
@@ -98,7 +143,7 @@ export function generateRune(rng, data, ilvl, runeId = null) {
     for (const x of R.list) if (x.dropIlvl <= ilvl) w[x.id] = Math.pow(R.tierDropFalloff, x.tier - 1);
     r = R.byId[rng.weighted(w) || R.list[0].id];
   }
-  return { uid: newUid(rng), base: 'rune', type: 'rune', rarity: 'rune', rune: r.id, name: r.name, baseName: `Rune bậc ${r.tier}`, ilvl: r.dropIlvl, req: { level: 1, str: 0 }, stats: {}, sockets: 0, runes: [] };
+  return { uid: newUid(rng), base: 'rune', type: 'rune', rarity: 'rune', rune: r.id, name: r.name, baseName: `Rune bậc ${r.tier}`, ilvl: r.dropIlvl, req: { level: 1, str: 0 }, stats: {}, sockets: 0, runes: [], qty: 1 };
 }
 
 export function runeStatsFor(runeId, itemType, data) {
@@ -125,7 +170,7 @@ export function insertRune(ch, runeInvIndex, target, data) {
   if (!target || freeSockets(target) <= 0) return 'Món đồ không còn lỗ trống';
   target.runes = target.runes || [];
   target.runes.push({ id: ru.rune, stats: runeStatsFor(ru.rune, target.type, data) });
-  ch.inventory[runeInvIndex] = null;
+  takeOne(ch.inventory, runeInvIndex);
   return 'ok';
 }
 
@@ -144,6 +189,7 @@ export function runeLines(item, data) {
 
 export function sellValue(item, data) {
   const d = data.items.drops;
+  if (item.type === 'rune') return unitSellValue(item, data) * runeQty(item);
   return Math.round((d.sellBase + d.sellPerIlvl * item.ilvl) * data.items.rarities[item.rarity].sellMult + (item.runes?.length || 0) * 10);
 }
 
@@ -158,26 +204,35 @@ export function totalStr(ch) {
   return s;
 }
 
+// Giá bán một viên (rune gộp chồng bán từng viên hoặc cả ô).
+export function unitSellValue(item, data) {
+  const d = data.items.drops;
+  return Math.round((d.sellBase + d.sellPerIlvl * item.ilvl) * data.items.rarities[item.rarity].sellMult);
+}
+
 // Cộng chỉ số của các món đang mặc và đủ yêu cầu, kèm thưởng đồ bộ (đủ 2 món, đủ 3 món).
 export function sumGear(ch, data) {
   const acc = {};
   const inactive = [];
   const str = totalStr(ch);
   const setCount = {};
+  const setPower = {};
   for (const [slot, it] of Object.entries(ch.equipment || {})) {
     if (!it) continue;
     if (!meetsReq(it, ch.level, str)) { inactive.push(slot); continue; }
     for (const [k, v] of Object.entries(itemStats(it))) acc[k] = (acc[k] || 0) + v;
-    if (it.set) setCount[it.set] = (setCount[it.set] || 0) + 1;
+    if (it.set) { setCount[it.set] = (setCount[it.set] || 0) + 1; (setPower[it.set] ||= []).push(it.power || 1); }
   }
   const sets = [];
   for (const [id, n] of Object.entries(setCount)) {
     const set = data?.items.setsById?.[id];
     if (!set) continue;
-    sets.push({ id, name: set.name, count: n, total: set.pieces.length });
+    // Thưởng bộ mạnh theo sức mạnh trung bình của các món trong bộ đang mặc.
+    const pw = setPower[id].reduce((a, b) => a + b, 0) / setPower[id].length;
+    sets.push({ id, name: set.name, count: n, total: set.pieces.length, power: pw });
     for (const [need, bonus] of Object.entries(set.bonus)) {
       if (n < Number(need)) continue;
-      for (const [k, v] of Object.entries(bonus)) acc[k] = (acc[k] || 0) + v;
+      for (const [k, v] of Object.entries(data ? scaleStats(bonus, pw, data) : bonus)) acc[k] = (acc[k] || 0) + v;
     }
   }
   return { stats: acc, inactive, sets };
@@ -230,7 +285,7 @@ export function craft(ch, stash, ref, action, data, rng) {
   if (action === 'reroll' || action === 'upgrade') {
     const rarity = action === 'upgrade' ? cost.to : it.rarity;
     const fresh = generateItem(rng, data, it.ilvl, { rarity, baseId: it.base });
-    Object.assign(it, { rarity, name: fresh.name, stats: fresh.stats, req: { ...fresh.req, level: Math.max(fresh.req.level, data.items.basesById[it.base].req) } });
+    Object.assign(it, { rarity, name: fresh.name, stats: fresh.stats, power: fresh.power, req: { ...fresh.req, level: Math.max(fresh.req.level, data.items.basesById[it.base].req) } });
   } else if (action === 'socket') {
     it.sockets = (it.sockets || 0) + 1;
   } else if (action === 'unsocket') {
@@ -248,20 +303,27 @@ export function combineRunes(ch, runeId, data, rng) {
   const next = R.list.find((x) => x.tier === r.tier + 1);
   if (!next) return 'Đã là rune bậc cao nhất';
   const C = data.items.crafting.runeCombine;
-  const idx = [];
-  ch.inventory.forEach((it, i) => { if (it && it.type === 'rune' && it.rune === runeId && idx.length < C.count) idx.push(i); });
-  if (idx.length < C.count) return `Cần ${C.count} ${r.name}`;
+  if ((runeCounts(ch)[runeId] || 0) < C.count) return `Cần ${C.count} ${r.name}`;
   const gold = C.goldPerTier * r.tier;
   if (ch.gold < gold) return `Cần ${gold} vàng`;
+  // Trừ dần trong các ô rune cùng loại; rune mới gộp vào ô có sẵn hoặc ô vừa trống.
+  let need = C.count;
+  for (let i = 0; i < ch.inventory.length && need > 0; i++) {
+    const it = ch.inventory[i];
+    if (!it || it.type !== 'rune' || it.rune !== runeId) continue;
+    const k = Math.min(need, runeQty(it));
+    need -= k;
+    it.qty = runeQty(it) - k;
+    if (it.qty <= 0) ch.inventory[i] = null;
+  }
   ch.gold -= gold;
-  for (const i of idx) ch.inventory[i] = null;
-  ch.inventory[idx[0]] = generateRune(rng, data, 99, next.id);
+  addToInventory(ch, generateRune(rng, data, 99, next.id));
   return 'ok';
 }
 
 export function runeCounts(ch) {
   const c = {};
-  for (const it of ch.inventory) if (it && it.type === 'rune') c[it.rune] = (c[it.rune] || 0) + 1;
+  for (const it of ch.inventory) if (it && it.type === 'rune') c[it.rune] = (c[it.rune] || 0) + runeQty(it);
   return c;
 }
 
@@ -274,10 +336,54 @@ export function firstFree(arr) {
 }
 
 export function addToInventory(ch, item) {
-  const i = firstFree(ch.inventory);
+  return addToArray(ch.inventory, item);
+}
+
+// ---------- Rune gộp chồng ----------
+export function runeQty(it) {
+  return it && it.type === 'rune' ? Math.max(1, Math.floor(it.qty || 1)) : 1;
+}
+
+// Thêm vào một dãy ô (kho đồ, rương): rune gộp vào ô cùng loại có sẵn, không cần ô trống.
+export function addToArray(arr, item) {
+  if (item.type === 'rune') {
+    const s = arr.find((x) => x && x.type === 'rune' && x.rune === item.rune);
+    if (s) { s.qty = runeQty(s) + runeQty(item); return true; }
+  }
+  const i = firstFree(arr);
   if (i < 0) return false;
-  ch.inventory[i] = item;
+  arr[i] = item;
   return true;
+}
+
+// Có nhặt được vào kho không (còn ô trống, hoặc rune đã có ô cùng loại).
+export function canAdd(ch, item) {
+  if (firstFree(ch.inventory) >= 0) return true;
+  return item.type === 'rune' && ch.inventory.some((x) => x && x.type === 'rune' && x.rune === item.rune);
+}
+
+// Lấy ra 1 viên từ ô rune (hết thì ô trống). Trả về viên rune vừa lấy.
+export function takeOne(arr, i) {
+  const it = arr[i];
+  if (!it) return null;
+  if (it.type === 'rune' && runeQty(it) > 1) {
+    it.qty = runeQty(it) - 1;
+    return { ...it, uid: `${it.uid}-${it.qty}`, qty: 1 };
+  }
+  arr[i] = null;
+  return it;
+}
+
+// Gộp các ô rune cùng loại trong một dãy (dùng khi tải save cũ).
+export function mergeRuneStacks(arr) {
+  const first = {};
+  for (let i = 0; i < arr.length; i++) {
+    const it = arr[i];
+    if (!it || it.type !== 'rune') continue;
+    it.qty = runeQty(it);
+    if (first[it.rune] === undefined) first[it.rune] = i;
+    else { arr[first[it.rune]].qty += it.qty; arr[i] = null; }
+  }
 }
 
 // Mặc món ở ô kho invIndex. Trả về 'ok' hoặc lý do.
@@ -310,9 +416,7 @@ export function unequip(ch, slotId) {
 export function transfer(from, i, to) {
   const it = from[i];
   if (!it) return 'Ô trống';
-  const j = firstFree(to);
-  if (j < 0) return 'Đã đầy';
-  to[j] = it;
+  if (!addToArray(to, it)) return 'Đã đầy';
   from[i] = null;
   return 'ok';
 }

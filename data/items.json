@@ -2771,5 +2771,40 @@
         }
       ]
     }
-  ]
+  ],
+  "ilvlScaling": {
+    "default": {
+      "perLevel": 0.005,
+      "max": 0.5
+    },
+    "unique": {
+      "perLevel": 0.0165,
+      "max": 1.65
+    },
+    "set": {
+      "perLevel": 0.0165,
+      "max": 1.65
+    },
+    "exclude": [
+      "fireSkills",
+      "coldSkills",
+      "lightningSkills",
+      "weaponSkills",
+      "shoutSkills",
+      "bloodSkills",
+      "packSkills",
+      "beastSkills",
+      "swarmSkills",
+      "allSkills",
+      "freezeHits",
+      "cdSpeedPct",
+      "moveSpeedPct"
+    ],
+    "reqOffset": 10,
+    "tierWeights": [
+      3,
+      2,
+      1
+    ]
+  }
 }

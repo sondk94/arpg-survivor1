@@ -427,3 +427,41 @@ button.go small { font-size: 11px; font-weight: 400; color: #e8d3a0; }
   .grid4 { grid-template-columns: repeat(2, 1fr); }
   .pcards { grid-template-columns: repeat(2, 1fr); }
 }
+.cell .qty { position: absolute; bottom: 1px; right: 3px; font-size: 11px; color: #fff; text-shadow: 0 0 3px #000; }
+
+/* ---------- Khung nổi và thẻ gọn (bản 1.9) ---------- */
+.tip { position: fixed; z-index: 40; max-width: 340px; pointer-events: none; background: #14120e; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; box-shadow: 0 10px 30px rgba(0,0,0,.7); font-size: 12px; line-height: 1.4; }
+.tip-text { max-width: 300px; color: var(--text); }
+.tcard { border-left: 3px solid var(--rc, var(--line)); padding-left: 8px; display: flex; flex-direction: column; gap: 2px; }
+.tcard .tn { font-weight: 700; color: var(--rc); font-size: 13px; }
+.tcard .tn b { font-size: 11px; margin-left: 4px; }
+.tcard .ts { color: var(--muted); font-size: 11px; }
+.tcard .tl { display: flex; justify-content: space-between; gap: 10px; color: #9fb4ff; }
+.tcard .tl i, .sk-compact i, .tip-skill i { font-style: normal; font-weight: 700; }
+.tcard .tl.lost { color: #ff8a7a; display: block; }
+.tcard .tset { color: #7fe08a; font-size: 11px; }
+.tcard .tset span { color: var(--muted); }
+.tcard .tset span.on { color: #7fe08a; }
+.tcard .tf { color: #e8c547; font-size: 11px; margin-top: 2px; }
+.up { color: #6fe07a; }
+.down { color: #ff6b6b; }
+.bad { color: #ff6b6b; }
+.sel-item { border-left: 3px solid var(--rc); padding: 4px 8px; margin-bottom: 8px; cursor: help; }
+.sel-item b { color: var(--rc); display: block; }
+.sel-item small { color: var(--muted); font-size: 11px; }
+.hint { font-size: 12px; }
+.sk-compact, .tip-skill { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.sk-head b { font-size: 16px; color: var(--gold); display: block; }
+.sk-head small { color: var(--muted); }
+.sk-desc { margin: 2px 0 4px; font-size: 12px; }
+.sk-compact .tl, .tip-skill .tl { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid #2a261e; padding: 2px 0; }
+.sk-compact .tl.same, .tip-skill .tl.same, .sk-compact .tl.syn, .tip-skill .tl.syn { display: block; color: var(--muted); border: 0; }
+.chip { align-self: flex-start; font-size: 11px; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; padding: 1px 8px; cursor: help; }
+.attr-desc .info { cursor: help; color: var(--gold); margin-left: 2px; }
+.dgroups { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.dgroup h6 { margin: 0 0 3px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--gold); }
+.dgroup { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; }
+.dgroup h6 { grid-column: 1 / -1; }
+.dgroup > div { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; border-bottom: 1px solid #24211b; padding: 2px 0; white-space: nowrap; cursor: default; }
+.dgroup > div[data-tip] { cursor: help; }
+.dgroup span { color: var(--muted); }

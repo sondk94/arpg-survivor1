@@ -106,6 +106,35 @@ Chỉ số cấp 1 so với pháp sư:
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
 
+## Chỉ số đồ theo cấp đồ, rune gộp chồng, khung nổi (bản 1.9)
+
+**Chỉ số đồ tăng theo cấp đồ** (`items.json` → `ilvlScaling`):
+- Chỉ số × (1 + hệ số × số cấp đồ vượt yêu cầu cấp gốc của món).
+
+  | Loại đồ | Mỗi cấp vượt | Tối đa |
+  |---|---|---|
+  | Thường, Ma thuật, Hiếm | +0,5% | +50% |
+  | Độc nhất, Đồ bộ | +1,65% | +165% |
+
+  Ví dụ Vương Miện Tro Tàn (cần cấp 6, +20% lửa): rơi ở cấp đồ 46 → +66% → +33% lửa; cấp đồ 80 → +122% → +44% lửa.
+- Không tăng: +cấp kỹ năng, giảm số đòn đóng băng, % hồi chiêu, % tốc chạy.
+- Món được tăng sức mạnh thì **yêu cầu cấp = cấp đồ − 10** (nếu cao hơn yêu cầu gốc).
+- Đồ ma thuật / hiếm: bậc chỉ số cao nhất đã mở có tỉ trọng 3, bậc kế 2, còn lại 1 (trước đây chia đều).
+- Thưởng đồ bộ (đủ 2 / 3 món) nhân theo sức mạnh trung bình của các món trong bộ đang mặc.
+- Lò chế (đổi dòng, nâng bậc) dùng cùng công thức. Đồ độc nhất / đồ bộ trong save cũ được tính lại theo cấp đồ đã lưu; đồ ma thuật / hiếm cũ giữ nguyên.
+- Thẻ đồ ghi "cấp đồ 80 · sức mạnh +122%".
+
+**Rune gộp chồng:**
+- Rune cùng loại nằm chung một ô (số ×N ở góc), trong kho đồ, rương chung và túi tạm, không giới hạn số viên.
+- Nhặt rune đã có ô thì gộp vào, không cần ô trống. Ghép vào đồ / ghép 3 → 1 trừ dần trong ô; rune mới gộp vào ô có sẵn.
+- Ở làng: "Bán 1 viên" hoặc "Bán cả ô". Chuyển rương chuyển cả ô. Save cũ tự gộp các ô rune rời.
+
+**Khung nổi và thẻ gọn:**
+- Rê chuột vào đồ (kho, trang bị, rương) hiện khung nổi: tên, loại, cấp đồ, yêu cầu, chỉ số; so sánh với món đang mặc nằm ngay trên từng dòng (▲ / ▼), dòng "mất:" cho chỉ số món đang mặc có mà món này không có. Nhẫn so với chiếc kém hơn. Trên điện thoại: chạm để xem.
+- Bấm chọn món: khung bên phải chỉ còn tên và các nút (Mặc, Bán, Khoá…), cùng bán nhanh / bộ lọc nhặt.
+- Kỹ năng (khung chi tiết và khung nổi ở các ô kỹ năng đã gắn): một cột; dòng đổi khi lên cấp ghi "hiện tại → cấp sau", các dòng không đổi gộp một dòng; synergy và cộng thẳng rút gọn (rê vào để xem đầy đủ).
+- Thuộc tính: một dòng ngắn, chỉ phần có ích cho lớp đang chơi; rê vào ⓘ để xem giải thích đầy đủ. Chỉ số chia 3 nhóm Tấn công / Phòng thủ / Tài nguyên; rê vào từng chỉ số để xem công thức.
+
 ## Bình máu / mana (bản 1.8)
 
 - Mỗi bình máu hồi **20 máu**, mỗi bình mana hồi **20 mana**, giống nhau ở mọi cấp (trước đây hồi 30% máu / 40% mana tối đa).

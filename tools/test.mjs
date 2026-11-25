@@ -781,4 +781,117 @@ t('Sắp xếp kho, lưu khoá / bộ lọc / mua lại / túi tạm qua mã xu�
   assert.equal(back.inventory[0].locked, true);
 });
 
+// ---------- Sức mạnh theo cấp đồ và rune gộp chồng ----------
+t('Độc nhất / đồ bộ tăng 1,65% mỗi cấp đồ vượt yêu cầu (tối đa 165%), yêu cầu cấp = cấp đồ − 10', () => {
+  const r = new RNG(21);
+  const u = data.items.uniques.find((x) => x.id === 'ash_crown');
+  const lo = I.generateItem(r, data, u.req, { rarity: 'unique', type: 'head' });
+  // ở đúng cấp yêu cầu: chỉ số gốc
+  if (lo.unique === 'ash_crown') assert.deepEqual(lo.stats, u.stats);
+  let hi;
+  for (let i = 0; i < 200 && !(hi && hi.unique === 'ash_crown'); i++) hi = I.generateItem(r, data, 46, { rarity: 'unique', type: 'head' });
+  assert.equal(hi.unique, 'ash_crown');
+  const mult = 1 + 0.0165 * (46 - u.req);
+  assert.ok(Math.abs(hi.power - mult) < 0.001);
+  assert.equal(hi.stats.fireDmgPct, Math.round(u.stats.fireDmgPct * mult));
+  assert.equal(hi.stats.fireSkills, u.stats.fireSkills); // +cấp kỹ năng không tăng
+  assert.equal(hi.req.level, 36);
+  const top = I.generateItem(r, data, 500, { rarity: 'unique', type: 'head' });
+  assert.ok(top.power <= 2.65 + 1e-9);
+  // đồ bộ cùng hệ số
+  const sp = I.generateItem(r, data, 60, { rarity: 'set' });
+  const pc = data.items.setsById[sp.set].pieces.find((x) => x.id === sp.piece);
+  assert.ok(Math.abs(sp.power - Math.min(2.65, 1 + 0.0165 * (60 - pc.req))) < 0.001);
+});
+
+t('Đồ thường / xanh / vàng tăng 0,5% mỗi cấp (tối đa 50%), ít hơn độc nhất; bậc cao được ưu tiên', () => {
+  const r = new RNG(22);
+  let maxPow = 0;
+  for (let i = 0; i < 300; i++) {
+    const it = I.generateItem(r, data, 200, { rarity: i % 2 ? 'rare' : 'magic' });
+    maxPow = Math.max(maxPow, it.power);
+    assert.ok(it.power <= 1.5 + 1e-9);
+  }
+  assert.ok(maxPow > 1.4);
+  // ở cấp đồ cao, bậc cao nhất của Sức mạnh (bậc 5: 18–24) xuất hiện nhiều hơn mỗi bậc thấp
+  const tiers = data.items.affixes.find((a) => a.stat === 'str').tiers;
+  let top = 0, bottom = 0;
+  for (let i = 0; i < 400; i++) {
+    const it = I.generateItem(r, data, 45, { rarity: 'rare' });
+    if (!it.stats.str) continue;
+    const raw = it.stats.str / it.power;
+    if (raw >= tiers[4][2] - 0.6) top++;
+    else if (raw <= tiers[0][3] + 0.6) bottom++;
+  }
+  assert.ok(top > bottom);
+});
+
+t('Thưởng đồ bộ tăng theo sức mạnh trung bình các món; save cũ: độc nhất / đồ bộ được tính lại', () => {
+  const c = P.createCharacter(data, 'mage');
+  c.level = 99;
+  const set = data.items.sets.find((s) => s.id === 'set_fire');
+  const mk = (pc, ilvl) => {
+    const base = data.items.basesById[pc.base];
+    return { uid: pc.id, base: base.id, type: base.type, rarity: 'set', set: set.id, piece: pc.id, name: pc.name, baseName: base.name, ilvl, req: { level: pc.req, str: 0 }, stats: { ...pc.stats }, sockets: 0, runes: [] };
+  };
+  // đồ cũ (chưa có power): chuẩn hoá qua mã xuất sẽ tính lại
+  c.equipment.head = mk(set.pieces[0], 52);
+  c.equipment.body = mk(set.pieces[1], 52);
+  const back = importCode(exportCode(c, newStash(data), data), data).ch;
+  const h = back.equipment.head;
+  const m = 1 + 0.0165 * (52 - set.pieces[0].req);
+  assert.ok(Math.abs(h.power - m) < 0.001);
+  assert.equal(h.stats.fireDmgPct, Math.round(set.pieces[0].stats.fireDmgPct * m));
+  assert.equal(h.req.level, 42);
+  const st = I.sumGear(back, data);
+  const pw = (back.equipment.head.power + back.equipment.body.power) / 2;
+  const expect = Math.round(set.bonus['2'].fireDmgPct * pw) + (h.stats.fireDmgPct || 0) + (back.equipment.body.stats.fireDmgPct || 0);
+  assert.equal(st.stats.fireDmgPct, expect);
+});
+
+t('Rune cùng loại gộp một ô: nhặt, ghép vào đồ, ghép 3→1, chuyển rương, bán 1 viên, gộp save cũ', () => {
+  const c = P.createCharacter(data, 'mage');
+  const r = new RNG(23);
+  for (let i = 0; i < 4; i++) I.addToInventory(c, I.generateRune(r, data, 5, 'r_ash'));
+  I.addToInventory(c, I.generateRune(r, data, 5, 'r_frost'));
+  assert.equal(c.inventory.filter(Boolean).length, 2);
+  assert.equal(I.runeQty(c.inventory[0]), 4);
+  assert.equal(I.runeCounts(c).r_ash, 4);
+  // kho đầy vẫn nhặt được rune đã có ô
+  for (let i = 2; i < c.inventory.length; i++) c.inventory[i] = I.generateItem(r, data, 5);
+  assert.equal(I.canAdd(c, I.generateRune(r, data, 5, 'r_ash')), true);
+  assert.equal(I.canAdd(c, I.generateRune(r, data, 5, 'r_storm')), false);
+  // ghép vào đồ: trừ 1
+  const w = I.generateItem(r, data, 5, { type: 'weapon' }); w.sockets = 1;
+  assert.equal(I.insertRune(c, 0, w, data), 'ok');
+  assert.equal(I.runeQty(c.inventory[0]), 3);
+  // ghép 3 → 1 bậc cao hơn
+  c.gold = 9999;
+  c.inventory[5] = null;
+  const nextId = data.runes.list.find((x) => x.tier === data.runes.byId.r_ash.tier + 1).id; // Rune Sương
+  const before = I.runeCounts(c)[nextId] || 0;
+  assert.equal(I.combineRunes(c, 'r_ash', data, r), 'ok');
+  assert.equal(I.runeCounts(c).r_ash || 0, 0);
+  assert.equal(I.runeCounts(c)[nextId], before + 1); // gộp vào ô Rune Sương có sẵn
+  assert.equal(c.inventory.filter((x) => x && x.rune === nextId).length, 1);
+  // bán: giá cả ô = giá 1 viên × số viên
+  const st = { ...I.generateRune(r, data, 5, 'r_frost'), qty: 3 };
+  assert.equal(I.sellValue(st, data), I.unitSellValue(st, data) * 3);
+  // chuyển sang rương gộp vào ô có sẵn
+  const stash = newStash(data);
+  stash[7] = I.generateRune(r, data, 5, 'r_frost');
+  const fi = c.inventory.findIndex((x) => x && x.rune === 'r_frost');
+  const moving = I.runeQty(c.inventory[fi]);
+  assert.equal(I.transfer(c.inventory, fi, stash), 'ok');
+  assert.equal(I.runeQty(stash[7]), moving + 1);
+  assert.equal(stash.filter(Boolean).length, 1);
+  // save cũ: các ô rune rời được gộp lại
+  const old = P.createCharacter(data, 'mage');
+  old.inventory[0] = I.generateRune(r, data, 5, 'r_ash'); delete old.inventory[0].qty;
+  old.inventory[3] = I.generateRune(r, data, 5, 'r_ash'); delete old.inventory[3].qty;
+  const back = importCode(exportCode(old, newStash(data), data), data).ch;
+  assert.equal(back.inventory.filter(Boolean).length, 1);
+  assert.equal(I.runeQty(back.inventory[0]), 2);
+});
+
 console.log(`\n${n} kiểm tra đều qua.`);
