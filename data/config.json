@@ -93,11 +93,11 @@
   "drops": {
     "hpPotion": {
       "chance": 0.02,
-      "healPct": 0.3
+      "heal": 20
     },
     "manaPotion": {
       "chance": 0.02,
-      "restorePct": 0.4
+      "restore": 20
     },
     "maxPickups": 600,
     "magnetSpeed": 520

@@ -1709,13 +1709,13 @@ export class Game {
           this.emit({ type: 'item', item: k.item });
         }
         else if (k.kind === 'hp') {
-          p.hp = Math.min(this.stats.maxHp, p.hp + this.stats.maxHp * drops.hpPotion.healPct);
+          p.hp = Math.min(this.stats.maxHp, p.hp + drops.hpPotion.heal);
           this.log.potions.hp++;
-          this.addText(p.x, p.y - 30, '+Máu', '#ff6b6b', 14);
+          this.addText(p.x, p.y - 30, `+${drops.hpPotion.heal} máu`, '#ff6b6b', 14);
         } else if (k.kind === 'mana') {
-          p.mana = Math.min(this.stats.maxMana, p.mana + this.stats.maxMana * drops.manaPotion.restorePct);
+          p.mana = Math.min(this.stats.maxMana, p.mana + drops.manaPotion.restore);
           this.log.potions.mana++;
-          this.addText(p.x, p.y - 30, '+Mana', '#6fa8ff', 14);
+          this.addText(p.x, p.y - 30, `+${drops.manaPotion.restore} mana`, '#6fa8ff', 14);
         }
       } else {
         k.x += (dx / d) * step;
