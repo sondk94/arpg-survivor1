@@ -80,6 +80,9 @@ export function createCharacter(data, classId = data.classList[0].id, name = '')
     diffProgress: {}, // số màn đã qua ở Ác mộng / Địa ngục
     records: {}, // kỷ lục thời gian hạ boss: { "normal:1-1": giây }
     shards: 0, // mảnh (nguyên liệu lò chế)
+    lootFilter: { normal: 'pick', magicMinLevel: 0, makeRoom: false }, // bộ lọc nhặt đồ
+    buyback: [], // 10 món vừa bán gần nhất (mua lại được)
+    overflow: [], // túi tạm: đồ từ rương thưởng khi kho đầy
   };
   applyStartSkills(ch, data);
   return ch;

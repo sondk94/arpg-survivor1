@@ -233,8 +233,31 @@ export class Renderer {
     ctx.fill();
     ctx.textAlign = 'center';
     for (const k of g.pickups) {
+      if (k.kind === 'chest') {
+        if (!this.vis(k.x, k.y, 60)) continue;
+        // Rương thưởng: hộp gỗ viền vàng, nhún nhảy và toả sáng.
+        const b = Math.sin(g.time * 4 + (g.victory?.t || 0) * 4) * 3;
+        const glow = ctx.createRadialGradient(k.x, k.y, 4, k.x, k.y, 60);
+        glow.addColorStop(0, 'rgba(255,215,106,0.55)');
+        glow.addColorStop(1, 'rgba(255,215,106,0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath(); ctx.arc(k.x, k.y, 60, 0, TAU); ctx.fill();
+        const y = k.y + b;
+        ctx.fillStyle = '#7a4a22'; ctx.fillRect(k.x - 20, y - 8, 40, 22);
+        ctx.fillStyle = '#9a5e2c';
+        ctx.beginPath(); ctx.moveTo(k.x - 20, y - 8); ctx.quadraticCurveTo(k.x, y - 26, k.x + 20, y - 8); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#ffd76a'; ctx.lineWidth = 3;
+        ctx.strokeRect(k.x - 20, y - 8, 40, 22);
+        ctx.beginPath(); ctx.moveTo(k.x - 20, y - 8); ctx.quadraticCurveTo(k.x, y - 26, k.x + 20, y - 8); ctx.stroke();
+        ctx.fillStyle = '#ffd76a'; ctx.fillRect(k.x - 4, y - 4, 8, 9);
+        ctx.font = '700 12px system-ui, sans-serif';
+        ctx.fillStyle = '#ffd76a';
+        ctx.fillText('Rương thưởng', k.x, y - 30);
+        continue;
+      }
       if (k.kind === 'item') {
         if (!this.vis(k.x, k.y, 60)) continue;
+        if (k.skipped) ctx.globalAlpha = 0.4; // bộ lọc bỏ qua: vẽ mờ
         const col = k.item.type === 'rune' ? g.data.runes.byId[k.item.rune].color : g.data.items.rarities[k.item.rarity].color;
         if (k.item.rarity === 'rare' || k.item.rarity === 'unique' || k.item.rarity === 'set' || k.item.type === 'rune') {
           const grd = ctx.createLinearGradient(0, k.y - 70, 0, k.y);
@@ -258,6 +281,7 @@ export class Renderer {
           ctx.fillStyle = col;
           ctx.fillText(k.item.name, k.x, k.y - 13);
         }
+        ctx.globalAlpha = 1;
         continue;
       }
       if (k.kind === 'gold') {
@@ -665,6 +689,7 @@ export class Renderer {
     if (g.boss && !g.boss.dead) list.push([g.boss, '#ff4040']);
     if (g.miniboss && !g.miniboss.dead) list.push([g.miniboss, '#e0a050']);
     for (const e of g.enemies) if (e.elite && !e.dead && !e.flee) list.push([e, '#ffcc33']);
+    for (const k of g.pickups) if (k.kind === 'chest' && !k.dead) list.push([k, '#ffd76a']);
     for (const [e, col] of list) {
       const x = e.x - camX, y = e.y - camY;
       if (x > 0 && x < this.w && y > 0 && y < this.h) continue;
@@ -704,6 +729,19 @@ export class Renderer {
     ctx.font = '600 13px system-ui, sans-serif';
     ctx.fillStyle = '#bdb6a2';
     ctx.fillText(`${g.diff && g.diff.id !== 'normal' ? `${g.diff.name} · ` : ''}Màn ${g.map.id}: ${g.map.name}${g.map.hpMult > 1.0001 ? ` · máu +${Math.round((g.map.hpMult - 1) * 100)}%` : ''}`, w - 14, 22);
+
+    ctx.textAlign = 'center';
+    // Sau khi hạ boss: nhắc nhặt rương / đếm ngược kết thúc màn.
+    if (g.victory) {
+      const v = g.victory;
+      const text = v.state === 'chest' ? `Nhặt rương thưởng (tự mở sau ${Math.ceil(g.data.items.drops.chest.autoOpen - v.t)} giây)` : `Kết thúc màn sau ${Math.max(0, Math.ceil(v.left))} giây`;
+      ctx.font = `800 ${small ? 18 : 24}px system-ui, sans-serif`;
+      ctx.fillStyle = '#000';
+      const ty = g.banner ? 150 : 104;
+      ctx.fillText(text, w / 2 + 2, ty + 2);
+      ctx.fillStyle = v.state === 'chest' ? '#ffd76a' : '#7dff9a';
+      ctx.fillText(text, w / 2, ty);
+    }
 
     if (g.banner) {
       const k = g.banner.t < 0.3 ? g.banner.t / 0.3 : Math.min(1, (g.banner.dur - g.banner.t) / 0.5);

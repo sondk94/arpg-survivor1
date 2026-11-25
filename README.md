@@ -106,6 +106,30 @@ Chỉ số cấp 1 so với pháp sư:
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
 
+## Rương thưởng boss và quản lý đồ (bản 1.7)
+
+**Rương thưởng khi hạ boss cuối màn:**
+- Boss chết thì đồ rơi như cũ, cộng thêm một **rương thưởng** phát sáng. Màn chưa kết thúc ngay.
+- Ngay khi boss chết: mọi quái còn lại biến mất, không sinh thêm quái, đồng hồ dừng (kỷ lục tính lúc hạ boss), người chơi bất tử.
+- Chạm vào rương thì rương mở: phun phần thưởng ra, rồi **mọi đồ, vàng, ngọc trên đất tự bay vào người**. Hiện "Kết thúc màn sau 5 giây", hết giờ thì sang bảng kết quả.
+- Không nhặt rương sau 30 giây thì rương tự mở. Bỏ lượt sau khi đã hạ boss vẫn tính thắng và nhận đủ đồ.
+- Trong rương: chắc chắn 1 món hiếm trở lên, thêm 1 món ma thuật trở lên, 25% có thêm 1 món độc nhất hoặc đồ bộ, 30% có 1 rune, vàng ×5, 4–10 mảnh lò chế. Lần đầu qua màn (ở độ khó đó) được thêm 1 món hiếm. Cấp đồ +6. Số liệu: `items.json` → `drops.chest`.
+- **Kho đầy**: đồ không vừa vào **túi tạm**. Ở làng có mục "Túi tạm" để Giữ (vào kho đồ, đầy thì vào rương chung) hoặc Bán từng món / tất cả. Túi tạm được lưu, không mất đồ.
+- Bảng kết quả liệt kê đồ trong rương và số mảnh.
+
+**Quản lý đồ (bảng Đồ đạc):**
+1. **Mũi tên so sánh** trên ô đồ: ↑ tốt hơn đồ đang mặc, ↓ kém hơn, ✕ đồ của lớp khác hoặc chưa đủ yêu cầu (chấm điểm theo nhánh nhiều điểm nhất của nhân vật).
+2. **Khoá đồ** 🔒: nút "Khoá" trong chi tiết món. Đồ khoá không bị bán / phân giải hàng loạt, không vứt được.
+3. **Bán nhanh** (ở làng): Đồ thường, Đồ ma thuật, Kém hơn đồ đang mặc, Đồ của lớp khác. Hộp xác nhận liệt kê từng món và tổng vàng. Mặc định không đụng tới độc nhất, đồ bộ, rune, trừ khi tick "Tính cả độc nhất, đồ bộ, rune".
+4. **Phân giải nhanh** ở Lò chế với cùng các bộ lọc (thêm "Đã đánh dấu rác"), ra mảnh.
+5. **Ctrl + bấm** (Cmd trên Mac) vào một món: ở làng bán ngay; trong màn đánh dấu rác 🗑. Đồ đánh dấu rác **tự bán khi về làng**.
+6. **Mua lại**: 10 món bán gần nhất, mua lại đúng giá đã bán.
+7. **Bộ lọc nhặt đồ**: đồ thường Nhặt / Tự bán khi nhặt / Không nhặt; không nhặt đồ ma thuật dưới cấp đồ X. Vàng, rune và đồ hiếm trở lên luôn được nhặt. Đồ bị bỏ qua vẽ mờ trên đất.
+8. **Kho đầy giữa màn**: tick "Kho đầy: tự bán món rác rẻ nhất" thì game bán món đồ thường / đánh dấu rác rẻ nhất (chưa khoá) để nhặt món mới.
+9. **Sắp xếp** kho đồ: theo thứ tự ô trang bị, rồi độ hiếm (đồ bộ, độc nhất, hiếm, ma thuật, thường), rồi cấp đồ; rune ở cuối.
+
+Bộ lọc, khoá, đánh dấu rác, danh sách mua lại và túi tạm đều được lưu và đi theo mã xuất nhân vật. Mã nguồn: `src/core/loot.js`.
+
 ## Triệu hồi sư Hoang dã (bản 1.7)
 
 Lớp thứ ba: gọi bầy thú đánh thay mình. Chỉ số chính là **Năng lượng**.

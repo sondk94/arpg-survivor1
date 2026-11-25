@@ -1,7 +1,7 @@
 // Lưu nhân vật + rương chung, và mã sao lưu để chuyển sang máy khác.
 import { createCharacter, getClass } from './progression.js';
 
-const FIELDS = ['uid', 'name', 'classId', 'level', 'xp', 'attrs', 'attrPoints', 'skillPoints', 'skills', 'slots', 'gold', 'inventory', 'equipment', 'runs', 'deaths', 'clears', 'mapDeaths', 'mapProgress', 'mapClears', 'diffProgress', 'records', 'shards'];
+const FIELDS = ['uid', 'name', 'classId', 'level', 'xp', 'attrs', 'attrPoints', 'skillPoints', 'skills', 'slots', 'gold', 'inventory', 'equipment', 'runs', 'deaths', 'clears', 'mapDeaths', 'mapProgress', 'mapClears', 'diffProgress', 'records', 'shards', 'lootFilter', 'buyback', 'overflow'];
 
 function b64encode(str) {
   const bytes = new TextEncoder().encode(str);
@@ -78,6 +78,20 @@ export function normalizeCharacter(raw, data) {
   ch.records = ch.records && typeof ch.records === 'object' ? Object.fromEntries(Object.entries(ch.records).filter(([, v]) => Number.isFinite(v) && v > 0)) : {};
   ch.shards = Math.max(0, Math.floor(num(ch.shards, 0)));
   ch.mapClears = ch.mapClears && typeof ch.mapClears === 'object' ? ch.mapClears : {};
+  // Quản lý đồ: bộ lọc nhặt, danh sách mua lại, túi tạm (đồ từ rương khi kho đầy).
+  const lf = ch.lootFilter && typeof ch.lootFilter === 'object' ? ch.lootFilter : {};
+  ch.lootFilter = {
+    normal: ['pick', 'skip', 'sell'].includes(lf.normal) ? lf.normal : 'pick',
+    magicMinLevel: Math.max(0, Math.min(200, Math.floor(num(lf.magicMinLevel, 0)))),
+    makeRoom: !!lf.makeRoom,
+  };
+  ch.buyback = (Array.isArray(ch.buyback) ? ch.buyback : []).filter((b) => b && validItem(b.item, data) && Number.isFinite(b.price) && b.price >= 0).slice(0, 10);
+  ch.overflow = (Array.isArray(ch.overflow) ? ch.overflow : []).filter((it) => validItem(it, data)).slice(0, 40);
+  for (const it of [...ch.inventory, ...Object.values(ch.equipment), ...ch.overflow]) {
+    if (!it) continue;
+    if (it.locked !== undefined) it.locked = !!it.locked;
+    if (it.junk !== undefined) it.junk = !!it.junk;
+  }
   return ch;
 }
 

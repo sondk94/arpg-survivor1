@@ -96,6 +96,13 @@ export function botAllocate(ch, data, buildName = 'fireball') {
 // Hướng di chuyển: tránh quái/đạn/vũng độc, đi nhặt ngọc, không ra sát mép bản đồ.
 export function botInput(game, opts = {}) {
   const p = game.player;
+  // Đã hạ boss: đi thẳng tới rương thưởng.
+  if (game.victory) {
+    const c = game.pickups.find((k) => k.kind === 'chest' && !k.dead);
+    if (!c) return { x: 0, y: 0 };
+    const dx = c.x - p.x, dy = c.y - p.y, d = Math.hypot(dx, dy) || 1;
+    return { x: dx / d, y: dy / d };
+  }
   let fx = 0, fy = 0;
   let danger = 0;
   // Cận chiến: áp sát quái gần nhất, chỉ lùi khi máu thấp.

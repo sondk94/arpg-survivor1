@@ -160,7 +160,24 @@
     },
     "ilvlPerMinute": 1.4,
     "sellBase": 8,
-    "sellPerIlvl": 2
+    "sellPerIlvl": 2,
+    "chest": {
+      "countdown": 5,
+      "autoOpen": 30,
+      "ilvlBonus": 6,
+      "minRarity": "rare",
+      "rareMult": 3,
+      "uniqueMult": 3,
+      "setMult": 2,
+      "specialChance": 0.25,
+      "extraItems": 1,
+      "runeChance": 0.3,
+      "goldMult": 5,
+      "shards": [
+        4,
+        10
+      ]
+    }
   },
   "stats": {
     "str": {

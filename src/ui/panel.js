@@ -2,6 +2,7 @@
 // Game dừng hẳn khi bảng mở.
 import * as P from '../core/progression.js';
 import * as I from '../core/items.js';
+import * as L from '../core/loot.js';
 import { drawSkillIcon } from './render.js';
 import { describeSkill, synergyText } from './skilltext.js';
 import { RNG } from '../core/rng.js';
@@ -28,6 +29,8 @@ export class Panel {
     this.titleEl = root.querySelector('#panel-title');
     this.dialog = root.querySelector('#replace-dialog');
     root.addEventListener('click', (ev) => this.onClick(ev));
+    root.addEventListener('change', (ev) => this.onChange(ev));
+    this.bulkSpecial = false; // bán / phân giải nhanh: tính cả độc nhất, đồ bộ, rune
     root.addEventListener('pointerover', (ev) => {
       const n = ev.target.closest('[data-node]');
       if (n && n.dataset.node !== this.selected) { this.selected = n.dataset.node; this.renderDetails(); this.markSelected(); }
@@ -125,15 +128,112 @@ export class Panel {
       this.lastCell = d.cell;
       this.lastCellT = now;
       const [where, key] = d.cell.split(':');
+      if ((ev.ctrlKey || ev.metaKey) && this.tab !== 'craft') { this.lastCell = null; this.quickJunk(where, key); return; }
       this.sel = { where, key };
       if (dbl && this.selItem()) { this.lastCell = null; this.doubleAction(); return; }
       this.render();
       return;
     }
+    if (d.bulk) { const [mode, f] = d.bulk.split(':'); this.showBulk(mode, f); return; }
+    if (d.bulkdo !== undefined) { this.doBulk(d.bulkdo === '1'); return; }
+    if (d.sort !== undefined) { L.sortInventory(this.ch, this.data); this.sel = null; this.changed(); return; }
+    if (d.buyback !== undefined) { const r = L.buyBack(this.ch, Number(d.buyback)); this.flash(r === 'ok' ? 'Đã mua lại' : r); if (r === 'ok') this.changed(); return; }
     if (d.act) this.itemAction(d.act);
     if (d.rune) this.socketRune(d.rune);
     if (d.craft) this.doCraft(d.craft);
     if (d.combine) this.doCombine(d.combine);
+  }
+
+  onChange(ev) {
+    const t = ev.target;
+    if (t.dataset.lf) {
+      const f = L.lootFilter(this.ch);
+      if (t.dataset.lf === 'normal') f.normal = t.value;
+      else if (t.dataset.lf === 'magicMinLevel') f.magicMinLevel = Math.max(0, Math.floor(Number(t.value) || 0));
+      else if (t.dataset.lf === 'makeRoom') f.makeRoom = t.checked;
+      this.ch.lootFilter = f;
+      this.hooks.onChanged?.();
+      this.flash('Đã lưu bộ lọc nhặt đồ');
+    } else if (t.dataset.bulkspecial !== undefined) {
+      this.bulkSpecial = t.checked;
+      this.render();
+    }
+  }
+
+  // Hộp xác nhận bán / phân giải hàng loạt: liệt kê số món và tổng vàng / mảnh.
+  showBulk(mode, filter) {
+    const ch = this.ch, data = this.data;
+    const idx = L.bulkCandidates(ch, data, filter, this.bulkSpecial);
+    if (!idx.length) { this.flash('Không có món nào khớp'); return; }
+    const total = L.sumValue(ch, idx, data, mode === 'sell' ? I.sellValue : I.salvageValue);
+    const names = idx.slice(0, 12).map((i) => {
+      const it = ch.inventory[i];
+      return `<span style="color:${it.type === 'rune' ? data.runes.byId[it.rune].color : data.items.rarities[it.rarity].color}">${esc(it.name)}</span>`;
+    }).join(', ') + (idx.length > 12 ? ` và ${idx.length - 12} món khác` : '');
+    const verb = mode === 'sell' ? 'Bán' : 'Phân giải';
+    this.pendingBulk = { mode, idx };
+    this.dialog.innerHTML = `<div class="dlg"><h3>${verb} ${idx.length} món ${esc(BULK_LABELS[filter].toLowerCase())}?</h3>
+      <p>${names}</p><p>Nhận <b>${total.toLocaleString('vi-VN')} ${mode === 'sell' ? 'vàng' : 'mảnh'}</b>. Đồ đã khoá 🔒 không bị ${verb.toLowerCase()}.${mode === 'sell' ? ' Có thể mua lại 10 món bán gần nhất.' : ''}</p>
+      <div class="dlg-btns"><button data-bulkdo="1" class="primary">${verb}</button><button data-bulkdo="0" class="ghost">Huỷ</button></div></div>`;
+    this.dialog.classList.remove('hidden');
+  }
+
+  doBulk(ok) {
+    this.dialog.classList.add('hidden');
+    const b = this.pendingBulk;
+    this.pendingBulk = null;
+    if (!ok || !b) return;
+    if (b.mode === 'sell') { const r = L.sellItems(this.ch, b.idx, this.data); this.flash(`Đã bán ${r.n} món: +${r.gold} vàng`); }
+    else { const r = L.salvageItems(this.ch, b.idx, this.data); this.flash(`Đã phân giải ${r.n} món: +${r.shards} mảnh`); }
+    this.sel = null;
+    this.changed();
+  }
+
+  // Ctrl + bấm: ở làng bán ngay, trong màn đánh dấu / bỏ đánh dấu rác (tự bán khi về làng).
+  quickJunk(where, key) {
+    if (where !== 'inv') return;
+    const it = this.ch.inventory[key];
+    if (!it) return;
+    if (it.locked) { this.flash('Món này đã khoá'); return; }
+    if (this.village) {
+      const r = L.sellItems(this.ch, [Number(key)], this.data);
+      this.flash(`Đã bán ${it.name}: +${r.gold} vàng`);
+    } else {
+      it.junk = !it.junk;
+      this.flash(it.junk ? `Đánh dấu rác: ${it.name} (tự bán khi về làng)` : 'Bỏ đánh dấu rác');
+    }
+    this.sel = null;
+    this.changed();
+  }
+
+  bulkBarHtml(mode) {
+    const verb = mode === 'sell' ? 'Bán' : 'Phân giải';
+    const ch = this.ch, data = this.data;
+    const btns = Object.entries(BULK_LABELS).filter(([f]) => f !== 'junk' || mode === 'salvage').map(([f, label]) => {
+      const idx = L.bulkCandidates(ch, data, f, this.bulkSpecial);
+      return `<button data-bulk="${mode}:${f}" ${idx.length ? '' : 'disabled'}>${label} <small>${idx.length}</small></button>`;
+    }).join('');
+    return `<div class="bulkbar"><h5>${verb} nhanh</h5><div class="bulk-btns">${btns}</div>
+      <label class="chk"><input type="checkbox" data-bulkspecial ${this.bulkSpecial ? 'checked' : ''}> Tính cả độc nhất, đồ bộ, rune</label></div>`;
+  }
+
+  lootFilterHtml() {
+    const f = L.lootFilter(this.ch);
+    return `<div class="bulkbar"><h5>Bộ lọc nhặt đồ</h5>
+      <label>Đồ thường (trắng): <select data-lf="normal">
+        <option value="pick" ${f.normal === 'pick' ? 'selected' : ''}>Nhặt</option>
+        <option value="sell" ${f.normal === 'sell' ? 'selected' : ''}>Tự bán khi nhặt</option>
+        <option value="skip" ${f.normal === 'skip' ? 'selected' : ''}>Không nhặt</option></select></label>
+      <label>Không nhặt đồ ma thuật (xanh) dưới cấp đồ <input type="number" min="0" max="200" data-lf="magicMinLevel" value="${f.magicMinLevel}" style="width:56px"></label>
+      <label class="chk"><input type="checkbox" data-lf="makeRoom" ${f.makeRoom ? 'checked' : ''}> Kho đầy: tự bán món rác rẻ nhất (đồ trắng / đánh dấu rác, chưa khoá) để nhặt món mới</label>
+      <div class="muted" style="font-size:11px">Vàng, rune và đồ hiếm trở lên luôn được nhặt.</div></div>`;
+  }
+
+  buybackHtml() {
+    const bb = this.ch.buyback || [];
+    if (!bb.length) return '';
+    return `<div class="bulkbar"><h5>Mua lại (${bb.length} món bán gần nhất)</h5><div class="bb-list">${bb.map((b, i) =>
+      `<div><span style="color:${b.item.type === 'rune' ? this.data.runes.byId[b.item.rune].color : this.data.items.rarities[b.item.rarity].color}">${esc(b.item.name)}</span><button data-buyback="${i}" ${this.ch.gold >= b.price ? '' : 'disabled'}>Mua ${b.price}</button></div>`).join('')}</div></div>`;
   }
 
   doubleAction() {
@@ -184,11 +284,26 @@ export class Panel {
     else if (act === 'take' && s.where === 'stash') res = I.transfer(stash, Number(s.key), ch.inventory) === 'ok' ? 'ok' : 'Kho đồ đầy';
     else if (act === 'sell' && s.where === 'inv') {
       const it = ch.inventory[s.key];
-      ch.gold += I.sellValue(it, this.data);
-      ch.inventory[s.key] = null;
-      this.flash(`+${I.sellValue(it, this.data)} vàng`);
+      if (it.locked) { this.flash('Món này đã khoá'); return; }
+      const r = L.sellItems(ch, [Number(s.key)], this.data);
+      this.flash(`+${r.gold} vàng`);
     } else if (act === 'drop' && s.where === 'inv') {
+      const it = ch.inventory[s.key];
+      if (it.locked) { this.flash('Món này đã khoá'); return; }
       ch.inventory[s.key] = null;
+    } else if (act === 'lock') {
+      const it = this.selItem();
+      it.locked = !it.locked;
+      if (it.locked) delete it.junk;
+      this.flash(it.locked ? 'Đã khoá: không bị bán / phân giải hàng loạt' : 'Đã mở khoá');
+      this.changed();
+      return;
+    } else if (act === 'junk' && s.where === 'inv') {
+      const it = ch.inventory[s.key];
+      it.junk = !it.junk;
+      this.flash(it.junk ? 'Đánh dấu rác: tự bán khi về làng' : 'Bỏ đánh dấu rác');
+      this.changed();
+      return;
     } else return;
     if (res !== 'ok') { this.flash(res); return; }
     this.sel = null;
@@ -231,6 +346,7 @@ export class Panel {
   // ---------- Vẽ ----------
   render() {
     const ch = this.ch;
+    this._tree = L.mainTree(ch, this.data);
     const clsName = P.getClass(ch, this.data).name;
     this.titleEl.textContent = `${ch.name && !clsName.startsWith(ch.name) ? `${ch.name} · ` : ''}${clsName} — Cấp ${ch.level}`;
     const myTrees = P.classTrees(ch, this.data);
@@ -430,8 +546,12 @@ export class Panel {
     const col = it.type === 'rune' ? this.data.runes.byId[it.rune].color : this.data.items.rarities[it.rarity].color;
     const ok = I.meetsReq(it, ch.level, I.totalStr(ch));
     const dots = it.sockets ? `<span class="sk">${Array.from({ length: it.sockets }, (_, i) => `<i class="${it.runes?.[i] ? 'full' : ''}" style="${it.runes?.[i] ? `--ruc:${this.data.runes.byId[it.runes[i].id].color}` : ''}"></i>`).join('')}</span>` : '';
-    return `<div class="cell ${sel ? 'sel' : ''} ${ok ? '' : 'unmet'}" data-cell="${where}:${key}" style="--rc:${col}" title="${esc(it.name)}">
-      <span class="ic">${esc(typeIcon(it.type))}</span><span class="nm">${esc(it.name)}</span>${dots}</div>`;
+    // So sánh với đồ đang mặc: ↑ tốt hơn, ↓ kém hơn, ✕ sai lớp hoặc chưa đủ yêu cầu.
+    const v = where !== 'eq' ? L.itemVerdict(it, ch, this.data, this._tree) : null;
+    const vb = v === 'up' ? '<b class="vd up" title="Tốt hơn đồ đang mặc">↑</b>' : v === 'down' ? '<b class="vd down" title="Kém hơn đồ đang mặc">↓</b>' : v === 'cant' ? `<b class="vd cant" title="${L.wrongClass(it, ch) ? 'Đồ của lớp khác' : 'Chưa đủ yêu cầu'}">✕</b>` : '';
+    const flags = `${it.locked ? '<b class="lk" title="Đã khoá">🔒</b>' : ''}${it.junk ? '<b class="jk" title="Rác: tự bán khi về làng">🗑</b>' : ''}`;
+    return `<div class="cell ${sel ? 'sel' : ''} ${ok ? '' : 'unmet'} ${it.junk ? 'junk' : ''}" data-cell="${where}:${key}" style="--rc:${col}" title="${esc(it.name)}">
+      <span class="ic">${esc(typeIcon(it.type))}</span><span class="nm">${esc(it.name)}</span>${dots}${vb}${flags}</div>`;
   }
 
   itemCard(it, title = '') {
@@ -496,7 +616,7 @@ export class Panel {
     const eqHtml = data.items.slots.map((s) => `<div class="eqslot eq-${s.id}">${this.cellHtml(ch.equipment[s.id], 'eq', s.id, s.name)}</div>`).join('');
     const invHtml = ch.inventory.map((it, i) => this.cellHtml(it, 'inv', i)).join('');
     const it = this.selItem();
-    let detail = '<div class="muted">Chọn một món đồ (đang mặc hoặc trong kho) để chế tác.</div>';
+    let detail = '<div class="muted">Chọn một món đồ (đang mặc hoặc trong kho) để chế tác.</div>' + this.bulkBarHtml('salvage');
     if (it && it.type !== 'rune') {
       const c = I.craftCosts(it, data);
       const b = (act, label, cost, why) => `<button data-craft="${act}" ${cost ? '' : 'disabled'} title="${esc(why || '')}">${label}${cost ? ` <small>${[cost.shards ? `${cost.shards} mảnh` : '', cost.gold ? `${cost.gold} vàng` : ''].filter(Boolean).join(' + ')}</small>` : ''}</button>`;
@@ -531,7 +651,7 @@ export class Panel {
     const invHtml = ch.inventory.map((it, i) => this.cellHtml(it, 'inv', i)).join('');
     const used = ch.inventory.filter(Boolean).length;
     const it = this.selItem();
-    let detail = '<div class="muted">Bấm vào một món để xem chi tiết. Bấm đúp: mặc / tháo' + (stashMode ? ' / chuyển rương' : '') + '.</div>';
+    let detail = '<div class="muted">Bấm vào một món để xem chi tiết. Bấm đúp: mặc / tháo' + (stashMode ? ' / chuyển rương' : '') + `. Ctrl + bấm: ${this.village ? 'bán ngay' : 'đánh dấu rác'}.<br>↑ tốt hơn đồ đang mặc · ↓ kém hơn · ✕ đồ lớp khác / chưa đủ yêu cầu · 🔒 đã khoá.</div>` + (stashMode ? '' : (this.village ? this.bulkBarHtml('sell') + this.buybackHtml() : '') + this.lootFilterHtml());
     if (it) {
       const s = this.sel;
       const btn = [];
@@ -546,8 +666,10 @@ export class Panel {
       if (s.where === 'eq') btn.push('<button data-act="unequip">Tháo</button>');
       if (s.where === 'inv' && stashMode) btn.push('<button data-act="store" class="primary">Cất vào rương</button>');
       if (s.where === 'stash') btn.push('<button data-act="take" class="primary">Lấy ra kho đồ</button>');
-      if (s.where === 'inv' && this.village) btn.push(`<button data-act="sell">Bán (${I.sellValue(it, data)} vàng)</button>`);
-      if (s.where === 'inv' && !this.village) btn.push('<button data-act="drop" class="ghost">Vứt bỏ</button>');
+      if (s.where === 'inv' && this.village && !it.locked) btn.push(`<button data-act="sell">Bán (${I.sellValue(it, data)} vàng)</button>`);
+      if (s.where === 'inv' && !this.village && !it.locked) btn.push(`<button data-act="junk">${it.junk ? 'Bỏ đánh dấu rác' : 'Đánh dấu rác (bán khi về làng)'}</button>`);
+      if (s.where === 'inv' && !this.village && !it.locked) btn.push('<button data-act="drop" class="ghost">Vứt bỏ</button>');
+      if (s.where !== 'stash') btn.push(`<button data-act="lock" class="ghost">${it.locked ? 'Mở khoá' : '🔒 Khoá'}</button>`);
       detail = `<div class="item-detail">${this.itemCard(it)}${s.where !== 'eq' ? this.compareHtml(it) : ''}</div><div class="item-btns">${btn.join('')}</div>`;
     }
     let stashHtml = '';
@@ -557,11 +679,13 @@ export class Panel {
     }
     this.body.innerHTML = `<div class="items-wrap ${stashMode ? 'stash-mode' : ''}">
       ${stashMode ? stashHtml : `<section class="paperdoll"><h4>Trang bị</h4><div class="eqgrid">${eqHtml}</div></section>`}
-      <section class="inv"><h4>Kho đồ <small>${used}/${ch.inventory.length}</small></h4><div class="grid inv-grid">${invHtml}</div></section>
+      <section class="inv"><h4>Kho đồ <small>${used}/${ch.inventory.length}</small> <button data-sort class="mini">Sắp xếp</button></h4><div class="grid inv-grid">${invHtml}</div></section>
       <section class="idetail">${detail}</section>
     </div>`;
   }
 }
+
+const BULK_LABELS = { normal: 'Đồ thường', magic: 'Đồ ma thuật', worse: 'Kém hơn đồ đang mặc', wrongClass: 'Đồ của lớp khác', junk: 'Đã đánh dấu rác' };
 
 function typeIcon(t) {
   return { weapon: '⚚', offhand: '◉', head: '⛑', body: '▣', gloves: '✋', belt: '═', boots: '▟', amulet: '◈', ring: '○', rune: 'ᚱ' }[t] || '?';
