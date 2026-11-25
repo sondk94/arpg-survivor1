@@ -48,6 +48,21 @@ Object.assign(BUILDS, {
     attrs: { str: 2, vit: 2, dex: 1 },
     skills: [['thrust', 1], ['life_leech', 1], ['chain_cleave', 1], ['berserk', 1], ['blood_mastery', 1], ['blood_burst', 1], ['chain_cleave', 20]],
   },
+  pack: {
+    class: 'summoner', tree: 'pack',
+    attrs: { ene: 2, vit: 2, dex: 1 },
+    skills: [['summon_wolf', 1], ['summon_bear', 1], ['beast_mastery', 1], ['alpha_wolf', 1], ['pack_frenzy', 1], ['venom_fangs', 1], ['summon_wolf', 12], ['beast_mastery', 20], ['summon_wolf', 20]],
+  },
+  beast: {
+    class: 'summoner', tree: 'beast',
+    attrs: { ene: 2, vit: 2, dex: 1 },
+    skills: [['summon_bear', 1], ['summon_wolf', 1], ['thorn_hide', 1], ['thick_hide', 1], ['bear_slam', 1], ['wild_regrowth', 1], ['undying', 1], ['summon_bear', 10], ['bear_slam', 20], ['summon_bear', 20]],
+  },
+  swarm: {
+    class: 'summoner', tree: 'swarm',
+    attrs: { ene: 2, vit: 2, dex: 1 },
+    skills: [['summon_crows', 1], ['summon_bear', 1], ['bee_swarm', 1], ['wild_mastery', 1], ['eagle', 1], ['spirit_link', 1], ['eagle', 20], ['summon_crows', 20]],
+  },
 });
 
 export function botAllocate(ch, data, buildName = 'fireball') {
@@ -179,7 +194,8 @@ export function botInput(game, opts = {}) {
 // Bot tự mặc món tốt hơn trong kho (theo điểm đánh giá đơn giản).
 export function botManageItems(ch, data, buildName = 'fire') {
   const tree = (BUILDS[buildName] || BUILDS.fire).tree;
-  const physical = (BUILDS[buildName] || {}).class === 'warrior';
+  const cls = (BUILDS[buildName] || {}).class;
+  const physical = cls === 'summoner' ? 'summon' : cls === 'warrior';
   let changed = false;
   for (let i = 0; i < ch.inventory.length; i++) {
     const it = ch.inventory[i];

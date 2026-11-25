@@ -77,8 +77,8 @@ t('Mốc mở kỹ năng chế độ thử nghiệm: Lửa 1/1/2/4/6/8, Băng v�
   assert.deepEqual(by('fire'), [1, 1, 2, 4, 6, 8]);
   assert.deepEqual(by('cold'), [1, 2, 4, 4, 6, 8]);
   assert.deepEqual(by('lightning'), [1, 2, 4, 4, 6, 8]);
-  assert.equal(data.skillList.length, 36);
-  for (const t of ['weapon', 'shout', 'blood']) assert.deepEqual(by(t), [1, 2, 4, 4, 6, 8], t);
+  assert.equal(data.skillList.length, 54);
+  for (const t of ['weapon', 'shout', 'blood', 'pack', 'beast', 'swarm']) assert.deepEqual(by(t), [1, 2, 4, 4, 6, 8], t);
 });
 
 t('Hoàn tác không hồi máu (cộng Thể lực rồi hoàn tác nhiều lần)', () => {
@@ -498,62 +498,143 @@ t('Tìm cụm quái không trả về NaN khi quái vừa sinh chưa vào lướ
   assert.ok(Number.isFinite(g.player.x) && Number.isFinite(g.player.y));
 });
 
-t('Mỗi điểm Sức mạnh cộng thêm cho +2 sát thương vật lý mỗi đòn (không áp dụng cho phép)', () => {
+t('Mỗi điểm Sức mạnh cộng thêm cho +1 sát thương vật lý mỗi đòn (không áp dụng cho phép)', () => {
   const w = P.createCharacter(data, 'warrior');
   w.attrPoints = 10;
   assert.equal(P.computeStats(w, data).physFlat, 0);
   P.addAttr(w, 'str', 10);
   const st = P.computeStats(w, data);
-  assert.equal(st.physFlat, 20);
+  assert.equal(st.physFlat, 10);
   const [a, b] = P.damageRange(data.skills.cleave, 1);
-  assert.deepEqual(P.hitRange(data.skills.cleave, 1, st), [a + 20 * 0.6, b + 20 * 0.6]); // Chém Bổ nhận 60%
+  assert.deepEqual(P.hitRange(data.skills.cleave, 1, st), [a + 10 * 0.6, b + 10 * 0.6]); // Chém Bổ nhận 60%
   // Sức mạnh từ đồ cũng tính
   w.equipment.ring1 = { uid: 'r', base: 'ring', type: 'ring', rarity: 'magic', name: 'r', ilvl: 1, req: { level: 1, str: 0 }, stats: { str: 5 }, sockets: 0, runes: [] };
-  assert.equal(P.computeStats(w, data).physFlat, 30);
+  assert.equal(P.computeStats(w, data).physFlat, 15);
   // kỹ năng phép không được cộng
   const m = P.createCharacter(data, 'mage');
   m.attrs.str += 10;
   const sm = P.computeStats(m, data);
   assert.deepEqual(P.hitRange(data.skills.fireball, 1, sm), P.damageRange(data.skills.fireball, 1));
-  // trong trận: đòn chém nhận +12 (60% của +20) trước khi nhân hệ số
+  // trong trận: đòn chém nhận +6 (60% của +10) trước khi nhân hệ số
   const g = new Game(data, w, { seed: 1, headless: true });
   w.equipment.ring1 = null; g.refreshStats();
   const mult = g.skillMult(data.skills.cleave);
   for (let i = 0; i < 20; i++) {
     const d = g.rollSkill(data.skills.cleave, 1, mult);
-    assert.ok(d >= (a + 12) * mult - 1e-9 && d <= (b + 12) * mult + 1e-9);
+    assert.ok(d >= (a + 6) * mult - 1e-9 && d <= (b + 6) * mult + 1e-9);
   }
 });
 
-t('Năng lượng cộng thêm: +2 sát thương phép mỗi đòn, nhân hệ số flatScale của từng kỹ năng', () => {
+t('Năng lượng cộng thêm: +1 sát thương phép mỗi đòn, nhân hệ số flatScale của từng kỹ năng', () => {
   const m = P.createCharacter(data, 'mage');
   m.attrPoints = 10;
   P.addAttr(m, 'ene', 10);
   const st = P.computeStats(m, data);
-  assert.equal(st.spellFlat, 20);
+  assert.equal(st.spellFlat, 10);
   assert.equal(st.physFlat, 0);
   const [a, b] = P.damageRange(data.skills.fireball, 1);
-  assert.deepEqual(P.hitRange(data.skills.fireball, 1, st), [a + 20, b + 20]);         // đòn đơn: đủ 100%
+  assert.deepEqual(P.hitRange(data.skills.fireball, 1, st), [a + 10, b + 10]);         // đòn đơn: đủ 100%
   const [oa] = P.damageRange(data.skills.frozen_orb, 1);
-  assert.ok(Math.abs(P.hitRange(data.skills.frozen_orb, 1, st)[0] - (oa + 2)) < 1e-9);  // mảnh Cầu Băng Xoay: 10%
+  assert.ok(Math.abs(P.hitRange(data.skills.frozen_orb, 1, st)[0] - (oa + 1)) < 1e-9);  // mảnh Cầu Băng Xoay: 10%
   const [ea] = P.damageRange(data.skills.ember_ring, 1);
-  assert.ok(Math.abs(P.hitRange(data.skills.ember_ring, 1, st)[0] - (ea + 5)) < 1e-9);  // Vòng Than: 25%
-  // vùng theo giây: Bão Tuyết nhận +20/giây
+  assert.ok(Math.abs(P.hitRange(data.skills.ember_ring, 1, st)[0] - (ea + 2.5)) < 1e-9);  // Vòng Than: 25%
+  // vùng theo giây: Bão Tuyết nhận +10/giây
   m.level = 10; m.skills.blizzard = 1;
   const g = new Game(data, m, { seed: 1, headless: true });
   g.spawnEnemy('zombie', g.player.x + 100, g.player.y);
   g.grid.rebuild(g.enemies);
   g.castStorm(data.skills.blizzard, 1);
-  assert.equal(g.zones[0].dps, P.lv(data.skills.blizzard.dps, 1) + 20);
+  assert.equal(g.zones[0].dps, P.lv(data.skills.blizzard.dps, 1) + 10);
   // Sức mạnh cũng theo flatScale: Lốc Xoáy 35%
   const w = P.createCharacter(data, 'warrior');
   w.attrPoints = 10; P.addAttr(w, 'str', 10);
   const sw = P.computeStats(w, data);
   const [wa] = P.damageRange(data.skills.whirlwind, 1);
-  assert.ok(Math.abs(P.hitRange(data.skills.whirlwind, 1, sw)[0] - (wa + 7)) < 1e-9);
+  assert.ok(Math.abs(P.hitRange(data.skills.whirlwind, 1, sw)[0] - (wa + 3.5)) < 1e-9);
   // Năng lượng không cộng cho kỹ năng vật lý
   w.attrs.ene += 10;
-  assert.ok(Math.abs(P.hitRange(data.skills.whirlwind, 1, P.computeStats(w, data))[0] - (wa + 7)) < 1e-9);
+  assert.ok(Math.abs(P.hitRange(data.skills.whirlwind, 1, P.computeStats(w, data))[0] - (wa + 3.5)) < 1e-9);
+});
+
+
+// ---------- Triệu hồi sư ----------
+function summoner(skills, ene = 0) {
+  const c = P.createCharacter(data, 'summoner');
+  c.level = 30;
+  c.attrPoints = ene;
+  if (ene) P.addAttr(c, 'ene', ene);
+  Object.assign(c.skills, skills);
+  c.slots = Object.keys(skills).filter((id) => data.skills[id].type === 'active').slice(0, 4);
+  while (c.slots.length < 4) c.slots.push(null);
+  return c;
+}
+
+t('Triệu hồi sư: Năng lượng cộng thêm +1 sát thương mỗi đòn và +1% máu cho vật triệu hồi', () => {
+  const c = summoner({ summon_wolf: 1 }, 10);
+  const st = P.computeStats(c, data);
+  assert.equal(st.summonFlat, 10);
+  assert.ok(Math.abs(st.summonHpMult - 1.1) < 1e-9);
+  const sk = data.skills.summon_wolf;
+  const [a] = P.damageRange(sk, 1);
+  assert.ok(Math.abs(P.hitRange(sk, 1, st)[0] - (a + 10 * sk.flatScale)) < 1e-9);
+  // hệ số sát thương của thú không dùng %vật lý của Sức mạnh
+  c.attrs.str += 50;
+  const m1 = P.damageMult(c, sk, P.computeStats(c, data), data);
+  c.attrs.str -= 50;
+  assert.ok(Math.abs(m1 - P.damageMult(c, sk, st, data)) < 1e-9);
+});
+
+t('Gọi Sói: số sói theo cấp, chết thì gọi lại, không vượt giới hạn', () => {
+  const sk = data.skills.summon_wolf;
+  const c = summoner({ summon_wolf: 12 });
+  const g = new Game(data, c, { seed: 3, headless: true });
+  g.update(1 / 60);
+  assert.equal(g.minions.filter((m) => m.kind === 'wolf').length, 4);
+  // không gọi thêm khi đủ
+  assert.equal(g.castSummon(sk, 12), false);
+  g.minions[0].hp = 0; g.minions[0].dead = true;
+  g.minions = g.minions.filter((m) => !m.dead);
+  assert.equal(g.castSummon(sk, 12), true);
+  assert.equal(g.minions.length, 4);
+});
+
+t('Quái đuổi vật triệu hồi gần hơn; gấu khiêu khích quái trong tầm', () => {
+  const c = summoner({ summon_bear: 1 });
+  const g = new Game(data, c, { seed: 4, headless: true });
+  const p = g.player;
+  const bear = g.spawnMinion(data.skills.summon_bear, 1, p.x + 300, p.y);
+  const e = g.spawnEnemy('zombie', p.x + 300 + 120, p.y);
+  assert.equal(g.enemyTarget(e), bear); // trong tầm khiêu khích
+  const e2 = g.spawnEnemy('zombie', p.x - 60, p.y);
+  assert.equal(g.enemyTarget(e2), p); // người chơi gần hơn, ngoài tầm khiêu khích
+  // quái chạm gấu thì gấu mất máu
+  e.x = bear.x + 10; e.y = bear.y;
+  const hp = bear.hp;
+  g.grid.rebuild(g.enemies);
+  g.updateEnemies(1 / 60);
+  assert.ok(bear.hp < hp);
+});
+
+t('Vật triệu hồi tự đánh quái và gây sát thương', () => {
+  const c = summoner({ summon_wolf: 5, summon_bear: 1 }, 20);
+  const g = new Game(data, c, { seed: 5, headless: true });
+  g.events = []; g.updateSpawner = () => {};
+  const p = g.player;
+  const e = g.spawnEnemy('zombie', p.x + 150, p.y);
+  e.speed = 0; e.hp = e.maxHp = 1e6;
+  for (let i = 0; i < 300; i++) g.update(1 / 60);
+  assert.ok(g.effDamage > 0);
+  assert.ok(g.minions.length >= 2);
+});
+
+t('Đồ của Triệu hồi sư: +% sát thương / máu vật triệu hồi và +cấp nhánh', () => {
+  const c = summoner({ summon_wolf: 1 });
+  c.equipment.weapon = { uid: 'w', base: 'beast_staff', type: 'weapon', rarity: 'magic', name: 'x', ilvl: 1, req: { level: 1, str: 0 }, stats: { summonDmgPct: 20, summonHpPct: 30, packSkills: 2 }, sockets: 0, runes: [] };
+  const st = P.computeStats(c, data);
+  const base = P.computeStats(summoner({ summon_wolf: 1 }), data);
+  assert.ok(Math.abs(st.summonDmgPct - base.summonDmgPct - 0.2) < 1e-9);
+  assert.ok(Math.abs(st.summonHpMult - base.summonHpMult - 0.3) < 1e-9);
+  assert.equal(P.skillLevel(c, 'summon_wolf', data, st), 3);
 });
 
 console.log(`\n${n} kiểm tra đều qua.`);

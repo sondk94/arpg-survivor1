@@ -15,7 +15,7 @@ export function lv(param, level) {
 // nhân hệ số flatScale của từng kỹ năng (kỹ năng đánh nhanh, nhiều đòn nhỏ nhận ít hơn).
 export function flatFor(skill, stats, scaleKey = 'flatScale') {
   if (!stats) return 0;
-  const base = skill.element === 'physical' ? stats.physFlat || 0 : stats.spellFlat || 0;
+  const base = skill.summon ? stats.summonFlat || 0 : skill.element === 'physical' ? stats.physFlat || 0 : stats.spellFlat || 0;
   return base * (skill[scaleKey] ?? 1);
 }
 
@@ -104,7 +104,7 @@ export function totalAttrs(ch, gear, data) {
 
 // Chỉ số cộng thêm từ kỹ năng bị động (theo cấp hiệu lực).
 function passiveBonuses(ch, data, skillBonus) {
-  const o = { crit: 0, critMult: 0, armor: 0, resAll: 0, hpRegen: 0, leech: 0 };
+  const o = { crit: 0, critMult: 0, armor: 0, resAll: 0, hpRegen: 0, leech: 0, summonDmg: 0, summonHp: 0, summonArmor: 0, summonRes: 0, summonCrit: 0, flyingDmg: 0 };
   for (const [id, base] of Object.entries(ch.skills)) {
     const sk = data.skills[id];
     if (!sk || sk.type !== 'passive' || !base) continue;
@@ -115,6 +115,13 @@ function passiveBonuses(ch, data, skillBonus) {
     if (sk.resAllPerLevel) o.resAll += sk.resAllPerLevel * l;
     if (sk.hpRegen) o.hpRegen += lv(sk.hpRegen, l);
     if (sk.leech) o.leech += lv(sk.leech, l);
+    // Bị động của Triệu hồi sư.
+    if (sk.summonDmgPct) o.summonDmg += sk.summonDmgPct * l;
+    if (sk.summonHpPct) o.summonHp += sk.summonHpPct * l;
+    if (sk.summonArmor) o.summonArmor += lv(sk.summonArmor, l);
+    if (sk.summonResistPerLevel) o.summonRes += sk.summonResistPerLevel * l;
+    if (sk.summonCritPerLevel) o.summonCrit += sk.summonCritPerLevel * l;
+    if (sk.flyingDmgPct) o.flyingDmg += sk.flyingDmgPct * l;
   }
   return o;
 }
@@ -133,6 +140,8 @@ export function computeStats(ch, data) {
   for (const t of data.trees) skillBonus[t.id] = g[`${t.id}Skills`] || 0;
   const pb = passiveBonuses(ch, data, skillBonus);
   const resAll = pct('resAll') + pb.resAll;
+  const start = getClass(ch, data).startAttributes || p.startAttributes || {};
+  const extraEne = Math.max(0, at.ene - (start.ene ?? 0));
   return {
     attrs: at,
     maxHp,
@@ -142,10 +151,18 @@ export function computeStats(ch, data) {
     cdSpeed: 1 + at.dex * a.dex.cdSpeedPct + pct('cdSpeedPct'),
     dodge: Math.min(c.caps.dodge, at.dex * a.dex.dodgePct),
     physDmgPct: at.str * a.str.physDmgPct + pct('physDmgPct'),
-    // +2 sát thương vật lý mỗi đòn cho mỗi điểm Sức mạnh vượt mức khởi đầu của lớp (từ điểm cộng và từ đồ).
-    physFlat: Math.max(0, at.str - ((getClass(ch, data).startAttributes || p.startAttributes || {}).str ?? 0)) * (a.str.physFlatPerPoint || 0),
-    // +2 sát thương phép mỗi đòn cho mỗi điểm Năng lượng vượt mức khởi đầu của lớp.
-    spellFlat: Math.max(0, at.ene - ((getClass(ch, data).startAttributes || p.startAttributes || {}).ene ?? 0)) * (a.ene.spellFlatPerPoint || 0),
+    // +1 sát thương vật lý mỗi đòn cho mỗi điểm Sức mạnh vượt mức khởi đầu của lớp (từ điểm cộng và từ đồ).
+    physFlat: Math.max(0, at.str - (start.str ?? 0)) * (a.str.physFlatPerPoint || 0),
+    // +1 sát thương phép mỗi đòn cho mỗi điểm Năng lượng vượt mức khởi đầu của lớp.
+    spellFlat: extraEne * (a.ene.spellFlatPerPoint || 0),
+    // Vật triệu hồi: +1 sát thương mỗi đòn và +1% máu cho mỗi điểm Năng lượng cộng thêm.
+    summonFlat: extraEne * (a.ene.summonFlatPerPoint || 0),
+    summonDmgPct: at.ene * a.ene.spellDmgPct + pct('summonDmgPct') + pb.summonDmg,
+    summonHpMult: 1 + extraEne * (a.ene.summonHpPctPerPoint || 0) + pct('summonHpPct') + pb.summonHp,
+    summonArmor: pb.summonArmor,
+    summonResist: pb.summonRes,
+    summonCrit: pb.summonCrit,
+    flyingDmgPct: pb.flyingDmg,
     spellDmgPct: at.ene * a.ene.spellDmgPct + pct('spellDmgPct'),
     elemDmgPct: { fire: pct('fireDmgPct'), cold: pct('coldDmgPct'), lightning: pct('lightningDmgPct') },
     // +% sát thương lên tinh anh và trùm nhỏ theo nguyên tố (mặc định của nhánh + từ đồ).
@@ -199,6 +216,11 @@ export function passivePct(ch, element, data, stats) {
 // Hệ số nhân sát thương: 1 + %Thuộc tính + %Synergy + %Bị động + %Đồ (cộng dồn trước rồi mới nhân).
 export function damageMult(ch, skill, stats, data) {
   // Vật lý tăng theo Sức mạnh (+% sát thương vật lý), phép tăng theo Năng lượng (+% sát thương phép).
+  // Kỹ năng triệu hồi dùng %sát thương vật triệu hồi (Năng lượng, đồ, bị động); thú bay cộng thêm Thông Thạo Hoang Dã.
+  if (skill.summon) {
+    const fly = skill.flying || skill.minion?.flying ? stats.flyingDmgPct || 0 : 0;
+    return 1 + (stats.summonDmgPct || 0) + fly + synergyPct(ch, skill);
+  }
   const base = skill.element === 'physical' ? stats.physDmgPct : stats.spellDmgPct;
   return 1 + base + synergyPct(ch, skill) + passivePct(ch, skill.element, data, stats) + (stats.elemDmgPct[skill.element] || 0);
 }

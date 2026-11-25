@@ -373,6 +373,155 @@ export function drawWarrior(ctx, x, y, r, face, phase, moving, opts = {}) {
   ctx.restore();
 }
 
+// ---------- Triệu hồi sư Hoang dã: áo choàng lông, mũ gạc hươu, gậy vật tổ ----------
+export function drawSummoner(ctx, x, y, r, face, phase, moving, opts = {}) {
+  const a = phase * TAU, s = moving ? Math.sin(a) : 0, c = Math.cos(a);
+  const bob = moving ? -Math.abs(c) * 0.08 * r : 0;
+  ctx.save();
+  ctx.translate(x, y);
+  if (face < 0) ctx.scale(-1, 1);
+  const fur = opts.hurt ? '#c07060' : '#7a5a3a', furDark = opts.hurt ? '#904a40' : '#5a3f28', tunic = '#3f6b3a';
+  const hipY = 0.33 * r + bob, L = 0.88 * r;
+  leg(ctx, -0.1 * r, hipY, L, -s * 0.58, 0.26 * r, '#3b3326', '#2a2018');
+  // áo choàng lông sau lưng
+  ctx.fillStyle = furDark;
+  ctx.beginPath();
+  ctx.moveTo(-0.25 * r, -0.6 * r + bob);
+  ctx.lineTo(-0.7 * r - s * 0.08 * r, 0.6 * r + bob);
+  ctx.lineTo(-0.45 * r, 0.52 * r + bob); ctx.lineTo(-0.3 * r, 0.64 * r + bob); ctx.lineTo(-0.1 * r, 0.45 * r + bob);
+  ctx.closePath(); ctx.fill();
+  // thân áo xanh lá
+  ctx.fillStyle = tunic;
+  ctx.beginPath(); ctx.roundRect(-0.36 * r, -0.58 * r + bob, 0.72 * r, 0.98 * r, 0.18 * r); ctx.fill();
+  ctx.fillStyle = '#6b4a2a';
+  ctx.fillRect(-0.36 * r, 0.05 * r + bob, 0.72 * r, 0.1 * r);
+  leg(ctx, 0.1 * r, hipY, L, s * 0.58, 0.26 * r, '#4a3f2e', '#2e241a');
+  // cổ lông
+  ctx.fillStyle = fur;
+  ctx.beginPath(); ctx.ellipse(0, -0.55 * r + bob, 0.45 * r, 0.17 * r, 0, 0, TAU); ctx.fill();
+  // đầu + mũ trùm da sói
+  ctx.fillStyle = '#e2b48a';
+  ctx.beginPath(); ctx.arc(0.08 * r, -0.83 * r + bob, 0.29 * r, 0, TAU); ctx.fill();
+  ctx.fillStyle = fur;
+  ctx.beginPath(); ctx.arc(0.04 * r, -0.92 * r + bob, 0.33 * r, Math.PI * 0.95, TAU * 1.02); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-0.2 * r, -1.1 * r + bob); ctx.lineTo(-0.12 * r, -1.38 * r + bob); ctx.lineTo(0.02 * r, -1.18 * r + bob); ctx.closePath(); ctx.fill();
+  // gạc hươu
+  ctx.strokeStyle = '#e8dcc0'; ctx.lineWidth = 0.07 * r; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(0.15 * r, -1.15 * r + bob); ctx.lineTo(0.3 * r, -1.55 * r + bob);
+  ctx.moveTo(0.23 * r, -1.35 * r + bob); ctx.lineTo(0.42 * r, -1.42 * r + bob);
+  ctx.moveTo(0.27 * r, -1.47 * r + bob); ctx.lineTo(0.2 * r, -1.68 * r + bob);
+  ctx.stroke();
+  ctx.fillStyle = '#2a2a2a';
+  ctx.beginPath(); ctx.arc(0.22 * r, -0.82 * r + bob, 0.05 * r, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#5fbf6a'; // vạch sơn mặt
+  ctx.fillRect(0.12 * r, -0.74 * r + bob, 0.2 * r, 0.04 * r);
+  // gậy vật tổ có đầu lâu thú và lông vũ
+  const sx = 0.6 * r, sy = -0.1 * r + bob - s * 0.05 * r;
+  limb(ctx, sx, sy - 0.85 * r, sx + 0.05 * r, sy + 0.95 * r, 0.1 * r, '#6b4a2a');
+  ctx.fillStyle = '#efe6cf';
+  ctx.beginPath(); ctx.ellipse(sx, sy - 0.95 * r, 0.16 * r, 0.13 * r, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#2a2a2a';
+  ctx.beginPath(); ctx.arc(sx + 0.05 * r, sy - 0.97 * r, 0.035 * r, 0, TAU); ctx.fill();
+  ctx.fillStyle = 'rgba(95,191,106,0.35)';
+  ctx.beginPath(); ctx.arc(sx, sy - 0.95 * r, 0.3 * r, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#c0503a';
+  ctx.beginPath(); ctx.ellipse(sx - 0.12 * r, sy - 0.7 * r, 0.05 * r, 0.16 * r, 0.3, 0, TAU); ctx.fill();
+  limb(ctx, 0.1 * r, -0.4 * r + bob, sx, sy, 0.18 * r, tunic);
+  ctx.fillStyle = '#e2b48a';
+  ctx.beginPath(); ctx.arc(sx, sy, 0.1 * r, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+
+// ---------- Vật triệu hồi ----------
+// Sói (kind wolf/alpha): thân ngang, 4 chân chạy, đuôi, tai nhọn. r = bán kính va chạm.
+export function drawWolf(ctx, m, face, phase, alpha) {
+  const r = m.r * 1.4;
+  const a = phase * TAU, s = m.moving ? Math.sin(a) : 0;
+  const bite = m.swing > 0 ? 0.12 * r : 0;
+  ctx.save();
+  ctx.translate(m.x, m.y);
+  if (face < 0) ctx.scale(-1, 1);
+  const body = m.hit > 0 ? '#ff9a9a' : alpha ? '#d8d4cc' : '#8f8578', dark = alpha ? '#a8a298' : '#6a6258';
+  const lw = 0.16 * r;
+  // chân sau / trước (2 cặp lệch pha)
+  leg(ctx, -0.45 * r, 0.1 * r, 0.55 * r, s * 0.7, lw, dark);
+  leg(ctx, 0.4 * r, 0.1 * r, 0.55 * r, -s * 0.7, lw, dark);
+  // đuôi
+  ctx.strokeStyle = body; ctx.lineWidth = 0.18 * r; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-0.7 * r, -0.1 * r); ctx.quadraticCurveTo(-1.0 * r, -0.2 * r + s * 0.1 * r, -1.1 * r, 0.15 * r); ctx.stroke();
+  // thân
+  ctx.fillStyle = body;
+  ctx.beginPath(); ctx.ellipse(0, -0.05 * r, 0.75 * r, 0.33 * r, 0, 0, TAU); ctx.fill();
+  leg(ctx, -0.3 * r, 0.12 * r, 0.52 * r, -s * 0.7, lw, body);
+  leg(ctx, 0.55 * r, 0.12 * r, 0.52 * r, s * 0.7, lw, body);
+  // đầu
+  const hx = 0.78 * r + bite, hy = -0.3 * r;
+  ctx.beginPath(); ctx.ellipse(hx, hy, 0.3 * r, 0.24 * r, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(hx + 0.15 * r, hy - 0.1 * r); ctx.lineTo(hx + 0.55 * r, hy + 0.02 * r); ctx.lineTo(hx + 0.15 * r, hy + 0.16 * r); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(hx - 0.15 * r, hy - 0.15 * r); ctx.lineTo(hx - 0.05 * r, hy - 0.48 * r); ctx.lineTo(hx + 0.08 * r, hy - 0.18 * r); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = alpha ? '#ff5a3a' : '#ffd23f';
+  ctx.beginPath(); ctx.arc(hx + 0.1 * r, hy - 0.05 * r, 0.05 * r, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+
+// Gấu: to, tròn, đứng 4 chân, vả khi tấn công.
+export function drawBear(ctx, m, face, phase) {
+  const r = m.r * 1.2;
+  const a = phase * TAU, s = m.moving ? Math.sin(a) : 0;
+  const sw = m.swing > 0 ? m.swing / 0.3 : 0;
+  ctx.save();
+  ctx.translate(m.x, m.y);
+  if (face < 0) ctx.scale(-1, 1);
+  const body = m.hit > 0 ? '#d08070' : '#6e4a2c', dark = '#4e3320';
+  const lw = 0.26 * r;
+  leg(ctx, -0.45 * r, 0.15 * r, 0.5 * r, s * 0.5, lw, dark);
+  leg(ctx, 0.35 * r, 0.15 * r, 0.5 * r, -s * 0.5, lw, dark);
+  ctx.fillStyle = body;
+  ctx.beginPath(); ctx.ellipse(0, -0.1 * r, 0.8 * r, 0.5 * r, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-0.2 * r, -0.45 * r, 0.4 * r, 0.25 * r, 0, 0, TAU); ctx.fill(); // bướu vai
+  leg(ctx, -0.3 * r, 0.2 * r, 0.48 * r, -s * 0.5, lw, body);
+  // chân trước: giơ lên khi vả
+  ctx.save();
+  ctx.translate(0.5 * r, 0.1 * r);
+  ctx.rotate(-sw * 1.4 + s * 0.4);
+  limb(ctx, 0, 0, 0, 0.48 * r, lw, body);
+  ctx.fillStyle = '#e8dcc0';
+  for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.arc(i * 0.07 * r, 0.56 * r, 0.035 * r, 0, TAU); ctx.fill(); }
+  ctx.restore();
+  // đầu
+  ctx.fillStyle = body;
+  ctx.beginPath(); ctx.arc(0.75 * r, -0.35 * r, 0.33 * r, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(0.6 * r, -0.66 * r, 0.11 * r, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#b08a60';
+  ctx.beginPath(); ctx.ellipse(1.0 * r, -0.28 * r, 0.16 * r, 0.12 * r, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#1a1410';
+  ctx.beginPath(); ctx.arc(1.12 * r, -0.3 * r, 0.05 * r, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(0.82 * r, -0.44 * r, 0.04 * r, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+
+// Chim (quạ / đại bàng): cánh vỗ. size = nửa sải cánh.
+export function drawBird(ctx, x, y, size, face, t, color, beak) {
+  const flap = Math.sin(t * 18) * 0.6;
+  ctx.save();
+  ctx.translate(x, y);
+  if (face < 0) ctx.scale(-1, 1);
+  ctx.fillStyle = color;
+  for (const k of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-0.3 * size, -size * (0.4 + flap) * k * 0.8, -size * 0.9, -size * (0.2 + flap) * k);
+    ctx.lineTo(-0.2 * size, 0.1 * size * k);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.beginPath(); ctx.ellipse(0, 0, size * 0.45, size * 0.18, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(size * 0.4, -size * 0.06, size * 0.16, 0, TAU); ctx.fill();
+  ctx.fillStyle = beak;
+  ctx.beginPath(); ctx.moveTo(size * 0.52, -size * 0.1); ctx.lineTo(size * 0.8, -size * 0.02); ctx.lineTo(size * 0.52, 0.02 * size); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
 // Ảnh chân dung cho màn chọn nhân vật.
 export function drawPortrait(canvas, look) {
   const ctx = canvas.getContext('2d');
@@ -387,5 +536,9 @@ export function drawPortrait(canvas, look) {
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.beginPath(); ctx.ellipse(w / 2, h * 0.58 + r * 1.3, r * 0.9, r * 0.25, 0, 0, TAU); ctx.fill();
   if (look === 'warrior') drawWarrior(ctx, w / 2 - r * 0.2, h * 0.58, r, 1, 0.15, true, { swing: 0 });
+  else if (look === 'summoner') {
+    drawWolf(ctx, { x: w / 2 + r * 0.95, y: h * 0.58 + r * 0.55, r: r * 0.45, moving: false, swing: 0, hit: 0 }, -1, 0, false);
+    drawSummoner(ctx, w / 2 - r * 0.3, h * 0.58, r, 1, 0.15, true, {});
+  }
   else drawMage(ctx, w / 2 - r * 0.2, h * 0.58, r, 1, 0.15, true, {});
 }

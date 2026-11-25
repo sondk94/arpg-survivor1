@@ -3,6 +3,7 @@ import { RNG } from './rng.js';
 import { Grid } from './grid.js';
 import * as P from './progression.js';
 import { generateItem, generateRune, addToInventory, firstFree } from './items.js';
+import { MinionMixin } from './minions.js';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -79,6 +80,8 @@ export class Game {
     this.statBase = null;
 
     this.enemies = [];
+    this.minions = []; // vật triệu hồi (Triệu hồi sư)
+    this.poisoned = new Set(); // quái đang trúng độc Nanh Độc
     this.projectiles = [];
     this.orbs = [];
     this.shots = [];
@@ -177,6 +180,7 @@ export class Game {
     this.updateBuffs(dt);
     this.updateSkills(dt);
     this.updateOrbs(dt);
+    this.updateMinions(dt);
     this.updateProjectiles(dt);
     this.updatePending(dt);
     this.updateZones(dt);
@@ -407,7 +411,9 @@ export class Game {
     p.glow = Math.max(0, p.glow - dt);
     p.swing = Math.max(0, (p.swing || 0) - dt);
     p.hurt = Math.max(0, p.hurt - dt);
-    p.mana = Math.min(this.stats.maxMana, p.mana + this.stats.manaRegen * dt);
+    const link = this.minions.length ? this.spiritLinkCount() : 0;
+    const linkRegen = link ? link * P.lv(this.data.skills.spirit_link.perMinionManaRegen, this.lvl('spirit_link')) : 0;
+    p.mana = Math.min(this.stats.maxMana, p.mana + this.stats.manaRegen * (1 + linkRegen) * dt);
     p.hp = Math.min(this.stats.maxHp, p.hp + this.stats.hpRegen * dt);
     this.log.minHpPct = Math.min(this.log.minHpPct, p.hp / this.stats.maxHp);
   }
@@ -446,7 +452,8 @@ export class Game {
       dmg *= 1 - red;
     } else {
       // Độ khó cao trừ kháng của người chơi (có thể âm, tối đa nhận ×2 sát thương).
-      const res = Math.max(-1, Math.min(this.cfg.caps.playerResist, (this.stats.resist[type] || 0) - (this.diff.playerResistPenalty || 0)));
+      const link = this.minions.length ? this.spiritLinkCount() * this.data.skills.spirit_link.perMinionResist : 0;
+      const res = Math.max(-1, Math.min(this.cfg.caps.playerResist, (this.stats.resist[type] || 0) + link - (this.diff.playerResistPenalty || 0)));
       dmg *= 1 - res;
       if (dmg < 0) dmg = 0;
     }
@@ -677,6 +684,12 @@ export class Game {
       case 'leap': return this.castLeap(sk, lvl);
       case 'howl': return this.castHowl(sk, lvl);
       case 'buff': return this.castBuff(sk, lvl);
+      case 'summon': return this.castSummon(sk, lvl);
+      case 'rally': return this.castRally(sk, lvl);
+      case 'minionNova': return this.castMinionNova(sk, lvl);
+      case 'heal': return this.castHeal(sk, lvl);
+      case 'swarm': return this.castSwarm(sk, lvl);
+      case 'dive': return this.castDive(sk, lvl);
     }
     return false;
   }
@@ -985,8 +998,13 @@ export class Game {
   // Buff bản thân: chỉ dùng khi có quái trong tầm 400 px để không phí.
   castBuff(sk, lvl) {
     if (!this.nearestEnemy(400)) return false;
+    if (sk.summon && !this.aliveMinions((m) => !m.flying)) return false; // Tiếng Hú Bầy Đàn cần có thú
     this.buffs = this.buffs.filter((b) => b.id !== sk.id);
-    this.buffs.push({ id: sk.id, dmgPct: sk.buff.dmgPct ? P.lv(sk.buff.dmgPct, lvl) : 0, armorMult: sk.buff.armorMult || 0, t: sk.duration, dur: sk.duration, color: sk.color });
+    this.buffs.push({
+      id: sk.id, dmgPct: sk.buff.dmgPct ? P.lv(sk.buff.dmgPct, lvl) : 0, armorMult: sk.buff.armorMult || 0,
+      summonAtk: sk.buff.summonAtkSpeed ? P.lv(sk.buff.summonAtkSpeed, lvl) : 0, summonSpeed: sk.buff.summonSpeed || 0,
+      t: sk.duration, dur: sk.duration, color: sk.color,
+    });
     this.addFx({ kind: 'nova', x: this.player.x, y: this.player.y, dur: 0.5, r: 70, color: sk.color });
     return true;
   }
@@ -1013,7 +1031,7 @@ export class Game {
     const res = clamp(e.resist[element] || 0, caps.monsterResistMin, caps.monsterResistMax);
     let dmg = amount * (1 - res);
     let crit = false;
-    if (!opts.noCrit && this.rng.next() < this.stats.critChance) { dmg *= this.stats.critMult; crit = true; }
+    if (!opts.noCrit && this.rng.next() < this.stats.critChance + (opts.critBonus || 0)) { dmg *= this.stats.critMult; crit = true; }
     if (e.affixes.includes('stone_skin')) {
       const af = this.data.monsters.elite.affixes.stone_skin;
       if (e.hp > e.maxHp * af.untilHpPct) dmg *= af.damageTakenMult;
@@ -1036,7 +1054,7 @@ export class Game {
     this.dmgByElement[element] = (this.dmgByElement[element] || 0) + Math.max(0, Math.min(dmg, before));
     if (opts.slow) this.applySlow(e, opts.slow.pct, opts.slow.duration);
     if (element === 'cold') this.chill(e);
-    if (this.showDamage && !this.headless && (crit || dmg >= 6 || e.big || e.elite)) {
+    if (this.showDamage && !this.headless && !opts.quiet && (crit || dmg >= 6 || e.big || e.elite)) {
       this.addText(e.x, e.y - e.r - 4, Math.round(dmg).toString(), crit ? '#ffe14d' : element === 'cold' ? '#bfeaff' : '#ffffff', crit ? 17 : 13);
     }
     if (e.hp <= 0) this.killEnemy(e, element);
@@ -1236,6 +1254,9 @@ export class Game {
         if (Math.hypot(p.x - pd.x, p.y - pd.y) < pd.r + p.r) this.hurtPlayer(pd.dmg, 'fire', `Nổ: ${pd.name}`);
         this.addFx({ kind: 'burst', x: pd.x, y: pd.y, dur: 0.35, r: pd.r, color: '#ff3b1f' });
         break;
+      case 'dive':
+        this.resolveDive(pd);
+        break;
       case 'pool':
         this.zones.push({ kind: 'poison', x: pd.x, y: pd.y, r: pd.r, t: 0, dur: pd.duration, tickT: pd.tick, tick: pd.tick, dps: pd.dps });
         break;
@@ -1282,6 +1303,8 @@ export class Game {
           const mult = this.skillMult(z.skill);
           this.areaDamage(z.x, z.y, z.r, () => z.dps * z.tick * mult, z.element, { slow: z.slow });
         }
+      } else if (z.kind === 'swarm') {
+        this.updateSwarmZone(z, dt);
       } else if (z.kind === 'poison') {
         z.tickT -= dt;
         if (z.tickT <= 0) {
@@ -1314,9 +1337,16 @@ export class Game {
       }
       if (e.slowT > 0) { e.slowT -= dt; if (e.slowT <= 0) e.slowPct = 0; }
       const spd = e.speed * (1 - e.slowPct);
+      // Mục tiêu: người chơi hoặc vật triệu hồi gần nhất (gấu khiêu khích). d = khoảng cách tới người chơi.
+      const tg = this.minions.length ? this.enemyTarget(e) : p;
       let dx = p.x - e.x, dy = p.y - e.y;
       const d = Math.hypot(dx, dy) || 0.001;
-      const ux = dx / d, uy = dy / d;
+      let ux = dx / d, uy = dy / d;
+      if (tg !== p) {
+        const tx = tg.x - e.x, ty = tg.y - e.y;
+        const td = Math.hypot(tx, ty) || 0.001;
+        ux = tx / td; uy = ty / td;
+      }
       let vx = 0, vy = 0;
 
       if (e.flee && e !== this.boss) {
@@ -1404,6 +1434,16 @@ export class Game {
       e.x = clamp(e.x, e.r, this.W - e.r);
       e.y = clamp(e.y, e.r, this.H - e.r);
 
+      // Chạm vật triệu hồi đang bị nhắm (mỗi quái đánh tối đa 1 lần / hitCooldown giây).
+      if (tg !== p && !e.flee && !(e.fearT > 0)) {
+        e.mhitT = (e.mhitT || 0) - dt;
+        const cx = tg.x - e.x, cy = tg.y - e.y;
+        const rr = e.r + tg.r + 2;
+        if (e.mhitT <= 0 && cx * cx + cy * cy < rr * rr) {
+          e.mhitT = this.cfg.summons?.hitCooldown ?? 0.4;
+          this.hurtMinion(tg, e.contact, e.dmgType, e);
+        }
+      }
       // Chạm người chơi.
       if (!e.flee && !(e.fearT > 0)) {
         const cx = p.x - e.x, cy = p.y - e.y;
@@ -1607,6 +1647,8 @@ export class Game {
     for (const e of this.enemies) if (!e.big) this.killEnemy(e, 'fire');
   }
 }
+
+Object.assign(Game.prototype, MinionMixin);
 
 export function segDist(px, py, x1, y1, x2, y2) {
   const dx = x2 - x1, dy = y2 - y1;

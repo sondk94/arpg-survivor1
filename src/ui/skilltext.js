@@ -1,5 +1,6 @@
 // Mô tả chỉ số kỹ năng theo cấp (dữ liệu lấy từ skills.json).
 import * as P from '../core/progression.js';
+import { minionCount } from '../core/minions.js';
 
 const pct = (v) => `${Math.round(v * 1000) / 10}%`;
 const num = (v) => (Math.round(v * 10) / 10).toLocaleString('vi-VN');
@@ -10,7 +11,7 @@ export function describeSkill(sk, lvl, ch, data, stats) {
   const lines = [];
   if (lvl <= 0) return lines;
   const tmp = { ...ch, skills: { ...ch.skills } };
-  const mult = (sk.damage || sk.dps || sk.burnDps) && !sk.deathBurst ? P.damageMult(tmp, sk, stats, data) : 1;
+  const mult = (sk.damage || sk.dps || sk.burnDps || sk.poison) && !sk.deathBurst ? P.damageMult(tmp, sk, stats, data) : 1;
   const cd = () => lines.push(['Hồi chiêu', `${num(sk.cooldown / stats.cdSpeed)} giây`]);
   const mana = () => lines.push(['Mana', sk.mana]);
   const slow = () => sk.slow && lines.push(['Làm chậm', `${pct(sk.slow.pct)} trong ${num(sk.slow.duration)} giây`]);
@@ -145,6 +146,71 @@ export function describeSkill(sk, lvl, ch, data, stats) {
       break;
     case 'blood_burst':
       lines.push(['Tỉ lệ nổ', pct(P.lv(sk.chance, lvl))], ['Sát thương nổ', `${pct(sk.hpPct)} máu tối đa của quái`], ['Bán kính', `${sk.radius} px`]);
+      break;
+    // ---- Triệu hồi sư
+    case 'summon_wolf':
+    case 'alpha_wolf':
+    case 'summon_bear':
+    case 'summon_crows': {
+      const m = sk.minion;
+      lines.push(['Sát thương mỗi đòn', range(P.hitRange(sk, lvl, stats), mult)], ['Đánh mỗi', `${num(m.atkInterval)} giây`],
+        ['Số con', minionCount(sk, lvl)], ['Máu mỗi con', num(P.lv(m.hp, lvl) * (stats.summonHpMult || 1))],
+        ['Giáp', num((m.armor || 0) + (stats.summonArmor || 0))]);
+      if (m.taunt) lines.push(['Khiêu khích', `quái trong ${m.taunt} px`]);
+      if (m.cleave) lines.push(['Cắn lan', `60% sát thương, bán kính ${m.cleave} px`]);
+      if (m.packAura) lines.push(['Hào quang bầy', `sói thường +${pct(m.packAura)} sát thương`]);
+      lines.push(['Gọi lại sau', `${num(sk.cooldown / stats.cdSpeed)} giây khi thú chết`]);
+      mana();
+      break;
+    }
+    case 'pack_howl':
+      lines.push(['Tốc độ đánh của thú', `+${pct(P.lv(sk.buff.summonAtkSpeed, lvl))}`], ['Tốc độ chạy của thú', `+${pct(sk.buff.summonSpeed)}`], ['Thời gian', `${sk.duration} giây`]);
+      cd(); mana();
+      break;
+    case 'beast_mastery':
+      lines.push(['Sát thương vật triệu hồi', `+${pct(sk.summonDmgPct * lvl)}`], ['Máu vật triệu hồi', `+${pct(sk.summonHpPct * lvl)}`]);
+      break;
+    case 'pack_frenzy':
+      lines.push(['Sát thương mỗi sói', range(P.hitRange(sk, lvl, stats), mult)], ['Bán kính', `${sk.radius} px`], ['Tầm', `${sk.searchRange} px`]);
+      cd(); mana();
+      break;
+    case 'venom_fangs':
+      lines.push(['Độc mỗi tầng', `${num(P.lv(sk.poison.dps, lvl) * mult)}/giây trong ${sk.poison.duration} giây`], ['Cộng dồn', `tối đa ${sk.poison.maxStacks} tầng`]);
+      break;
+    case 'thorn_hide':
+      lines.push(['Phản sát thương', pct(P.lv(sk.thorns, lvl))]);
+      break;
+    case 'thick_hide':
+      lines.push(['Máu vật triệu hồi', `+${pct(sk.summonHpPct * lvl)}`], ['Giáp vật triệu hồi', `+${num(P.lv(sk.summonArmor, lvl))}`], ['Kháng nguyên tố', `+${pct(sk.summonResistPerLevel * lvl)}`]);
+      break;
+    case 'bear_slam':
+      lines.push(['Sát thương', range(P.hitRange(sk, lvl, stats), mult)], ['Bán kính', `${sk.radius} px quanh gấu`], ['Choáng', `${num(sk.slow.duration)} giây`]);
+      cd(); mana();
+      break;
+    case 'wild_regrowth':
+      lines.push(['Hồi máu thú', pct(P.lv(sk.healPct, lvl))], ['Hồi máu bạn', pct(P.lv(sk.playerHealPct, lvl))]);
+      cd(); mana();
+      break;
+    case 'undying':
+      lines.push(['Tỉ lệ sống lại', pct(P.lv(sk.reviveChance, lvl))], ['Máu khi sống lại', '50%']);
+      break;
+    case 'bee_swarm':
+      lines.push(['Sát thương', `${num((P.lv(sk.dps, lvl) + P.flatFor(sk, stats)) * mult)}/giây trong ${num(sk.duration)} giây`], ['Bán kính', `${sk.radius} px`]);
+      cd(); mana();
+      break;
+    case 'wild_mastery':
+      lines.push(['Sát thương thú bay', `+${pct(sk.flyingDmgPct * lvl)}`], ['Chí mạng vật triệu hồi', `+${pct(sk.summonCritPerLevel * lvl)}`]);
+      break;
+    case 'eagle':
+      lines.push(['Sát thương', range(P.hitRange(sk, lvl, stats), mult)], ['Bán kính', `${sk.radius} px`], ['Tầm', `${sk.range} px, ưu tiên tinh anh/trùm`]);
+      cd(); mana();
+      break;
+    case 'spirit_link':
+      lines.push(['Mỗi thú đang sống', `+${pct(P.lv(sk.perMinionManaRegen, lvl))} tốc độ hồi mana, +${pct(sk.perMinionResist)} kháng`], ['Tối đa', '10 con']);
+      break;
+    case 'feather_storm':
+      lines.push(['Sát thương', range(P.hitRange(sk, lvl, stats), mult)], ['Vệt quét', `${sk.length} × ${sk.width} px`]);
+      cd(); mana();
       break;
   }
   if (mult !== 1) lines.push(['Hệ số sát thương', `×${num(mult)}`]);

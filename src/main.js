@@ -146,7 +146,7 @@ class App {
   botBuild() {
     const b = this.ui.botBuild;
     if (b && BUILDS[b] && BUILDS[b].class === this.ch.classId) return b;
-    return this.ch.classId === 'warrior' ? 'weapon' : 'fire';
+    return this.ch.classId === 'warrior' ? 'weapon' : this.ch.classId === 'summoner' ? 'pack' : 'fire';
   }
 
   togglePanel(tab) {

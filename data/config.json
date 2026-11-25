@@ -1,5 +1,5 @@
 {
-  "version": "1.6",
+  "version": "1.7",
   "testMode": true,
   "run": {
     "duration": 420,
@@ -43,8 +43,8 @@
       "name": "Sức mạnh",
       "key": "1",
       "physDmgPct": 0.01,
-      "desc": "+1% sát thương vật lý; mỗi điểm cộng thêm (so với lúc tạo nhân vật) +2 sát thương vật lý mỗi đòn. Sau này dùng để đủ điều kiện mặc đồ",
-      "physFlatPerPoint": 2
+      "desc": "+1% sát thương vật lý; mỗi điểm cộng thêm (so với lúc tạo nhân vật) +1 sát thương vật lý mỗi đòn. Sau này dùng để đủ điều kiện mặc đồ",
+      "physFlatPerPoint": 1
     },
     "dex": {
       "name": "Nhanh nhẹn",
@@ -64,8 +64,10 @@
       "key": "4",
       "mana": 2,
       "spellDmgPct": 0.005,
-      "desc": "+2 mana tối đa, +0,5% sát thương phép; mỗi điểm cộng thêm (so với lúc tạo nhân vật) +2 sát thương phép mỗi đòn",
-      "spellFlatPerPoint": 2
+      "desc": "+2 mana tối đa, +0,5% sát thương phép; mỗi điểm cộng thêm +1 sát thương phép mỗi đòn (Triệu hồi sư: +1 sát thương mỗi đòn và +1% máu của vật triệu hồi)",
+      "spellFlatPerPoint": 1,
+      "summonFlatPerPoint": 1,
+      "summonHpPctPerPoint": 0.01
     }
   },
   "caps": {
@@ -162,5 +164,12 @@
       "color": "#ff4040",
       "unlockAfter": "nightmare"
     }
-  ]
+  ],
+  "summons": {
+    "maxTotal": 10,
+    "leash": 600,
+    "aggro": 380,
+    "retargetEvery": 0.5,
+    "hitCooldown": 0.4
+  }
 }

@@ -282,6 +282,8 @@ export class Panel {
     const mana = p ? `${Math.floor(p.mana)} / ${Math.round(st.maxMana)}` : Math.round(st.maxMana);
     const red = Math.min(cfg.caps.armorReduction, st.armor / (st.armor + cfg.armor.base + cfg.armor.perMonsterLevel));
     const res = (k) => pctStr(Math.min(cfg.caps.playerResist, st.resist[k]));
+    const cls = P.getClass(ch, this.data);
+    const isStr = cls.mainStat === 'str', summ = cls.id === 'summoner';
     this.attrEl.innerHTML = `
       <div class="pts ${ch.attrPoints ? 'has' : ''}">Điểm thuộc tính: <b>${ch.attrPoints}</b> <small>(Shift + bấm: cộng 5)</small></div>
       ${rows}
@@ -291,15 +293,18 @@ export class Panel {
         <div><span>Hồi mana</span><b>${st.manaRegen.toFixed(1)}/giây</b></div>
         <div><span>Tốc độ hồi chiêu</span><b>+${pctStr(st.cdSpeed - 1)}</b></div>
         <div><span>Né</span><b>${pctStr(st.dodge)}</b></div>
-        <div><span>${P.getClass(ch, this.data).mainStat === 'str' ? 'Sát thương vật lý' : 'Sát thương phép'}</span><b>+${pctStr(P.getClass(ch, this.data).mainStat === 'str' ? st.physDmgPct : st.spellDmgPct)}</b></div>
-        ${P.getClass(ch, this.data).mainStat === 'str' ? '' : `<div><span>Lửa / Băng / Sét</span><b>+${pctStr(st.elemDmgPct.fire)} / +${pctStr(st.elemDmgPct.cold)} / +${pctStr(st.elemDmgPct.lightning)}</b></div>`}
-        ${P.getClass(ch, this.data).mainStat === 'str' ? `<div><span>Hút máu</span><b>${pctStr(st.leech || 0)}</b></div><div><span>Hồi máu</span><b>${st.hpRegen.toFixed(1)}/giây</b></div>` : `<div><span>Sét lên tinh anh</span><b>+${pctStr(st.eliteDmgPct.lightning)}</b></div>`}
+        ${summ ? `<div><span>Sát thương vật triệu hồi</span><b>+${pctStr(st.summonDmgPct)}</b></div>
+        <div><span>Máu vật triệu hồi</span><b>+${pctStr(st.summonHpMult - 1)}</b></div>
+        ${st.summonFlat ? `<div><span>Sát thương thú mỗi đòn</span><b>+${st.summonFlat}</b></div>` : ''}` : `
+        <div><span>${isStr ? 'Sát thương vật lý' : 'Sát thương phép'}</span><b>+${pctStr(isStr ? st.physDmgPct : st.spellDmgPct)}</b></div>
+        ${isStr ? '' : `<div><span>Lửa / Băng / Sét</span><b>+${pctStr(st.elemDmgPct.fire)} / +${pctStr(st.elemDmgPct.cold)} / +${pctStr(st.elemDmgPct.lightning)}</b></div>`}
+        ${isStr ? `<div><span>Hút máu</span><b>${pctStr(st.leech || 0)}</b></div><div><span>Hồi máu</span><b>${st.hpRegen.toFixed(1)}/giây</b></div>` : `<div><span>Sét lên tinh anh</span><b>+${pctStr(st.eliteDmgPct.lightning)}</b></div>`}
         ${st.physFlat ? `<div><span>Sát thương vật lý mỗi đòn</span><b>+${st.physFlat}</b></div>` : ''}
-        ${st.spellFlat ? `<div><span>Sát thương phép mỗi đòn</span><b>+${st.spellFlat}</b></div>` : ''}
+        ${st.spellFlat ? `<div><span>Sát thương phép mỗi đòn</span><b>+${st.spellFlat}</b></div>` : ''}`}
         <div><span>Chí mạng</span><b>${pctStr(st.critChance)} ×${st.critMult}</b></div>
         <div><span>Giáp</span><b>${st.armor} (−${pctStr(red)} vs cấp 1)</b></div>
         <div><span>Kháng L/B/S/Độc</span><b>${res('fire')} ${res('cold')} ${res('lightning')} ${res('poison')}</b></div>
-        ${st.skillBonus.all || st.skillBonus.fire || st.skillBonus.cold || st.skillBonus.lightning ? `<div><span>+Cấp kỹ năng từ đồ</span><b>L${st.skillBonus.fire + st.skillBonus.all} B${st.skillBonus.cold + st.skillBonus.all} S${st.skillBonus.lightning + st.skillBonus.all}</b></div>` : ''}
+        ${cls.trees.some((t) => st.skillBonus[t]) || st.skillBonus.all ? `<div><span>+Cấp kỹ năng từ đồ</span><b>${cls.trees.map((t) => `${this.data.treesById[t].name.split(' ').pop()} +${(st.skillBonus[t] || 0) + st.skillBonus.all}`).join(' · ')}</b></div>` : ''}
       </div>`;
   }
 
@@ -400,7 +405,7 @@ export class Panel {
     const tbl = (rows) => rows.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('');
     const syn = synergyText(sk, data);
     const fs = sk.flatScale ?? (sk.damage || sk.dps ? 1 : null);
-    const flatNote = fs != null && !sk.deathBurst && sk.kind !== 'static' ? `<div class="muted" style="font-size:11px;margin-top:4px">Nhận ${Math.round(fs * 100)}% sát thương cộng thẳng từ ${sk.element === 'physical' ? 'Sức mạnh' : 'Năng lượng'} cộng thêm${sk.dps ? ' (tính theo giây)' : ' mỗi đòn'}.</div>` : '';
+    const flatNote = fs != null && !sk.deathBurst && sk.kind !== 'static' ? `<div class="muted" style="font-size:11px;margin-top:4px">Nhận ${Math.round(fs * 100)}% sát thương cộng thẳng từ ${sk.summon ? 'Năng lượng' : sk.element === 'physical' ? 'Sức mạnh' : 'Năng lượng'} cộng thêm${sk.dps ? ' (tính theo giây)' : ' mỗi đòn'}.</div>` : '';
     let equip = '';
     if (sk.type === 'active' && l > 0 && !ch.slots.includes(sk.id)) {
       equip = `<div class="equip">Chưa gắn vào ô: ${ch.slots.map((sid, i) => `<button data-equip="${sk.id}:${i}">Ô ${i + 1}${sid ? ` (thay ${esc(data.skills[sid].name)})` : ''}</button>`).join('')}</div>`;

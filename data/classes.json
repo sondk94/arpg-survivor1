@@ -7,9 +7,18 @@
       "look": "mage",
       "color": "#7f6bff",
       "desc": "Đánh từ xa bằng phép Lửa, Băng, Sét. Máu mỏng, sát thương diện rộng, khống chế tốt.",
-      "trees": ["fire", "cold", "lightning"],
+      "trees": [
+        "fire",
+        "cold",
+        "lightning"
+      ],
       "mainStat": "ene",
-      "startAttributes": { "str": 10, "dex": 20, "vit": 15, "ene": 30 },
+      "startAttributes": {
+        "str": 10,
+        "dex": 20,
+        "vit": 15,
+        "ene": 30
+      },
       "player": {}
     },
     {
@@ -19,9 +28,18 @@
       "look": "warrior",
       "color": "#d9534f",
       "desc": "Cận chiến, sát thương vật lý cao, trâu máu, giáp dày. Phải áp sát quái để đánh. Sức mạnh tăng sát thương.",
-      "trees": ["weapon", "shout", "blood"],
+      "trees": [
+        "weapon",
+        "shout",
+        "blood"
+      ],
       "mainStat": "str",
-      "startAttributes": { "str": 30, "dex": 20, "vit": 25, "ene": 10 },
+      "startAttributes": {
+        "str": 30,
+        "dex": 20,
+        "vit": 25,
+        "ene": 10
+      },
       "player": {
         "baseHp": 60,
         "hpPerVit": 4,
@@ -33,6 +51,37 @@
         "moveSpeed": 165,
         "radius": 15,
         "baseArmor": 15
+      }
+    },
+    {
+      "id": "summoner",
+      "name": "Triệu hồi sư Hoang dã",
+      "short": "Triệu hồi sư",
+      "look": "summoner",
+      "color": "#5fbf6a",
+      "desc": "Gọi bầy thú chiến đấu thay mình: sói, gấu, quạ, ong, đại bàng. Năng lượng tăng sức mạnh và máu của vật triệu hồi. Gấu giữ chân quái cho bạn.",
+      "trees": [
+        "pack",
+        "beast",
+        "swarm"
+      ],
+      "mainStat": "ene",
+      "startAttributes": {
+        "str": 15,
+        "dex": 20,
+        "vit": 20,
+        "ene": 25
+      },
+      "player": {
+        "baseHp": 50,
+        "hpPerVit": 3.5,
+        "hpPerLevel": 2.5,
+        "baseMana": 25,
+        "manaPerEne": 1.8,
+        "manaRegenPct": 0.07,
+        "moveSpeed": 160,
+        "radius": 14,
+        "baseArmor": 5
       }
     }
   ]

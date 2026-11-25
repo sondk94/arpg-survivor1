@@ -1,7 +1,7 @@
 // Vẽ thế giới và HUD bằng Canvas 2D, hình khối đơn giản.
 import { fmtTime } from '../core/game.js';
 import { xpToNext } from '../core/progression.js';
-import { buildSprites, drawMage, drawWarrior, drawGravedigger, drawSwampLord } from './sprites.js';
+import { buildSprites, drawMage, drawWarrior, drawGravedigger, drawSwampLord, drawSummoner, drawWolf, drawBear, drawBird } from './sprites.js';
 
 const TAU = Math.PI * 2;
 const VIS = 1.3; // hình vẽ quái to hơn vùng va chạm một chút cho dễ nhìn
@@ -50,9 +50,11 @@ export class Renderer {
     this.drawPickups(g);
     this.drawAura(g);
     this.drawEnemies(g);
+    this.drawMinions(g, false);
     this.drawObstacles(g, true);
     this.drawProjectiles(g);
     this.drawPlayer(g);
+    this.drawMinions(g, true);
     this.drawFx(g);
     this.drawTexts(g);
     this.drawBossOverhead(g);
@@ -152,6 +154,19 @@ export class Renderer {
         ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill();
         ctx.strokeStyle = `rgba(255,160,60,${0.5 * fade})`;
         ctx.lineWidth = 2; ctx.stroke();
+      } else if (z.kind === 'swarm') {
+        // Đám ong: nhiều chấm vàng bay lượn trong vùng.
+        ctx.fillStyle = `rgba(255,210,60,${0.1 * fade})`;
+        ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill();
+        ctx.fillStyle = `rgba(255,215,50,${0.95 * fade})`;
+        ctx.beginPath();
+        for (let i = 0; i < 22; i++) {
+          const a = i * 2.39996 + z.t * (3 + (i % 3));
+          const rr = z.r * (0.25 + 0.7 * (((i * 0.618) % 1)));
+          const bx = z.x + Math.cos(a) * rr, by = z.y + Math.sin(a * 1.3) * rr * 0.8;
+          ctx.moveTo(bx + 2.5, by); ctx.arc(bx, by, 2.5, 0, TAU);
+        }
+        ctx.fill();
       } else if (z.kind === 'poison') {
         ctx.fillStyle = `rgba(110,200,60,${0.3 * fade})`;
         ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill();
@@ -190,6 +205,14 @@ export class Renderer {
         ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(pd.x, pd.y, pd.r, 0, TAU); ctx.stroke();
         ctx.setLineDash([]);
+      } else if (pd.kind === 'dive') {
+        // Đại bàng bổ nhào từ trên cao xuống mục tiêu.
+        const tx = pd.target && !pd.target.dead ? pd.target.x : pd.x, ty = pd.target && !pd.target.dead ? pd.target.y : pd.y;
+        ctx.strokeStyle = 'rgba(208,160,96,0.8)';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(tx, ty, pd.r * (1.4 - 0.4 * k), 0, TAU); ctx.stroke();
+        const bx = pd.sx + (tx - pd.sx) * k * k, by = pd.sy + (ty - pd.sy) * k * k;
+        drawBird(ctx, bx, by, 22, tx >= pd.sx ? 1 : -1, g.time, '#8a5a2a', '#f0c040');
       } else if (pd.kind === 'eliteBlast') {
         ctx.strokeStyle = 'rgba(255,60,30,0.9)';
         ctx.lineWidth = 3;
@@ -327,6 +350,37 @@ export class Renderer {
         ctx.drawImage(sp.img, e.x + sp.x0 * VIS * k, e.y + sp.y0 * VIS * k, sp.w * VIS * k, sp.h * VIS * k);
       }
       if (e.elite) this.drawBar(e, e.elite ? '#ffcc33' : '#e0a050', e.elite ? '#ffd966' : '#f0c890');
+    }
+  }
+
+  // Vật triệu hồi: thú mặt đất vẽ cùng lớp với quái, chim bay vẽ trên cùng. Có thanh máu nhỏ khi bị thương.
+  drawMinions(g, flying) {
+    if (!g.minions?.length) return;
+    const ctx = this.ctx;
+    for (const m of g.minions) {
+      if (m.dead || m.flying !== flying || !this.vis(m.x, m.y, m.r * 3)) continue;
+      const face = m.faceX >= 0 ? 1 : -1;
+      // Nhịp bước của thú theo thời gian khi đang chạy.
+      const ph = (m.t * (m.speed / (m.r * 6))) % 1;
+      if (m.kind === 'crow') {
+        drawBird(ctx, m.x, m.y - 18, m.r * 2.3, face, m.t + m.id, m.hit > 0 ? '#d07070' : '#3c3c52', '#e0c040');
+        continue;
+      }
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      ctx.beginPath(); ctx.ellipse(m.x, m.y + m.r * 0.9, m.r * 1.1, m.r * 0.32, 0, 0, TAU); ctx.fill();
+      // Vòng chân màu xanh để phân biệt thú của mình với quái.
+      ctx.strokeStyle = m.kind === 'bear' ? 'rgba(255,190,90,0.7)' : 'rgba(95,191,106,0.75)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(m.x, m.y + m.r * 0.9, m.r * 1.15, m.r * 0.36, 0, 0, TAU); ctx.stroke();
+      if (m.kind === 'bear') drawBear(ctx, m, face, ph);
+      else drawWolf(ctx, m, face, ph, m.kind === 'alpha');
+      if (m.hp < m.maxHp) {
+        const bw = Math.max(22, m.r * 2), y = m.y - m.r * 1.6 - 6;
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(m.x - bw / 2, y, bw, 3);
+        ctx.fillStyle = '#5fbf6a';
+        ctx.fillRect(m.x - bw / 2, y, bw * Math.max(0, m.hp / m.maxHp), 3);
+      }
     }
   }
 
@@ -498,6 +552,7 @@ export class Renderer {
     const blink = p.invuln > 0 && Math.floor(g.time * 20) % 2 === 0;
     ctx.globalAlpha = blink ? 0.45 : 1;
     if (g.cls?.look === 'warrior') drawWarrior(ctx, p.x, p.y, p.r * 1.3, this.face || 1, this.walk, p.moving, { hurt: p.hurt > 0, swing: (p.swing || 0) / 0.22 });
+    else if (g.cls?.look === 'summoner') drawSummoner(ctx, p.x, p.y, p.r * 1.3, this.face || 1, this.walk, p.moving, { hurt: p.hurt > 0 });
     else drawMage(ctx, p.x, p.y, p.r * 1.3, this.face || 1, this.walk, p.moving, { hurt: p.hurt > 0 });
     // Buff đang có: vòng sáng dưới chân
     for (const b of g.buffs || []) {
@@ -933,6 +988,55 @@ export function drawSkillIcon(ctx, sk, cx, cy, r) {
       if (sk.id === 'iron_skin' || sk.id === 'unbroken') { ctx.moveTo(cx, cy - r); ctx.lineTo(cx + r * 0.8, cy - r * 0.6); ctx.lineTo(cx + r * 0.7, cy + r * 0.3); ctx.lineTo(cx, cy + r); ctx.lineTo(cx - r * 0.7, cy + r * 0.3); ctx.lineTo(cx - r * 0.8, cy - r * 0.6); }
       else for (let i = 0; i < 6; i++) { const a = (i / 6) * TAU - Math.PI / 2; ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
       ctx.closePath(); ctx.fill();
+      break;
+    case 'summon_wolf':
+    case 'alpha_wolf':
+      drawWolf(ctx, { x: cx - r * 0.15, y: cy + r * 0.2, r: r * 0.68, moving: false, swing: 0, hit: 0 }, 1, 0, sk.id === 'alpha_wolf');
+      break;
+    case 'summon_bear':
+      drawBear(ctx, { x: cx - r * 0.25, y: cy + r * 0.2, r: r * 0.62, moving: false, swing: 0, hit: 0 }, 1, 0);
+      break;
+    case 'summon_crows':
+      drawBird(ctx, cx - r * 0.3, cy + r * 0.25, r * 0.75, 1, 0.3, '#8a8aa8', '#e0c040');
+      drawBird(ctx, cx + r * 0.4, cy - r * 0.4, r * 0.55, 1, 0.1, '#a0a0c0', '#e0c040');
+      break;
+    case 'eagle':
+    case 'feather_storm':
+      drawBird(ctx, cx, cy, r * 0.95, 1, 0.2, sk.id === 'eagle' ? '#8a5a2a' : sk.color, '#f0c040');
+      if (sk.id === 'feather_storm') { ctx.strokeStyle = sk.color; ctx.lineWidth = r * 0.1; for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(cx - r, cy + r * 0.6 + i * r * 0.15); ctx.lineTo(cx - r * 0.3, cy + r * 0.6 + i * r * 0.15); ctx.stroke(); } }
+      break;
+    case 'bee_swarm':
+      for (let i = 0; i < 7; i++) { const a = i * 2.4; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * r * 0.6 * ((i % 3) / 2 + 0.3), cy + Math.sin(a) * r * 0.6 * ((i % 3) / 2 + 0.3), r * 0.16, 0, TAU); ctx.fill(); }
+      break;
+    case 'pack_howl':
+    case 'pack_frenzy':
+      ctx.lineWidth = r * 0.14;
+      for (let i = 1; i <= 3; i++) { ctx.beginPath(); ctx.arc(cx - r * 0.5, cy, r * 0.4 * i, -0.7, 0.7); ctx.stroke(); }
+      if (sk.id === 'pack_frenzy') { ctx.beginPath(); ctx.moveTo(cx - r, cy - r * 0.8); ctx.lineTo(cx - r * 0.4, cy - r * 0.8); ctx.lineTo(cx - r * 0.7, cy - r * 0.3); ctx.fill(); }
+      break;
+    case 'bear_slam':
+      ctx.beginPath(); ctx.ellipse(cx, cy + r * 0.5, r, r * 0.35, 0, 0, TAU); ctx.globalAlpha = 0.5; ctx.fill(); ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.ellipse(cx, cy - r * 0.15, r * 0.45, r * 0.55, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#efe6cf'; for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.arc(cx + i * r * 0.2, cy + r * 0.38, r * 0.08, 0, TAU); ctx.fill(); }
+      break;
+    case 'wild_regrowth':
+      ctx.fillRect(cx - r * 0.2, cy - r * 0.8, r * 0.4, r * 1.6); ctx.fillRect(cx - r * 0.8, cy - r * 0.2, r * 1.6, r * 0.4);
+      break;
+    case 'venom_fangs':
+      for (const sx of [-1, 1]) { ctx.beginPath(); ctx.moveTo(cx + sx * r * 0.5, cy - r * 0.7); ctx.lineTo(cx + sx * r * 0.15, cy - r * 0.7); ctx.lineTo(cx + sx * r * 0.3, cy + r * 0.5); ctx.closePath(); ctx.fill(); }
+      ctx.beginPath(); ctx.arc(cx, cy + r * 0.75, r * 0.15, 0, TAU); ctx.fill();
+      break;
+    case 'beast_mastery':
+    case 'thick_hide':
+    case 'thorn_hide':
+    case 'undying':
+    case 'wild_mastery':
+    case 'spirit_link':
+      // Dấu chân thú (bị động), viền khác nhau theo kỹ năng.
+      ctx.beginPath(); ctx.ellipse(cx, cy + r * 0.3, r * 0.45, r * 0.38, 0, 0, TAU); ctx.fill();
+      for (let i = 0; i < 4; i++) { const a = -2.5 + i * 0.55; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * r * 0.75, cy + r * 0.1 + Math.sin(a) * r * 0.75, r * 0.17, 0, TAU); ctx.fill(); }
+      if (sk.id === 'thorn_hide') { ctx.lineWidth = r * 0.1; for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r * 0.85, cy + Math.sin(a) * r * 0.85); ctx.lineTo(cx + Math.cos(a) * r * 1.05, cy + Math.sin(a) * r * 1.05); ctx.stroke(); } }
+      if (sk.id === 'spirit_link' || sk.id === 'undying') { ctx.lineWidth = r * 0.08; ctx.globalAlpha = 0.7; ctx.beginPath(); ctx.arc(cx, cy, r * 1.0, 0, TAU); ctx.stroke(); }
       break;
     default:
       ctx.font = `700 ${r}px system-ui`;
