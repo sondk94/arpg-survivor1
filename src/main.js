@@ -16,6 +16,12 @@ import * as T from './ui/telemetry.js';
 const STEP = 1 / 60;
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// Tên gợi ý khi tạo nhân vật.
+const NAME_POOL = {
+  mage: ['Lửa Hồng', 'Băng Tâm', 'Lôi Vũ', 'Hoả Phong', 'Tuyết Ngân'],
+  warrior: ['Thiết Thủ', 'Cuồng Đao', 'Huyết Kiếm', 'Thạch Sanh', 'Bạo Hổ'],
+  summoner: ['Lang Vương', 'Gấu Xám', 'Ưng Vũ', 'Bầy Sói', 'Rừng Xanh'],
+};
 const ATTR_NAMES = { str: 'Sức mạnh', dex: 'Nhanh nhẹn', vit: 'Thể lực', ene: 'Năng lượng' };
 
 class App {
@@ -59,8 +65,8 @@ class App {
       if (document.hidden && this.state === 'run' && this.game && !this.game.over) this.panel.open();
     });
     window.addEventListener('beforeunload', () => this.save());
-    // Mở game: luôn bắt đầu ở màn chọn nhân vật.
-    this.renderSelect();
+    // Mở game: vào thẳng làng của nhân vật chơi gần nhất; chưa có nhân vật thì ra màn chọn / tạo.
+    if (this.ch) { this.state = 'village'; this.renderVillage(); } else this.renderSelect();
     this.last = performance.now();
     this.acc = 0;
     requestAnimationFrame((t) => this.frame(t));
@@ -130,6 +136,11 @@ class App {
     }
     if (this.state === 'select') return;
     if (this.state !== 'run') {
+      const typing = ['TEXTAREA', 'INPUT', 'SELECT'].includes(document.activeElement?.tagName);
+      if (!this.panel.isOpen && !typing) {
+        if (k === 'Escape' && this.closeModal()) return;
+        if (k === 'Enter' && (!this.villageModal || this.villageModal === 'result')) { e.preventDefault(); this.villageModal = null; this.startRun(); if (this.state !== 'run') this.renderVillage(); return; }
+      }
       if ((k === 'Escape' || k === 'Tab' || k === 'c' || k === 'C') && this.panel.isOpen) this.panel.close();
       else if ((k === 'i' || k === 'I') && document.activeElement?.tagName !== 'TEXTAREA') this.togglePanel('items');
       return;
@@ -239,6 +250,7 @@ class App {
       return;
     }
     if (this.panel.isOpen) this.panel.close();
+    this.villageModal = null;
     this.ch.runs++;
     this.game = new Game(this.data, this.ch, { mapId, difficulty: diff, viewW: this.renderer.w, viewH: this.renderer.h });
     this.game.god = this.ui.god;
@@ -331,11 +343,12 @@ class App {
     $('#btn-plus').classList.add('hidden');
     this.canvas.classList.remove('dim');
     this.renderer.draw(null, this.ui);
+    this.viewChap = null;
+    this.villageModal = 'result';
     this.renderVillage();
   }
 
-  // ---------- Làng ----------
-  // ---------- Màn chọn nhân vật ----------
+  // ---------- Màn chọn nhân vật: một hàng thẻ, bấm là vào làng ----------
   renderSelect(creating = false) {
     this.state = 'select';
     if (this.panel?.isOpen) this.panel.close();
@@ -344,41 +357,54 @@ class App {
     $('#btn-plus').classList.add('hidden');
     const data = this.data;
     const chars = this.roster.chars;
-    const list = chars.length ? chars.map((c) => {
+    if (!chars.length) creating = true;
+    const cards = chars.map((c) => {
       const cls = P.getClass(c, data);
-      const prog = Math.min(c.mapProgress || 0, data.mapOrder.length);
-      const cur = data.maps[data.mapOrder[Math.min(c.mapProgress || 0, data.mapOrder.length - 1)]];
-      return `<div class="charcard ${c.uid === this.roster.active ? 'on' : ''}" style="--cc:${cls.color}">
-        <canvas data-portrait="${cls.look}" width="96" height="120"></canvas>
-        <div class="cc-info"><b>${esc(c.name)}</b><span>${esc(cls.name)} · cấp ${c.level}</span>
-          <small>${prog}/${data.mapOrder.length} màn đã qua · đang ở ${esc(cur.id)} ${esc(cur.name)} · ${c.gold.toLocaleString('vi-VN')} vàng</small></div>
-        <div class="cc-btns"><button class="primary" data-play="${c.uid}">Chơi</button><button class="ghost" data-del="${c.uid}">Xoá</button></div>
+      const prog = P.progressOf(c, 'normal');
+      const cur = data.maps[data.mapOrder[Math.min(prog, data.mapOrder.length - 1)]];
+      return `<div class="pcard ${c.uid === this.roster.active ? 'on' : ''}" style="--cc:${cls.color}" data-play="${c.uid}" tabindex="0" title="Bấm để vào làng">
+        <button class="pc-more" data-more="${c.uid}" title="Tuỳ chọn">⋯</button>
+        <div class="pc-menu hidden" data-menu="${c.uid}"><button data-del="${c.uid}" class="danger">Xoá nhân vật</button></div>
+        <canvas data-portrait="${cls.look}" width="120" height="150"></canvas>
+        <b>${esc(c.name)}</b>
+        <span>${esc(cls.short)} · cấp ${c.level}</span>
+        <small>Màn ${esc(cur.id)} · ${prog}/${data.mapOrder.length}</small>
       </div>`;
-    }).join('') : '<p class="muted">Chưa có nhân vật nào. Hãy tạo nhân vật đầu tiên.</p>';
-    const classCards = data.classList.map((c, i) => {
+    }).join('');
+    const newCard = `<div class="pcard new ${creating ? 'on' : ''}" id="s-new" tabindex="0"><div class="plus">+</div><b>Tạo mới</b><span>&nbsp;</span><small>&nbsp;</small></div>`;
+    const pick = this.newClass && data.classes[this.newClass] ? this.newClass : data.classList[0].id;
+    const classCards = data.classList.map((c) => {
       const st = P.computeStats(P.createCharacter(data, c.id), data);
       return `<label class="classcard" style="--cc:${c.color}">
-        <input type="radio" name="cls" value="${c.id}" ${i === 0 ? 'checked' : ''}>
+        <input type="radio" name="cls" value="${c.id}" ${c.id === pick ? 'checked' : ''}>
         <canvas data-portrait="${c.look}" width="120" height="150"></canvas>
         <div><b>${esc(c.name)}</b><p>${esc(c.desc)}</p>
         <small>Máu ${Math.round(st.maxHp)} · Mana ${Math.round(st.maxMana)} · Giáp ${st.armor} · Nhánh: ${c.trees.map((t) => esc(data.treesById[t].name)).join(', ')}</small></div>
       </label>`;
     }).join('');
-    v.innerHTML = `<div class="village-box">
-      <header><h1>ARPG Survivor <small>Chọn nhân vật</small></h1></header>
-      <section class="tests"><h3 class="sec-title">Nhân vật của bạn</h3><div class="charlist">${list}</div>
-        <button id="s-new" class="primary" ${creating ? 'disabled' : ''}>+ Tạo nhân vật mới</button></section>
-      <section class="tests ${creating || !chars.length ? '' : 'hidden'}" id="s-create">
-        <h3 class="sec-title">Tạo nhân vật mới</h3>
+    v.innerHTML = `<div class="select-box">
+      <header class="sel-head"><h1>ARPG Survivor</h1><span class="muted">Chọn nhân vật · bản ${esc(data.config.version)}</span></header>
+      <div class="pcards">${cards}${newCard}</div>
+      ${creating ? `<section class="create" id="s-create">
+        <h3 class="sec-title">Tạo nhân vật mới: chọn lớp</h3>
         <div class="classgrid">${classCards}</div>
-        <div class="row"><label>Tên nhân vật <input id="s-name" maxlength="24" placeholder="VD: Lửa Hồng"></label>
-        <button id="s-make" class="primary">Tạo và vào làng</button></div>
-      </section>
-      <p class="muted">Mỗi nhân vật có cấp, kỹ năng, đồ và tiến độ 20 màn riêng. Rương chung dùng chung cho mọi nhân vật.</p>
+        <div class="row create-row"><label>Tên <input id="s-name" maxlength="24" value="${esc(this.suggestName(pick))}"></label>
+          <button id="s-make" class="primary">Tạo và vào làng</button>
+          ${chars.length ? '<button id="s-cancel" class="ghost">Huỷ</button>' : ''}</div>
+      </section>` : ''}
+      <p class="muted sel-note">Mỗi nhân vật có cấp, kỹ năng, đồ và tiến độ riêng. Rương chung dùng chung cho mọi nhân vật. Lần sau mở game sẽ vào thẳng nhân vật chơi gần nhất.</p>
     </div>`;
     v.querySelectorAll('canvas[data-portrait]').forEach((c) => drawPortrait(c, c.dataset.portrait));
-    v.querySelectorAll('[data-play]').forEach((b) => (b.onclick = () => this.selectChar(b.dataset.play)));
-    v.querySelectorAll('[data-del]').forEach((b) => (b.onclick = () => {
+    v.querySelectorAll('[data-play]').forEach((el) => {
+      el.onclick = (e) => { if (e.target.closest('.pc-more, .pc-menu')) return; this.selectChar(el.dataset.play); };
+      el.onkeydown = (e) => { if (e.key === 'Enter') this.selectChar(el.dataset.play); };
+    });
+    v.querySelectorAll('[data-more]').forEach((b) => (b.onclick = (e) => {
+      e.stopPropagation();
+      v.querySelector(`[data-menu="${b.dataset.more}"]`).classList.toggle('hidden');
+    }));
+    v.querySelectorAll('[data-del]').forEach((b) => (b.onclick = (e) => {
+      e.stopPropagation();
       const c = chars.find((x) => x.uid === b.dataset.del);
       if (!confirm(`Xoá vĩnh viễn nhân vật "${c.name}" (cấp ${c.level})? Đồ trên người và trong kho đồ sẽ mất (rương chung vẫn giữ). Nên xuất mã trước.`)) return;
       this.roster.chars = chars.filter((x) => x.uid !== c.uid);
@@ -388,18 +414,42 @@ class App {
       this.renderSelect();
     }));
     $('#s-new').onclick = () => this.renderSelect(true);
+    if (!creating) return;
+    const nameEl = $('#s-name');
+    let typed = false;
+    nameEl.oninput = () => { typed = true; };
+    v.querySelectorAll('input[name=cls]').forEach((r) => (r.onchange = () => {
+      this.newClass = r.value;
+      if (!typed) nameEl.value = this.suggestName(r.value);
+    }));
+    if ($('#s-cancel')) $('#s-cancel').onclick = () => this.renderSelect(false);
     $('#s-make').onclick = () => {
       const cls = v.querySelector('input[name=cls]:checked').value;
-      const ch = P.createCharacter(data, cls, $('#s-name').value.trim().slice(0, 24));
+      const ch = P.createCharacter(data, cls, nameEl.value.trim().slice(0, 24));
       this.ch = ch;
       this.lastResult = null;
       this.selectedMap = null;
+      this.viewChap = null;
+      this.villageModal = null;
       this.save();
       this.state = 'village';
       this.renderVillage();
       this.panel.open('char');
       this.panel.flash('Chọn kỹ năng đầu tiên rồi vào màn 1-1');
     };
+    nameEl.onkeydown = (e) => { if (e.key === 'Enter') $('#s-make').click(); };
+    v.querySelector('#s-create').scrollIntoView({ block: 'nearest' });
+  }
+
+  // Tên gợi ý theo lớp, không trùng tên nhân vật đã có.
+  suggestName(classId) {
+    const pool = NAME_POOL[classId] || [this.data.classes[classId]?.short || 'Nhân vật'];
+    const used = new Set(this.roster.chars.map((c) => c.name));
+    const free = pool.filter((n) => !used.has(n));
+    if (free.length) return free[Math.floor(Math.random() * free.length)];
+    let i = 2;
+    while (used.has(`${pool[0]} ${i}`)) i++;
+    return `${pool[0]} ${i}`;
   }
 
   selectChar(uid) {
@@ -407,6 +457,8 @@ class App {
     this.roster.active = uid;
     this.lastResult = null;
     this.selectedMap = null;
+    this.viewChap = null;
+    this.villageModal = null;
     this.save();
     this.state = 'village';
     this.renderVillage();
@@ -475,6 +527,9 @@ class App {
       </tbody></table><p class="muted" style="font-size:11px">Bảng xếp hạng chung với người chơi khác cần có server, chưa có trong bản này.</p></details>`;
   }
 
+  // ---------- Làng: một màn hình gọn ----------
+  // Trái: thẻ nhân vật + nút mở bảng. Giữa: bản đồ theo chương + nút Vào màn. Ít dùng: menu ⚙ và nút ?.
+  // Hộp thoại (this.villageModal): 'result' kết quả trận, 'overflow' túi tạm, 'menu' khác, 'help' cách chơi.
   renderVillage() {
     const v = $('#village');
     v.classList.remove('hidden');
@@ -482,118 +537,61 @@ class App {
     const data = this.data;
     const need = P.xpToNext(ch.level, data.config);
     const st = P.computeStats(ch, data);
-    const r = this.lastResult;
-    let resultHtml = '';
-    if (r) {
-      const rm = data.maps[r.map];
-      const dn = data.difficultiesById[r.mode || 'normal'];
-      const title = r.result === 'win' ? `Hoàn thành màn ${esc(r.map)}: ${esc(rm ? rm.name : '')} (${esc(dn.name)})!` : r.result === 'quit' ? 'Đã bỏ lượt' : `Bạn đã gục ngã ở màn ${esc(r.map)}`;
-      const nm = r.nextMapUnlocked && data.maps[r.nextMapUnlocked];
-      const extra = r.result === 'win'
-        ? (r.newDifficulty ? `<div class="chest big">Đã mở độ khó mới: <b style="color:${data.difficultiesById[r.newDifficulty].color}">${esc(data.difficultiesById[r.newDifficulty].name)}</b>! Quái mạnh hơn nhiều, có kháng nguyên tố; đồ và kinh nghiệm tốt hơn.</div>` : '') +
-          (r.newRecord ? `<div class="chest">Kỷ lục mới: hạ boss lúc ${fmtTime(r.timeSec)}!</div>` : '') +
-          (nm ? `<div class="chest">Đã mở màn mới: <b>${esc(nm.id)} ${esc(nm.name)}</b> (máu quái ×${nm.hpMult.toFixed(2)}).</div>` : '') +
-          (r.flawless ? '<div class="chest">Hòm thưởng thêm: hoàn thành mà chưa chết lần nào ở bản đồ này!</div>' : '') +
-          (r.chestLoot ? `<div class="chest">Rương thưởng: ${r.chestLoot.map((x) => `<b style="color:${x.rune ? data.runes.byId[x.rune].color : data.items.rarities[x.rarity].color}">${esc(x.name)}</b>`).join(', ')}${r.chestShards ? ` · +${r.chestShards} mảnh` : ''}</div>` : '')
-        : `<div>Nguyên nhân: <b>${esc(r.cause || '-')}</b>. Kinh nghiệm, cấp và đồ đã nhặt vẫn được giữ; màn phải chơi lại từ đầu.</div>`;
-      const loot = (r.itemsPicked || []).filter((x) => x.rarity !== 'normal');
-      resultHtml = `<div class="result ${r.result}">
-        <h2>${title}</h2>
-        <div class="grid4">
-          <div><span>Thời gian</span><b>${fmtTime(r.timeSec)}</b></div>
-          <div><span>Cấp</span><b>${r.startLevel} → ${r.endLevel}</b></div>
-          <div><span>Đã giết</span><b>${r.kills}</b></div>
-          <div><span>Boss</span><b>${r.bossReached ? (r.result === 'win' ? 'Đã hạ' : `còn ${r.bossHpPct}%`) : 'Chưa gặp'}</b></div>
-        </div>
-        ${r.junkSold ? `<div>Đã tự bán ${r.junkSold.n} món đánh dấu rác: +${r.junkSold.gold} vàng.</div>` : ''}
-        ${r.autoSold ? `<div>Bộ lọc nhặt đã tự bán ${r.autoSold} món thường.</div>` : ''}
-        <div>Nhặt được ${(r.itemsPicked || []).length} món, ${r.gold || 0} vàng${loot.length ? ': ' + loot.map((x) => `<span style="color:${data.items.rarities[x.rarity].color}">${esc(x.name)}</span>`).join(', ') : ''}.</div>
-        ${extra}
-      </div>`;
-    }
-    const runs = T.getRuns();
-    const recent = runs.slice(-8).reverse();
-    const sum = T.summarize(runs);
-    const hist = recent.length ? `<table class="hist"><thead><tr><th>Người chơi</th><th>Kết quả</th><th>Thời gian</th><th>Cấp</th><th>Giết</th><th>Mở bảng</th><th>Nguyên nhân</th></tr></thead><tbody>${recent.map((x) => `<tr><td>${esc(x.tester)}</td><td>${x.result === 'win' ? 'Thắng' : x.result === 'quit' ? 'Bỏ' : 'Chết'}</td><td>${fmtTime(x.timeSec)}</td><td>${x.startLevel}→${x.endLevel}</td><td>${x.kills}</td><td>${x.panelOpens} lần, TB ${x.avgPanelSeconds}s</td><td>${esc(x.cause || '-')}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">Chưa có lượt nào.</p>';
+    const cls = P.getClass(ch, data);
+    const diff = this.currentDiff();
+    const cur = this.currentMap();
+    const udiffs = P.unlockedDifficulties(ch, data);
+    const dseg = data.difficulties.map((d) => {
+      const open = udiffs.includes(d.id);
+      return `<button class="seg ${d.id === diff ? 'on' : ''}" ${open ? `data-diff="${d.id}"` : 'disabled'} style="--dc:${d.color}" title="${open ? `${P.progressOf(ch, d.id)}/${data.mapOrder.length} màn đã qua` : `Mở khi qua hết 20 màn ${esc(data.difficultiesById[d.unlockAfter].name)}`}">${open ? '' : '🔒 '}${esc(d.name)} <small>${P.progressOf(ch, d.id)}/${data.mapOrder.length}</small></button>`;
+    }).join('');
+    const pts = ch.attrPoints + ch.skillPoints;
     const invUsed = ch.inventory.filter(Boolean).length;
     const over = ch.overflow || [];
-    const overflowHtml = over.length ? `<section class="tests overflow"><h3 class="sec-title">Túi tạm (${over.length} món từ rương thưởng, kho đồ đã đầy)</h3>
-      <p class="muted" style="margin:0 0 6px;font-size:12px">Giữ: cho vào kho đồ, kho đầy thì cho vào rương chung. Đồ trong túi tạm được lưu cho tới khi bạn chọn.</p>
-      <div class="ovf-list">${over.map((it, i) => `<div class="ovf"><span style="color:${it.type === 'rune' ? data.runes.byId[it.rune].color : data.items.rarities[it.rarity].color}">${esc(it.name)}</span><small>cấp đồ ${it.ilvl}</small>
-        <button data-ovf-keep="${i}">Giữ</button><button data-ovf-sell="${i}" class="ghost">Bán ${I.sellValue(it, data)}</button></div>`).join('')}</div>
-      <div class="row"><button id="ovf-keepall">Giữ hết</button><button id="ovf-sellall" class="ghost">Bán hết (${over.reduce((n, it) => n + I.sellValue(it, data), 0)} vàng)</button></div></section>` : '';
-    const quick = L.bulkCandidates(ch, data, 'normal');
-    const cost = P.respecCost(ch, data);
-    const trees = data.trees.filter((t) => P.classTrees(ch, data).includes(t.id)).map((t) => `${t.name} ${data.skillList.filter((s) => s.tree === t.id).reduce((n, s) => n + (ch.skills[s.id] || 0), 0)}`).join(' · ');
+    const trees = cls.trees.map((t) => `${data.treesById[t].name} ${data.skillList.filter((s) => s.tree === t).reduce((n, s) => n + (ch.skills[s.id] || 0), 0)}`).join(' · ');
+    const noSkill = !P.hasActiveSkill(ch);
 
-    v.innerHTML = `
-      <div class="village-box">
-        <header>
-          <h1>ARPG Survivor <small>Bản ${esc(data.config.version)} · Làng</small></h1>
-        </header>
-        ${resultHtml}
-        ${overflowHtml}
-        ${this.mapPickerHtml()}
-        <div class="char">
-          <div class="char-main">
-            <div class="cls"><b>${esc(ch.name)}</b> · ${esc(P.getClass(ch, data).name)} · điểm kỹ năng: ${trees}</div>
-            <div class="lvl">Cấp ${ch.level} <span class="gold">${ch.gold.toLocaleString('vi-VN')} vàng</span></div>
-            <div class="xpbar"><div style="width:${Math.min(100, (ch.xp / need) * 100)}%"></div></div>
-            <div class="muted">${Math.floor(ch.xp)} / ${need} kinh nghiệm · ${ch.runs} lượt · ${ch.clears} lần hoàn thành · ${ch.deaths} lần chết</div>
-            <div class="attrs">${P.ATTRS.map((k) => `<span>${ATTR_NAMES[k]} <b>${st.attrs[k]}</b></span>`).join('')}<span>Máu <b>${Math.round(st.maxHp)}</b></span><span>Mana <b>${Math.round(st.maxMana)}</b></span></div>
-            ${ch.attrPoints || ch.skillPoints ? `<div class="unspent">Còn ${ch.attrPoints} điểm thuộc tính, ${ch.skillPoints} điểm kỹ năng</div>` : ''}
-            ${!P.hasActiveSkill(ch) ? '<div class="warn">Chưa có kỹ năng chủ động nào: mở bảng cộng điểm và chọn kỹ năng cấp 1 của nhánh Lửa, Băng hoặc Sét.</div>' : ''}
-          </div>
-          <div class="char-btns">
-            <button id="v-start" class="primary">Vào màn ${esc(this.currentMap().id)}: ${esc(this.currentMap().name)}${this.currentDiff() !== 'normal' ? ` · ${esc(data.difficultiesById[this.currentDiff()].name)}` : ''}</button>
-            <button id="v-panel">Cộng điểm (Tab / C)</button>
-            <button id="v-items">Đồ đạc (I) · ${invUsed}/${ch.inventory.length}</button>
-            <button id="v-stash">Rương chung · ${this.stash.filter(Boolean).length}/${this.stash.length}</button>
-          </div>
+    v.innerHTML = `<div class="hub">
+      <header class="hub-top">
+        <div class="brand">ARPG Survivor <small>bản ${esc(data.config.version)} · Làng</small></div>
+        <div class="dseg">${dseg}</div>
+        <div class="hub-actions"><button id="v-help" class="icon" title="Cách chơi">?</button><button id="v-menu" class="icon" title="Khác: xuất/nhập mã, tẩy điểm, kỷ lục, log">⚙</button></div>
+      </header>
+      <aside class="hub-char" style="--cc:${cls.color}">
+        <div class="hc-head">
+          <canvas data-portrait="${cls.look}" width="96" height="120"></canvas>
+          <div class="hc-id"><b>${esc(ch.name)}</b><span>${esc(cls.name)}</span>
+            <button id="v-switch" class="ghost mini" title="Đổi / tạo nhân vật">⇄ Đổi nhân vật</button></div>
         </div>
-        <section class="tests">
-          <h3 style="margin:0 0 8px;color:var(--gold);font-size:15px">Làng</h3>
-          <div class="village-tools">
-            <button id="v-sellnormal" ${quick.length ? '' : 'disabled'}>Bán ${quick.length} món thường (${L.sumValue(ch, quick, data)} vàng)</button>
-            <button id="v-bulk">Bán nhanh / quản lý đồ…</button>
-            <button id="v-respec" ${ch.gold >= cost ? '' : 'disabled'}>Tẩy điểm (${cost} vàng)</button>
-            <button id="v-export">Xuất mã nhân vật</button>
-            <button id="v-import">Nhập mã</button>
-            <button id="v-switch" class="ghost">Đổi / tạo nhân vật</button>
-          </div>
-          <div id="v-codebox" class="code-box hidden"></div>
-          <p class="muted" style="margin:8px 0 0;font-size:12px">Nhân vật và rương tự lưu trên trình duyệt này. Xoá dữ liệu trình duyệt sẽ mất nhân vật: hãy "Xuất mã nhân vật" và cất mã ở nơi khác. Mã gồm cả rương chung.</p>
-        </section>
-        <details class="help" ${ch.runs === 0 ? 'open' : ''}>
-          <summary>Cách chơi</summary>
-          <ul>
-            <li><b>WASD</b> hoặc phím mũi tên để di chuyển. Kỹ năng tự kích hoạt và tốn mana. Tối đa 4 kỹ năng chủ động, có thể lấy từ nhiều nhánh.</li>
-            <li><b>Tab</b>, <b>C</b> hoặc nút <b>+</b>: bảng cộng điểm (thẻ Lửa / Băng / Sét). <b>I</b>: đồ đạc. Game dừng hẳn khi bảng mở. <b>Shift</b> + bấm để cộng 5 điểm.</li>
-            <li>Phím <b>1</b>–<b>4</b>: cộng nhanh 1 điểm Sức mạnh / Nhanh nhẹn / Thể lực / Năng lượng.</li>
-            <li>Đồ tự nhặt khi đi qua (nếu kho còn chỗ). Đồ có yêu cầu cấp: nhặt sớm, lên cấp mới mặc được. Bán đồ và tẩy điểm ở làng. Ctrl + bấm vào đồ: bán ngay (ở làng) hoặc đánh dấu rác (trong màn).</li>
-            <li>Hạ boss cuối màn: quái biến mất, nhặt <b>rương thưởng</b> rồi 5 giây sau kết thúc màn.</li>
-            <li>Băng: 3 đòn băng liên tiếp sẽ đóng băng quái 1 giây (tinh anh nửa thời gian, boss miễn nhiễm).</li>
-          </ul>
-        </details>
-        <section class="tests">
-          <div class="row">
-            <label>Tên người chơi thử <input id="v-tester" value="${esc(this.tester)}" placeholder="VD: Người 1"></label>
-            <button id="v-log">Xuất log (JSON)</button>
-            <button id="v-clear" class="ghost">Xoá log</button>
-          </div>
-          ${sum ? `<div class="muted">Đã ghi ${sum.runs} lượt của ${sum.testers} người · hạ boss ở lượt đầu: ${sum.firstRunBossKill}/${sum.testers} · mở bảng trung bình ${sum.avgPanelSec.toFixed(1)} giây/lần</div>` : ''}
-          ${hist}
-          <details class="feedback">
-            <summary>Góp ý sau buổi chơi (3 câu)</summary>
-            <label>Lúc nào vui nhất?<textarea id="f1"></textarea></label>
-            <label>Lúc nào chán nhất?<textarea id="f2"></textarea></label>
-            <label>Có muốn chơi tiếp không?<textarea id="f3"></textarea></label>
-            <button id="v-fb">Lưu góp ý</button> <span id="fb-ok" class="muted"></span>
-          </details>
-        </section>
-      </div>`;
-    $('#v-start').onclick = () => this.startRun();
-    v.querySelectorAll('[data-diff]').forEach((b) => (b.onclick = () => { this.selectedDiff = b.dataset.diff; this.selectedMap = null; this.renderVillage(); }));
+        <div class="hc-lvl">Cấp ${ch.level}</div>
+        <div class="xpbar" title="${Math.floor(ch.xp)} / ${need} kinh nghiệm"><div style="width:${Math.min(100, (ch.xp / need) * 100)}%"></div></div>
+        <div class="hc-money"><span class="gold">${ch.gold.toLocaleString('vi-VN')} vàng</span><span class="shards">${(ch.shards || 0).toLocaleString('vi-VN')} mảnh</span></div>
+        <div class="hc-attrs">${P.ATTRS.map((k) => `<span>${ATTR_NAMES[k]} <b>${st.attrs[k]}</b></span>`).join('')}<span>Máu <b>${Math.round(st.maxHp)}</b></span><span>Mana <b>${Math.round(st.maxMana)}</b></span></div>
+        <div class="hc-btns">
+          <button id="v-panel">Nhân vật ${pts ? `<span class="badge">${pts}</span>` : ''}</button>
+          <button id="v-items">Đồ đạc <small>${invUsed}/${ch.inventory.length}</small></button>
+          <button id="v-stash">Rương chung <small>${this.stash.filter(Boolean).length}/${this.stash.length}</small></button>
+          <button id="v-craft">Lò chế</button>
+        </div>
+        <div class="hc-foot muted">${trees}<br>${ch.runs} lượt · ${ch.clears} lần hoàn thành · ${ch.deaths} lần chết</div>
+      </aside>
+      <main class="hub-map">
+        ${this.chapterHtml(diff, cur)}
+        <div class="hub-go">
+          ${over.length ? `<button id="v-overflow" class="ovf-btn">Túi tạm: ${over.length} món chờ xử lý</button>` : ''}
+          ${noSkill ? `<div class="warn">Chưa có kỹ năng chủ động: bấm "Nhân vật" và học một kỹ năng cấp 1.</div>` : ''}
+          ${pts && !noSkill ? `<div class="unspent">Còn ${ch.attrPoints} điểm thuộc tính, ${ch.skillPoints} điểm kỹ năng</div>` : ''}
+          <button id="v-start" class="primary go">▶ Vào màn ${esc(cur.id)}: ${esc(cur.name)}<small>Enter${diff !== 'normal' ? ` · ${esc(data.difficultiesById[diff].name)}` : ''}</small></button>
+        </div>
+      </main>
+    </div>
+    ${this.villageModal ? `<div class="vmodal" id="v-modal"><div class="vm-box ${this.villageModal}">${this.modalHtml(this.villageModal)}</div></div>` : ''}`;
+
+    v.querySelectorAll('canvas[data-portrait]').forEach((c) => drawPortrait(c, c.dataset.portrait));
+    const go = () => this.startRun();
+    $('#v-start').onclick = go;
+    v.querySelectorAll('[data-diff]').forEach((b) => (b.onclick = () => { this.selectedDiff = b.dataset.diff; this.selectedMap = null; this.viewChap = null; this.renderVillage(); }));
+    v.querySelectorAll('[data-chap]').forEach((b) => (b.onclick = () => { this.viewChap = b.dataset.chap; this.renderVillage(); }));
     v.querySelectorAll('[data-map]').forEach((b) => {
       b.onclick = () => { this.selectedMap = b.dataset.map; this.renderVillage(); };
       b.ondblclick = () => { this.selectedMap = b.dataset.map; this.startRun(); };
@@ -601,12 +599,180 @@ class App {
     $('#v-panel').onclick = () => this.panel.open('char');
     $('#v-items').onclick = () => this.panel.open('items');
     $('#v-stash').onclick = () => this.panel.open('stash');
-    $('#v-sellnormal').onclick = () => {
-      L.sellItems(ch, L.bulkCandidates(ch, data, 'normal'), data);
-      this.save();
-      this.renderVillage();
-    };
-    $('#v-bulk').onclick = () => this.panel.open('items');
+    $('#v-craft').onclick = () => this.panel.open('craft');
+    $('#v-switch').onclick = () => { this.save(); this.renderSelect(); };
+    $('#v-help').onclick = () => this.openModal('help');
+    $('#v-menu').onclick = () => this.openModal('menu');
+    if ($('#v-overflow')) $('#v-overflow').onclick = () => this.openModal('overflow');
+    if (this.villageModal) this.bindModal(v);
+  }
+
+  openModal(m) {
+    this.villageModal = m;
+    this.renderVillage();
+  }
+
+  closeModal() {
+    if (!this.villageModal) return false;
+    this.villageModal = null;
+    this.renderVillage();
+    return true;
+  }
+
+  // Bản đồ: thẻ chương + 5 màn của chương đang xem nối bằng đường đi, kèm thông tin màn đang chọn.
+  chapterHtml(diff, cur) {
+    const data = this.data;
+    const ch = this.ch;
+    const unlocked = new Set(P.unlockedMaps(ch, data, diff));
+    const prog = P.progressOf(ch, diff);
+    const chaps = [];
+    for (const id of data.mapOrder) {
+      const m = data.maps[id];
+      let c = chaps.find((x) => x.name === m.chapterName);
+      if (!c) chaps.push((c = { name: m.chapterName, maps: [] }));
+      c.maps.push(m);
+    }
+    if (!chaps.some((c) => c.name === this.viewChap)) this.viewChap = cur.chapterName;
+    const view = chaps.find((c) => c.name === this.viewChap);
+    const isCleared = (m) => (ch.mapClears?.[P.clearKey(diff, m.id)] || 0) > 0 || m.index < prog;
+    const tabs = chaps.map((c, i) => {
+      const open = c.maps.some((m) => unlocked.has(m.id));
+      const done = c.maps.every(isCleared);
+      return `<button class="chap-tab ${c === view ? 'on' : ''} ${done ? 'done' : ''}" ${open ? `data-chap="${esc(c.name)}"` : 'disabled'} title="${esc(c.name)}">${open ? '' : '🔒 '}${i + 1}. ${esc(c.name.replace(/^Chương \d+:\s*/i, ''))}${done ? ' ✓' : ''}</button>`;
+    }).join('');
+    const nodes = view.maps.map((m, i) => {
+      const open = unlocked.has(m.id);
+      const cleared = isCleared(m);
+      const last = i === view.maps.length - 1;
+      return `<button class="mnode ${open ? '' : 'locked'} ${cleared ? 'cleared' : ''} ${m.id === cur.id ? 'on' : ''} ${last ? 'final' : ''}" ${open ? `data-map="${m.id}"` : 'disabled'} title="${esc(m.name)}">
+        <span class="dot">${cleared ? '✓' : open ? (last ? '👑' : '●') : '🔒'}</span><b>${esc(m.id)}</b><small>${open ? esc(m.name) : 'Chưa mở'}</small></button>`;
+    }).join('<i class="link"></i>');
+    const D = data.difficultiesById[diff];
+    const pct = Math.round((cur.hpMult - 1) * 100), dpct = Math.round((cur.dmgMult - 1) * 100);
+    const rec = ch.records?.[`${diff}:${cur.id}`];
+    const clears = ch.mapClears?.[P.clearKey(diff, cur.id)] || 0;
+    const dInfo = D.id === 'normal' ? '' : `<div class="mi-diff" style="color:${D.color}">${esc(D.name)}: máu quái ×${D.hpMult}, sát thương ×${D.dmgMult}, quái kháng +${Math.round(D.monsterResist * 100)}%, bạn bị trừ ${Math.round(D.playerResistPenalty * 100)}% kháng, kinh nghiệm ×${D.xpMult}, cấp đồ +${D.ilvlBonus}</div>`;
+    return `<div class="chap-tabs">${tabs}</div>
+      <div class="path">${nodes}</div>
+      <div class="mapinfo">
+        <h2>${esc(cur.id)} ${esc(cur.name)}</h2>
+        <div class="mi-stats"><span>${pct ? `Máu quái +${pct}%` : 'Máu quái gốc'}</span><span>${dpct ? `Sát thương +${dpct}%` : 'Sát thương gốc'}</span><span>${clears ? `Đã qua ${clears} lần` : 'Chưa qua'}</span><span>${rec ? `Kỷ lục ⏱ ${fmtTime(rec)}` : 'Chưa có kỷ lục'}</span></div>
+        ${dInfo}
+        <div class="muted mi-note">${prog}/${data.mapOrder.length} màn đã qua · mỗi màn máu quái +${Math.round((data.campaign.hpStep ?? 0) * 100)}%, sát thương +${Math.round((data.campaign.dmgStep ?? 0) * 100)}%, kinh nghiệm +${Math.round((data.campaign.rewardStep ?? 0) * 100)}% · bấm đúp vào màn để vào ngay</div>
+      </div>`;
+  }
+
+  modalHtml(m) {
+    const data = this.data;
+    const ch = this.ch;
+    const close = '<button class="vm-x" data-vm-close title="Đóng (Esc)">×</button>';
+    if (m === 'result') return close + this.resultHtml();
+    if (m === 'overflow') return close + `<h2>Túi tạm</h2>${this.overflowHtml() || '<p class="muted">Túi tạm trống.</p>'}<div class="vm-btns"><button data-vm-close class="primary">Xong</button></div>`;
+    if (m === 'help') {
+      return close + `<h2>Cách chơi</h2><ul class="help-list">
+        <li><b>WASD</b> hoặc phím mũi tên để di chuyển. Kỹ năng tự kích hoạt và tốn mana. Tối đa 4 kỹ năng chủ động, có thể lấy từ nhiều nhánh.</li>
+        <li><b>Tab</b>, <b>C</b> hoặc nút <b>+</b>: bảng cộng điểm. <b>I</b>: đồ đạc. Game dừng hẳn khi bảng mở. <b>Shift</b> + bấm để cộng 5 điểm.</li>
+        <li>Phím <b>1</b>–<b>4</b>: cộng nhanh 1 điểm Sức mạnh / Nhanh nhẹn / Thể lực / Năng lượng.</li>
+        <li>Đồ tự nhặt khi đi qua (nếu kho còn chỗ). Đồ có yêu cầu cấp: nhặt sớm, lên cấp mới mặc được. Bán đồ và tẩy điểm ở làng. Ctrl + bấm vào đồ: bán ngay (ở làng) hoặc đánh dấu rác (trong màn).</li>
+        <li>Hạ boss cuối màn: quái biến mất, nhặt <b>rương thưởng</b> rồi 5 giây sau kết thúc màn.</li>
+        <li>Băng: 3 đòn băng liên tiếp sẽ đóng băng quái 1 giây (tinh anh nửa thời gian, boss miễn nhiễm).</li>
+        <li>Ở làng: <b>Enter</b> để vào màn đang chọn, <b>Esc</b> để đóng hộp thoại.</li>
+      </ul><div class="vm-btns"><button data-vm-close class="primary">Đã hiểu</button></div>`;
+    }
+    // menu ⚙ Khác
+    const quick = L.bulkCandidates(ch, data, 'normal');
+    const cost = P.respecCost(ch, data);
+    const runs = T.getRuns();
+    const recent = runs.slice(-8).reverse();
+    const sum = T.summarize(runs);
+    const hist = recent.length ? `<table class="hist"><thead><tr><th>Người chơi</th><th>Kết quả</th><th>Thời gian</th><th>Cấp</th><th>Giết</th><th>Mở bảng</th><th>Nguyên nhân</th></tr></thead><tbody>${recent.map((x) => `<tr><td>${esc(x.tester)}</td><td>${x.result === 'win' ? 'Thắng' : x.result === 'quit' ? 'Bỏ' : 'Chết'}</td><td>${fmtTime(x.timeSec)}</td><td>${x.startLevel}→${x.endLevel}</td><td>${x.kills}</td><td>${x.panelOpens} lần, TB ${x.avgPanelSeconds}s</td><td>${esc(x.cause || '-')}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">Chưa có lượt nào.</p>';
+    return close + `<h2>Khác</h2>
+      <section><h3 class="sec-title">Đồ đạc và nhân vật</h3>
+        <div class="village-tools">
+          <button id="v-sellnormal" ${quick.length ? '' : 'disabled'}>Bán ${quick.length} món thường (${L.sumValue(ch, quick, data)} vàng)</button>
+          <button id="v-bulk">Bán nhanh / quản lý đồ…</button>
+          <button id="v-respec" ${ch.gold >= cost ? '' : 'disabled'}>Tẩy điểm (${cost} vàng)</button>
+        </div></section>
+      <section><h3 class="sec-title">Lưu trữ</h3>
+        <div class="village-tools"><button id="v-export">Xuất mã nhân vật</button><button id="v-import">Nhập mã</button></div>
+        <div id="v-codebox" class="code-box hidden"></div>
+        <p class="muted" style="margin:8px 0 0;font-size:12px">Nhân vật và rương tự lưu trên trình duyệt này. Xoá dữ liệu trình duyệt sẽ mất nhân vật: hãy "Xuất mã nhân vật" và cất mã ở nơi khác. Mã gồm cả rương chung.</p></section>
+      <section>${this.recordsHtml(this.currentDiff())}</section>
+      <section><details class="tester"><summary>Chơi thử: log lượt chơi và góp ý</summary>
+        <div class="row">
+          <label>Tên người chơi thử <input id="v-tester" value="${esc(this.tester)}" placeholder="VD: Người 1"></label>
+          <button id="v-log">Xuất log (JSON)</button>
+          <button id="v-clear" class="ghost">Xoá log</button>
+        </div>
+        ${sum ? `<div class="muted">Đã ghi ${sum.runs} lượt của ${sum.testers} người · hạ boss ở lượt đầu: ${sum.firstRunBossKill}/${sum.testers} · mở bảng trung bình ${sum.avgPanelSec.toFixed(1)} giây/lần</div>` : ''}
+        ${hist}
+        <details class="feedback">
+          <summary>Góp ý sau buổi chơi (3 câu)</summary>
+          <label>Lúc nào vui nhất?<textarea id="f1"></textarea></label>
+          <label>Lúc nào chán nhất?<textarea id="f2"></textarea></label>
+          <label>Có muốn chơi tiếp không?<textarea id="f3"></textarea></label>
+          <button id="v-fb">Lưu góp ý</button> <span id="fb-ok" class="muted"></span>
+        </details></details></section>`;
+  }
+
+  // Hộp thoại kết quả trận.
+  resultHtml() {
+    const data = this.data;
+    const r = this.lastResult;
+    if (!r) return '<p class="muted">Chưa có lượt nào.</p>';
+    const rm = data.maps[r.map];
+    const dn = data.difficultiesById[r.mode || 'normal'];
+    const title = r.result === 'win' ? `Hoàn thành màn ${esc(r.map)}: ${esc(rm ? rm.name : '')}!` : r.result === 'quit' ? 'Đã bỏ lượt' : `Gục ngã ở màn ${esc(r.map)}`;
+    const nm = r.nextMapUnlocked && data.maps[r.nextMapUnlocked];
+    const lines = [];
+    if (r.result === 'win') {
+      if (r.chestLoot) lines.push(`<div class="chest">🎁 Rương: ${r.chestLoot.map((x) => `<b style="color:${x.rune ? data.runes.byId[x.rune].color : data.items.rarities[x.rarity].color}">${esc(x.name)}</b>`).join(', ')}${r.chestShards ? ` · +${r.chestShards} mảnh` : ''}</div>`);
+      if (r.newDifficulty) lines.push(`<div class="chest big">🔓 Mở độ khó mới: <b style="color:${data.difficultiesById[r.newDifficulty].color}">${esc(data.difficultiesById[r.newDifficulty].name)}</b>! Quái mạnh hơn nhiều, có kháng nguyên tố; đồ và kinh nghiệm tốt hơn.</div>`);
+      if (nm) lines.push(`<div class="chest">🔓 Mở màn <b>${esc(nm.id)} ${esc(nm.name)}</b> (máu quái ×${nm.hpMult.toFixed(2)}).</div>`);
+      if (r.newRecord) lines.push(`<div class="chest">⏱ Kỷ lục mới: hạ boss lúc ${fmtTime(r.timeSec)}!</div>`);
+      if (r.flawless) lines.push('<div class="chest">Hòm thưởng thêm: hoàn thành mà chưa chết lần nào ở bản đồ này!</div>');
+    } else if (r.result !== 'quit') {
+      lines.push(`<div>Nguyên nhân: <b>${esc(r.cause || '-')}</b>. Kinh nghiệm, cấp và đồ đã nhặt vẫn được giữ; màn phải chơi lại từ đầu.</div>`);
+    }
+    const loot = (r.itemsPicked || []).filter((x) => x.rarity !== 'normal');
+    const next = this.currentMap();
+    const nextLabel = r.result === 'win' && (nm || r.newDifficulty) ? `▶ Chơi tiếp ${esc(next.id)}` : r.result === 'win' ? `▶ Chơi lại ${esc(next.id)}` : `▶ Thử lại ${esc(next.id)}`;
+    const ovf = this.overflowHtml();
+    return `<div class="result ${r.result}">
+      <h2>${title} <small style="color:${dn.color}">${esc(dn.name)}</small></h2>
+      <div class="grid4">
+        <div><span>Thời gian</span><b>${fmtTime(r.timeSec)}</b></div>
+        <div><span>Cấp</span><b>${r.startLevel} → ${r.endLevel}</b></div>
+        <div><span>Đã giết</span><b>${r.kills}</b></div>
+        <div><span>Boss</span><b>${r.bossReached ? (r.result === 'win' ? 'Đã hạ' : `còn ${r.bossHpPct}%`) : 'Chưa gặp'}</b></div>
+      </div>
+      ${lines.join('')}
+      ${r.junkSold ? `<div>Đã tự bán ${r.junkSold.n} món đánh dấu rác: +${r.junkSold.gold} vàng.</div>` : ''}
+      ${r.autoSold ? `<div>Bộ lọc nhặt đã tự bán ${r.autoSold} món thường.</div>` : ''}
+      <div class="muted">Nhặt được ${(r.itemsPicked || []).length} món, ${r.gold || 0} vàng${loot.length ? ': ' + loot.map((x) => `<span style="color:${data.items.rarities[x.rarity].color}">${esc(x.name)}</span>`).join(', ') : ''}.</div>
+    </div>
+    ${ovf ? `<h3 class="sec-title">Túi tạm</h3>${ovf}` : ''}
+    <div class="vm-btns"><button id="r-next" class="primary">${nextLabel} <small>Enter</small></button><button data-vm-close>Về làng</button></div>`;
+  }
+
+  overflowHtml() {
+    const data = this.data;
+    const over = this.ch.overflow || [];
+    if (!over.length) return '';
+    return `<p class="muted" style="margin:0 0 6px;font-size:12px">${over.length} món từ rương thưởng chưa vừa kho đồ. Giữ: cho vào kho đồ, kho đầy thì cho vào rương chung. Đồ trong túi tạm được lưu cho tới khi bạn chọn.</p>
+      <div class="ovf-list">${over.map((it, i) => `<div class="ovf"><span style="color:${it.type === 'rune' ? data.runes.byId[it.rune].color : data.items.rarities[it.rarity].color}">${esc(it.name)}</span><small>cấp đồ ${it.ilvl}</small>
+        <button data-ovf-keep="${i}">Giữ</button><button data-ovf-sell="${i}" class="ghost">Bán ${I.sellValue(it, data)}</button></div>`).join('')}</div>
+      <div class="row"><button id="ovf-keepall">Giữ hết</button><button id="ovf-sellall" class="ghost">Bán hết (${over.reduce((n, it) => n + I.sellValue(it, data), 0)} vàng)</button></div>`;
+  }
+
+  bindModal(v) {
+    const ch = this.ch;
+    const data = this.data;
+    const q = (s) => v.querySelector(s);
+    q('#v-modal').onclick = (e) => { if (e.target.id === 'v-modal') this.closeModal(); };
+    v.querySelectorAll('[data-vm-close]').forEach((b) => (b.onclick = () => this.closeModal()));
+    if (q('#r-next')) q('#r-next').onclick = () => { this.villageModal = null; this.startRun(); if (this.state !== 'run') this.renderVillage(); };
+    // Túi tạm
     const ovfKeep = (i) => {
       const it = ch.overflow[i];
       if (I.addToInventory(ch, it)) { ch.overflow.splice(i, 1); return true; }
@@ -616,28 +782,31 @@ class App {
     };
     const ovfSell = (i) => {
       const it = ch.overflow[i];
-      const v = I.sellValue(it, data);
-      ch.gold += v;
-      ch.buyback = [{ item: it, price: v }, ...(ch.buyback || [])].slice(0, L.BUYBACK_MAX);
+      const val = I.sellValue(it, data);
+      ch.gold += val;
+      ch.buyback = [{ item: it, price: val }, ...(ch.buyback || [])].slice(0, L.BUYBACK_MAX);
       ch.overflow.splice(i, 1);
     };
     const after = () => { this.save(); this.renderVillage(); };
     v.querySelectorAll('[data-ovf-keep]').forEach((b) => (b.onclick = () => { if (!ovfKeep(Number(b.dataset.ovfKeep))) alert('Kho đồ và rương chung đều đầy. Hãy bán bớt đồ trước.'); after(); }));
     v.querySelectorAll('[data-ovf-sell]').forEach((b) => (b.onclick = () => { ovfSell(Number(b.dataset.ovfSell)); after(); }));
-    if (over.length) {
-      $('#ovf-keepall').onclick = () => { while (ch.overflow.length && ovfKeep(0)); if (ch.overflow.length) alert('Kho đồ và rương chung đều đầy, còn lại trong túi tạm.'); after(); };
-      $('#ovf-sellall').onclick = () => { if (!confirm(`Bán hết ${ch.overflow.length} món trong túi tạm?`)) return; while (ch.overflow.length) ovfSell(0); after(); };
-    }
-    $('#v-respec').onclick = () => {
+    if (q('#ovf-keepall')) q('#ovf-keepall').onclick = () => { while (ch.overflow.length && ovfKeep(0)); if (ch.overflow.length) alert('Kho đồ và rương chung đều đầy, còn lại trong túi tạm.'); after(); };
+    if (q('#ovf-sellall')) q('#ovf-sellall').onclick = () => { if (!confirm(`Bán hết ${ch.overflow.length} món trong túi tạm?`)) return; while (ch.overflow.length) ovfSell(0); after(); };
+    if (this.villageModal !== 'menu') return;
+    // Menu ⚙ Khác
+    q('#v-sellnormal').onclick = () => { L.sellItems(ch, L.bulkCandidates(ch, data, 'normal'), data); after(); };
+    q('#v-bulk').onclick = () => { this.villageModal = null; this.renderVillage(); this.panel.open('items'); };
+    const cost = P.respecCost(ch, data);
+    q('#v-respec').onclick = () => {
       if (!confirm(`Tẩy điểm với giá ${cost} vàng? Toàn bộ điểm thuộc tính và kỹ năng sẽ được trả lại để cộng lại từ đầu.`)) return;
       const res = P.respec(ch, data);
       if (res !== 'ok') alert(res);
-      this.save();
-      this.renderVillage();
+      this.villageModal = null;
+      after();
       if (res === 'ok') this.panel.open('char');
     };
-    const box = $('#v-codebox');
-    $('#v-export').onclick = () => {
+    const box = q('#v-codebox');
+    q('#v-export').onclick = () => {
       const code = exportCode(ch, this.stash, data);
       box.classList.remove('hidden');
       box.innerHTML = `<p>Mã nhân vật (cấp ${ch.level}, ${ch.inventory.filter(Boolean).length + Object.values(ch.equipment).filter(Boolean).length} món, rương ${this.stash.filter(Boolean).length} món). Chép và cất ở nơi an toàn:</p><textarea readonly id="v-code">${esc(code)}</textarea><button id="v-copy">Sao chép</button> <span id="v-copied" class="muted"></span>`;
@@ -647,7 +816,7 @@ class App {
         try { await navigator.clipboard.writeText(code); $('#v-copied').textContent = 'Đã sao chép.'; } catch { document.execCommand('copy'); $('#v-copied').textContent = 'Đã chọn mã, hãy nhấn Ctrl+C.'; }
       };
     };
-    $('#v-import').onclick = () => {
+    q('#v-import').onclick = () => {
       box.classList.remove('hidden');
       box.innerHTML = '<p>Dán mã nhân vật vào đây. Nhân vật trong mã được thêm vào danh sách (trùng nhân vật thì ghi đè); đồ trong rương của mã được thêm vào các ô trống của rương chung.</p><textarea id="v-code-in" placeholder="ARPG1.…"></textarea><button id="v-do-import" class="primary">Nhập</button> <span id="v-imp-msg" class="bad"></span>';
       $('#v-do-import').onclick = () => {
@@ -659,6 +828,9 @@ class App {
           const have = new Set(this.stash.filter(Boolean).map((x) => x.uid));
           for (const it of res.stash) if (it && !have.has(it.uid)) { const j = this.stash.indexOf(null); if (j >= 0) this.stash[j] = it; }
           this.lastResult = null;
+          this.villageModal = null;
+          this.viewChap = null;
+          this.selectedMap = null;
           this.save();
           this.renderVillage();
         } catch (e) {
@@ -666,14 +838,13 @@ class App {
         }
       };
     };
-    $('#v-switch').onclick = () => { this.save(); this.renderSelect(); };
-    $('#v-tester').onchange = (e) => {
+    q('#v-tester').onchange = (e) => {
       this.tester = e.target.value.trim();
       try { localStorage.setItem('arpg_s0_tester', this.tester); } catch { /* bỏ qua */ }
     };
-    $('#v-log').onclick = () => T.exportAll();
-    $('#v-clear').onclick = () => { if (confirm('Xoá toàn bộ log lượt chơi và góp ý?')) { T.clearAll(); this.renderVillage(); } };
-    $('#v-fb').onclick = () => {
+    q('#v-log').onclick = () => T.exportAll();
+    q('#v-clear').onclick = () => { if (confirm('Xoá toàn bộ log lượt chơi và góp ý?')) { T.clearAll(); this.renderVillage(); } };
+    q('#v-fb').onclick = () => {
       T.saveFeedback({ tester: this.tester, date: new Date().toISOString(), fun: $('#f1').value, boring: $('#f2').value, playMore: $('#f3').value });
       $('#f1').value = $('#f2').value = $('#f3').value = '';
       $('#fb-ok').textContent = 'Đã lưu.';

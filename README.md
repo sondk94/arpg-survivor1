@@ -106,6 +106,20 @@ Chỉ số cấp 1 so với pháp sư:
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
 
+## Làng gọn và màn chọn nhân vật (bản 1.8)
+
+Chỉ đổi bố cục, mọi chức năng cũ giữ nguyên.
+
+- **Mở game vào thẳng làng** của nhân vật chơi gần nhất. Chưa có nhân vật thì vào màn tạo nhân vật.
+- **Màn chọn nhân vật**: một hàng thẻ (chân dung, tên, lớp, cấp, màn đang tới). Bấm thẻ là vào làng; xoá nhân vật nằm trong menu ⋯ của thẻ. Thẻ "+ Tạo mới" mở 3 thẻ lớp và ô tên có gợi ý sẵn theo lớp (Enter để tạo).
+- **Làng một màn hình, không cuộn**:
+  - Trên cùng: độ khó dạng nút gạt 3 nấc, nút **?** (cách chơi) và **⚙** (khác).
+  - Cột trái: thẻ nhân vật (chân dung, cấp, kinh nghiệm, vàng, mảnh, thuộc tính) và 4 nút Nhân vật (số điểm chưa cộng) / Đồ đạc / Rương chung / Lò chế, nút ⇄ đổi nhân vật.
+  - Giữa: thẻ 4 chương, 5 màn của chương đang xem nối thành đường đi (✓ đã qua, ● đang mở, 👑 màn cuối chương, 🔒 chưa mở), thông tin màn đang chọn (máu / sát thương quái, số lần qua, kỷ lục) và nút lớn **Vào màn** (phím Enter). Bấm đúp vào màn để vào ngay.
+  - Menu ⚙ Khác: bán nhanh đồ thường, quản lý đồ, tẩy điểm, xuất / nhập mã, bảng kỷ lục, log chơi thử và góp ý.
+- **Hộp thoại kết quả trận** hiện sau mỗi lượt: thời gian, cấp, số quái, rương thưởng, màn / độ khó mới mở, kỷ lục, túi tạm (giữ / bán). Nút **Chơi tiếp** (Enter) vào ngay màn kế, nút **Về làng** (Esc) đóng hộp thoại. Túi tạm còn đồ thì làng có nút "Túi tạm" để mở lại.
+- Trên điện thoại: thẻ nhân vật thu gọn ở trên, 4 nút xếp một hàng, bản đồ và nút Vào màn ở dưới.
+
 ## Rương thưởng boss và quản lý đồ (bản 1.7)
 
 **Rương thưởng khi hạ boss cuối màn:**
