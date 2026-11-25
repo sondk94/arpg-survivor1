@@ -106,6 +106,12 @@ Chỉ số cấp 1 so với pháp sư:
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
 
+## Bình máu / mana (bản 1.8)
+
+- Mỗi bình máu hồi **20 máu**, mỗi bình mana hồi **20 mana**, giống nhau ở mọi cấp (trước đây hồi 30% máu / 40% mana tối đa).
+- Tỉ lệ rơi giữ nguyên: 2% mỗi quái thường, tinh anh luôn rơi 1 bình máu.
+- Số liệu: `config.json` → `drops.hpPotion.heal`, `drops.manaPotion.restore`.
+
 ## Làng gọn và màn chọn nhân vật (bản 1.8)
 
 Chỉ đổi bố cục, mọi chức năng cũ giữ nguyên.
