@@ -322,7 +322,9 @@ export function itemScore(item, tree, physical = false) {
   if (item.type === 'rune') return -1;
   const s = itemStats(item);
   const elem = tree ? (s[`${tree}DmgPct`] || 0) * 1.2 + (s[`${tree}Skills`] || 0) * 25 : 0;
-  const main = physical ? (s.physDmgPct || 0) * 1.3 + (s.str || 0) * 1.0 - (s.ene || 0) * 0.6 : (s.spellDmgPct || 0) * 1.2;
+  // physical: true = Chiến binh, 'summon' = Triệu hồi sư, false = Pháp sư.
+  const main = physical === 'summon' ? (s.summonDmgPct || 0) * 1.3 + (s.summonHpPct || 0) * 0.5 + (s.ene || 0) * 0.6
+    : physical ? (s.physDmgPct || 0) * 1.3 + (s.str || 0) * 1.0 - (s.ene || 0) * 0.6 : (s.spellDmgPct || 0) * 1.2;
   return main + elem + (s.allSkills || 0) * 25 + (s.ene || 0) * 0.8 + (s.vit || 0) * 1.2 +
     (s.maxHp || 0) * 0.4 + (s.maxMana || 0) * 0.3 + (s.armor || 0) * 0.3 + (s.cdSpeedPct || 0) * 1.2 + (s.critChance || 0) * 2 +
     (s.dex || 0) * 0.5 + (s.moveSpeedPct || 0) * 0.5 + (s.hpOnKill || 0) * 4 + (s.resAll || 0) * 0.3;

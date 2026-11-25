@@ -160,7 +160,24 @@
     },
     "ilvlPerMinute": 1.4,
     "sellBase": 8,
-    "sellPerIlvl": 2
+    "sellPerIlvl": 2,
+    "chest": {
+      "countdown": 5,
+      "autoOpen": 30,
+      "ilvlBonus": 6,
+      "minRarity": "rare",
+      "rareMult": 3,
+      "uniqueMult": 3,
+      "setMult": 2,
+      "specialChance": 0.25,
+      "extraItems": 1,
+      "runeChance": 0.3,
+      "goldMult": 5,
+      "shards": [
+        4,
+        10
+      ]
+    }
   },
   "stats": {
     "str": {
@@ -258,6 +275,21 @@
     },
     "bloodSkills": {
       "fmt": "+{v} cấp kỹ năng Huyết Chiến"
+    },
+    "summonDmgPct": {
+      "fmt": "+{v}% sát thương vật triệu hồi"
+    },
+    "summonHpPct": {
+      "fmt": "+{v}% máu vật triệu hồi"
+    },
+    "packSkills": {
+      "fmt": "+{v} cấp kỹ năng Bầy Sói"
+    },
+    "beastSkills": {
+      "fmt": "+{v} cấp kỹ năng Mãnh Thú"
+    },
+    "swarmSkills": {
+      "fmt": "+{v} cấp kỹ năng Bầy Chim & Côn Trùng"
     }
   },
   "bases": [
@@ -736,6 +768,83 @@
         "spellDmgPct": [
           10,
           16
+        ]
+      },
+      "maxSockets": 2
+    },
+    {
+      "id": "beast_staff",
+      "type": "weapon",
+      "name": "Trượng Thú",
+      "req": 1,
+      "implicit": {
+        "summonDmgPct": [
+          8,
+          14
+        ]
+      },
+      "maxSockets": 3
+    },
+    {
+      "id": "elder_totem",
+      "type": "weapon",
+      "name": "Cột Vật Tổ",
+      "req": 12,
+      "implicit": {
+        "summonDmgPct": [
+          18,
+          26
+        ],
+        "maxMana": [
+          10,
+          20
+        ]
+      },
+      "maxSockets": 3
+    },
+    {
+      "id": "primal_totem",
+      "type": "weapon",
+      "name": "Vật Tổ Nguyên Thuỷ",
+      "req": 30,
+      "implicit": {
+        "summonDmgPct": [
+          35,
+          50
+        ],
+        "maxMana": [
+          20,
+          35
+        ]
+      },
+      "maxSockets": 3
+    },
+    {
+      "id": "bone_charm",
+      "type": "offhand",
+      "name": "Bùa Xương",
+      "req": 1,
+      "implicit": {
+        "summonHpPct": [
+          10,
+          20
+        ]
+      },
+      "maxSockets": 2
+    },
+    {
+      "id": "spirit_charm",
+      "type": "offhand",
+      "name": "Bùa Linh Hồn",
+      "req": 20,
+      "implicit": {
+        "summonHpPct": [
+          25,
+          40
+        ],
+        "summonDmgPct": [
+          8,
+          14
         ]
       },
       "maxSockets": 2
@@ -1815,6 +1924,182 @@
           3
         ]
       ]
+    },
+    {
+      "stat": "summonDmgPct",
+      "name": "của Bầy Đàn",
+      "slots": [
+        "weapon",
+        "amulet",
+        "offhand",
+        "gloves",
+        "ring"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          6,
+          12
+        ],
+        [
+          6,
+          6,
+          13,
+          20
+        ],
+        [
+          12,
+          12,
+          21,
+          30
+        ],
+        [
+          25,
+          25,
+          31,
+          42
+        ],
+        [
+          40,
+          40,
+          45,
+          60
+        ]
+      ]
+    },
+    {
+      "stat": "summonHpPct",
+      "name": "của Thú Già",
+      "slots": [
+        "body",
+        "offhand",
+        "amulet",
+        "belt",
+        "head"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          8,
+          15
+        ],
+        [
+          6,
+          6,
+          16,
+          25
+        ],
+        [
+          12,
+          12,
+          26,
+          35
+        ],
+        [
+          25,
+          25,
+          36,
+          50
+        ],
+        [
+          40,
+          40,
+          52,
+          70
+        ]
+      ]
+    },
+    {
+      "stat": "packSkills",
+      "name": "của Thủ Lĩnh Bầy",
+      "slots": [
+        "weapon",
+        "amulet",
+        "offhand",
+        "head"
+      ],
+      "tiers": [
+        [
+          6,
+          6,
+          1,
+          1
+        ],
+        [
+          14,
+          14,
+          2,
+          2
+        ],
+        [
+          30,
+          30,
+          3,
+          3
+        ]
+      ]
+    },
+    {
+      "stat": "beastSkills",
+      "name": "của Kẻ Thuần Thú",
+      "slots": [
+        "weapon",
+        "amulet",
+        "offhand",
+        "head"
+      ],
+      "tiers": [
+        [
+          6,
+          6,
+          1,
+          1
+        ],
+        [
+          14,
+          14,
+          2,
+          2
+        ],
+        [
+          30,
+          30,
+          3,
+          3
+        ]
+      ]
+    },
+    {
+      "stat": "swarmSkills",
+      "name": "của Vua Muông",
+      "slots": [
+        "weapon",
+        "amulet",
+        "offhand",
+        "head"
+      ],
+      "tiers": [
+        [
+          6,
+          6,
+          1,
+          1
+        ],
+        [
+          14,
+          14,
+          2,
+          2
+        ],
+        [
+          30,
+          30,
+          3,
+          3
+        ]
+      ]
     }
   ],
   "rareNames": {
@@ -1987,6 +2272,28 @@
         "shoutSkills": 1,
         "bloodSkills": 1,
         "str": 10
+      }
+    },
+    {
+      "id": "alpha_fang",
+      "name": "Nanh Sói Trưởng",
+      "base": "beast_staff",
+      "req": 6,
+      "stats": {
+        "summonDmgPct": 30,
+        "packSkills": 1,
+        "ene": 10
+      }
+    },
+    {
+      "id": "spirit_ward",
+      "name": "Bùa Linh Thú",
+      "base": "bone_charm",
+      "req": 9,
+      "stats": {
+        "summonHpPct": 40,
+        "beastSkills": 1,
+        "swarmSkills": 1
       }
     }
   ],
@@ -2316,6 +2623,150 @@
             "armor": 10,
             "moveSpeedPct": 8,
             "dex": 10
+          }
+        }
+      ]
+    },
+    {
+      "id": "set_pack",
+      "name": "Tiếng Gọi Bầy Đàn",
+      "tree": "pack",
+      "bonus": {
+        "2": {
+          "summonDmgPct": 20
+        },
+        "3": {
+          "packSkills": 1,
+          "summonHpPct": 25
+        }
+      },
+      "pieces": [
+        {
+          "id": "sp_head",
+          "name": "Mũ Lông Sói",
+          "base": "cap",
+          "req": 12,
+          "stats": {
+            "armor": 10,
+            "summonDmgPct": 12,
+            "ene": 8
+          }
+        },
+        {
+          "id": "sp_body",
+          "name": "Áo Da Sói",
+          "base": "leather",
+          "req": 14,
+          "stats": {
+            "armor": 28,
+            "maxHp": 30,
+            "summonHpPct": 15
+          }
+        },
+        {
+          "id": "sp_gloves",
+          "name": "Găng Vuốt Sói",
+          "base": "cloth_gloves",
+          "req": 10,
+          "stats": {
+            "armor": 6,
+            "summonDmgPct": 10,
+            "cdSpeedPct": 5
+          }
+        }
+      ]
+    },
+    {
+      "id": "set_beast",
+      "name": "Ý Chí Mãnh Thú",
+      "tree": "beast",
+      "bonus": {
+        "2": {
+          "summonHpPct": 30
+        },
+        "3": {
+          "beastSkills": 1,
+          "resAll": 15
+        }
+      },
+      "pieces": [
+        {
+          "id": "sbe_offhand",
+          "name": "Bùa Gấu Xám",
+          "base": "bone_charm",
+          "req": 12,
+          "stats": {
+            "summonHpPct": 20,
+            "vit": 10
+          }
+        },
+        {
+          "id": "sbe_belt",
+          "name": "Đai Da Gấu",
+          "base": "leather_belt",
+          "req": 10,
+          "stats": {
+            "maxHp": 30,
+            "summonHpPct": 12
+          }
+        },
+        {
+          "id": "sbe_boots",
+          "name": "Ủng Móng Gấu",
+          "base": "leather_boots",
+          "req": 14,
+          "stats": {
+            "armor": 10,
+            "moveSpeedPct": 8,
+            "summonDmgPct": 8
+          }
+        }
+      ]
+    },
+    {
+      "id": "set_swarm",
+      "name": "Đôi Cánh Hoang Dã",
+      "tree": "swarm",
+      "bonus": {
+        "2": {
+          "summonDmgPct": 15,
+          "manaRegenPct": 20
+        },
+        "3": {
+          "swarmSkills": 1,
+          "critChance": 5
+        }
+      },
+      "pieces": [
+        {
+          "id": "ssw_amulet",
+          "name": "Bùa Lông Vũ",
+          "base": "amulet",
+          "req": 12,
+          "stats": {
+            "summonDmgPct": 15,
+            "maxMana": 20
+          }
+        },
+        {
+          "id": "ssw_ring",
+          "name": "Nhẫn Cánh Quạ",
+          "base": "ring",
+          "req": 10,
+          "stats": {
+            "summonDmgPct": 10,
+            "ene": 8
+          }
+        },
+        {
+          "id": "ssw_head",
+          "name": "Mão Đại Bàng",
+          "base": "circlet",
+          "req": 14,
+          "stats": {
+            "armor": 12,
+            "summonDmgPct": 12,
+            "maxMana": 15
           }
         }
       ]

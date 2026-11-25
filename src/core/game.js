@@ -3,6 +3,9 @@ import { RNG } from './rng.js';
 import { Grid } from './grid.js';
 import * as P from './progression.js';
 import { generateItem, generateRune, addToInventory, firstFree } from './items.js';
+import { MinionMixin } from './minions.js';
+import { lootDecision, makeRoomFor } from './loot.js';
+import { sellValue } from './items.js';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -79,6 +82,8 @@ export class Game {
     this.statBase = null;
 
     this.enemies = [];
+    this.minions = []; // vật triệu hồi (Triệu hồi sư)
+    this.poisoned = new Set(); // quái đang trúng độc Nanh Độc
     this.projectiles = [];
     this.orbs = [];
     this.shots = [];
@@ -169,14 +174,19 @@ export class Game {
   // ---------- Vòng cập nhật ----------
   update(dt) {
     if (this.over) return;
-    this.time += dt;
-    this.processEvents();
-    this.updateSpawner(dt);
+    if (this.victory) this.updateVictory(dt);
+    else {
+      this.time += dt;
+      this.processEvents();
+      this.updateSpawner(dt);
+    }
+    if (this.over) return;
     this.updatePlayer(dt);
     this.grid.rebuild(this.enemies);
     this.updateBuffs(dt);
     this.updateSkills(dt);
     this.updateOrbs(dt);
+    this.updateMinions(dt);
     this.updateProjectiles(dt);
     this.updatePending(dt);
     this.updateZones(dt);
@@ -407,7 +417,9 @@ export class Game {
     p.glow = Math.max(0, p.glow - dt);
     p.swing = Math.max(0, (p.swing || 0) - dt);
     p.hurt = Math.max(0, p.hurt - dt);
-    p.mana = Math.min(this.stats.maxMana, p.mana + this.stats.manaRegen * dt);
+    const link = this.minions.length ? this.spiritLinkCount() : 0;
+    const linkRegen = link ? link * P.lv(this.data.skills.spirit_link.perMinionManaRegen, this.lvl('spirit_link')) : 0;
+    p.mana = Math.min(this.stats.maxMana, p.mana + this.stats.manaRegen * (1 + linkRegen) * dt);
     p.hp = Math.min(this.stats.maxHp, p.hp + this.stats.hpRegen * dt);
     this.log.minHpPct = Math.min(this.log.minHpPct, p.hp / this.stats.maxHp);
   }
@@ -430,7 +442,7 @@ export class Game {
 
   hurtPlayer(amount, type, source, opts = {}) {
     const p = this.player;
-    if (this.over || this.god) return false;
+    if (this.over || this.god || this.victory) return false;
     if (!opts.dot) {
       if (p.invuln > 0) return false;
       if (this.rng.next() < this.stats.dodge) {
@@ -446,7 +458,8 @@ export class Game {
       dmg *= 1 - red;
     } else {
       // Độ khó cao trừ kháng của người chơi (có thể âm, tối đa nhận ×2 sát thương).
-      const res = Math.max(-1, Math.min(this.cfg.caps.playerResist, (this.stats.resist[type] || 0) - (this.diff.playerResistPenalty || 0)));
+      const link = this.minions.length ? this.spiritLinkCount() * this.data.skills.spirit_link.perMinionResist : 0;
+      const res = Math.max(-1, Math.min(this.cfg.caps.playerResist, (this.stats.resist[type] || 0) + link - (this.diff.playerResistPenalty || 0)));
       dmg *= 1 - res;
       if (dmg < 0) dmg = 0;
     }
@@ -496,12 +509,12 @@ export class Game {
     // Kỷ lục thời gian hạ boss.
     this.ch.records = this.ch.records || {};
     const rk = `${dId}:${this.map.id}`;
-    const t = Math.round(this.time * 10) / 10;
+    const t = Math.round((this.bossTime ?? this.time) * 10) / 10;
     const newRecord = !(this.ch.records[rk] <= t);
     if (newRecord) this.ch.records[rk] = t;
     const next = this.data.mapOrder[idx + 1] || null;
     const newDiff = P.unlockedDifficulties(this.ch, this.data).find((d) => !before.includes(d)) || null;
-    this.result = { win: true, time: this.time, flawless, firstClear, nextMap: firstClear ? next : null, newRecord, difficulty: dId, newDifficulty: newDiff };
+    this.result = { win: true, time: this.bossTime ?? this.time, chestLoot: this.chestLoot || [], overflow: this.overflow || [], flawless, firstClear, nextMap: firstClear ? next : null, newRecord, difficulty: dId, newDifficulty: newDiff };
     this.emit({ type: 'victory', flawless });
   }
 
@@ -677,6 +690,12 @@ export class Game {
       case 'leap': return this.castLeap(sk, lvl);
       case 'howl': return this.castHowl(sk, lvl);
       case 'buff': return this.castBuff(sk, lvl);
+      case 'summon': return this.castSummon(sk, lvl);
+      case 'rally': return this.castRally(sk, lvl);
+      case 'minionNova': return this.castMinionNova(sk, lvl);
+      case 'heal': return this.castHeal(sk, lvl);
+      case 'swarm': return this.castSwarm(sk, lvl);
+      case 'dive': return this.castDive(sk, lvl);
     }
     return false;
   }
@@ -985,8 +1004,13 @@ export class Game {
   // Buff bản thân: chỉ dùng khi có quái trong tầm 400 px để không phí.
   castBuff(sk, lvl) {
     if (!this.nearestEnemy(400)) return false;
+    if (sk.summon && !this.aliveMinions((m) => !m.flying)) return false; // Tiếng Hú Bầy Đàn cần có thú
     this.buffs = this.buffs.filter((b) => b.id !== sk.id);
-    this.buffs.push({ id: sk.id, dmgPct: sk.buff.dmgPct ? P.lv(sk.buff.dmgPct, lvl) : 0, armorMult: sk.buff.armorMult || 0, t: sk.duration, dur: sk.duration, color: sk.color });
+    this.buffs.push({
+      id: sk.id, dmgPct: sk.buff.dmgPct ? P.lv(sk.buff.dmgPct, lvl) : 0, armorMult: sk.buff.armorMult || 0,
+      summonAtk: sk.buff.summonAtkSpeed ? P.lv(sk.buff.summonAtkSpeed, lvl) : 0, summonSpeed: sk.buff.summonSpeed || 0,
+      t: sk.duration, dur: sk.duration, color: sk.color,
+    });
     this.addFx({ kind: 'nova', x: this.player.x, y: this.player.y, dur: 0.5, r: 70, color: sk.color });
     return true;
   }
@@ -1013,7 +1037,7 @@ export class Game {
     const res = clamp(e.resist[element] || 0, caps.monsterResistMin, caps.monsterResistMax);
     let dmg = amount * (1 - res);
     let crit = false;
-    if (!opts.noCrit && this.rng.next() < this.stats.critChance) { dmg *= this.stats.critMult; crit = true; }
+    if (!opts.noCrit && this.rng.next() < this.stats.critChance + (opts.critBonus || 0)) { dmg *= this.stats.critMult; crit = true; }
     if (e.affixes.includes('stone_skin')) {
       const af = this.data.monsters.elite.affixes.stone_skin;
       if (e.hp > e.maxHp * af.untilHpPct) dmg *= af.damageTakenMult;
@@ -1036,7 +1060,7 @@ export class Game {
     this.dmgByElement[element] = (this.dmgByElement[element] || 0) + Math.max(0, Math.min(dmg, before));
     if (opts.slow) this.applySlow(e, opts.slow.pct, opts.slow.duration);
     if (element === 'cold') this.chill(e);
-    if (this.showDamage && !this.headless && (crit || dmg >= 6 || e.big || e.elite)) {
+    if (this.showDamage && !this.headless && !opts.quiet && (crit || dmg >= 6 || e.big || e.elite)) {
       this.addText(e.x, e.y - e.r - 4, Math.round(dmg).toString(), crit ? '#ffe14d' : element === 'cold' ? '#bfeaff' : '#ffffff', crit ? 17 : 13);
     }
     if (e.hp <= 0) this.killEnemy(e, element);
@@ -1076,7 +1100,7 @@ export class Game {
       this.addXp(e.xp);
       this.dropLoot(e, 'boss');
       this.addFx({ kind: 'burst', x: e.x, y: e.y, dur: 1.2, r: 160, color: '#7dff9a' });
-      this.win();
+      this.bossDefeated(e);
       return;
     }
     if (!e.flee) {
@@ -1120,6 +1144,95 @@ export class Game {
       this.miniboss = null;
     }
     if (!this.headless) this.addFx({ kind: 'death', x: e.x, y: e.y, dur: 0.3, r: e.r, color: e.color });
+  }
+
+  // ---------- Hạ boss: rương thưởng ----------
+  bossDefeated(e) {
+    const p = this.player;
+    this.bossTime = this.time;
+    const C = this.data.items.drops.chest;
+    this.victory = { state: 'chest', t: 0, left: C.countdown };
+    // Quái còn lại biến mất, không sinh thêm quái, không còn đạn hay vũng độc.
+    for (const o of this.enemies) {
+      if (o.dead) continue;
+      o.dead = true;
+      this.addFx({ kind: 'death', x: o.x, y: o.y, dur: 0.4, r: o.r, color: o.color });
+    }
+    this.aliveNormal = 0;
+    this.shots = [];
+    this.pending = this.pending.filter((pd) => pd.kind !== 'eliteBlast' && pd.kind !== 'pool');
+    this.zones = this.zones.filter((z) => z.kind !== 'poison');
+    p.invuln = 0;
+    const x = Math.max(40, Math.min(this.W - 40, e.x)), y = Math.max(40, Math.min(this.H - 40, e.y + 85));
+    const o = this.pushOutObstacles(x, y, 24);
+    this.pickups.push({ kind: 'chest', x: o.x, y: o.y, value: 0, mag: false, dead: false, opened: false });
+    this.showBanner('Đã hạ boss! Nhặt rương thưởng', 3);
+    this.emit({ type: 'bossDown' });
+  }
+
+  updateVictory(dt) {
+    const v = this.victory;
+    const C = this.data.items.drops.chest;
+    v.t += dt;
+    if (v.state === 'chest') {
+      if (v.t >= C.autoOpen) {
+        const chest = this.pickups.find((k) => k.kind === 'chest' && !k.opened);
+        if (chest) this.openChest(chest);
+      }
+    } else if (v.state === 'count') {
+      v.left -= dt;
+      // Đồ còn trên đất (kể cả đồ bị bộ lọc bỏ qua thì để lại) tiếp tục bay vào người.
+      if (v.left <= 0) this.finishVictory();
+    }
+  }
+
+  // Mở rương: phun phần thưởng ra rồi hút mọi đồ trên đất vào người; 5 giây sau kết thúc màn.
+  openChest(chest) {
+    if (chest.opened) return;
+    chest.opened = true;
+    chest.dead = true;
+    const C = this.data.items.drops.chest;
+    const DF = this.diff;
+    const mult = (this.map.rewardMult || 1) * (DF.xpMult ? Math.sqrt(DF.xpMult) : 1);
+    const ilvl = this.itemLevel(C.ilvlBonus);
+    const items = [generateItem(this.rng, this.data, ilvl, { minRarity: C.minRarity, rareMult: C.rareMult * DF.rareMult, uniqueMult: C.uniqueMult * DF.uniqueMult, setMult: C.setMult })];
+    if (this.rng.next() < C.specialChance) {
+      items.push(generateItem(this.rng, this.data, ilvl, { rarity: this.rng.next() < 0.5 ? 'unique' : 'set' }));
+    }
+    for (let i = 0; i < C.extraItems; i++) items.push(generateItem(this.rng, this.data, ilvl, { minRarity: 'magic', rareMult: C.rareMult * DF.rareMult, uniqueMult: DF.uniqueMult, setMult: C.setMult }));
+    const first = this.ch.mapClears?.[P.clearKey(this.diff.id, this.map.id)] ? false : true;
+    if (first) items.push(generateItem(this.rng, this.data, ilvl, { minRarity: 'rare', rareMult: C.rareMult * DF.rareMult, uniqueMult: C.uniqueMult * DF.uniqueMult, setMult: C.setMult }));
+    if (this.rng.next() < C.runeChance) items.push(generateRune(this.rng, this.data, ilvl));
+    items.forEach((it, i) => {
+      const a = (i / items.length) * TAU + 0.3;
+      this.dropItem(chest.x + Math.cos(a) * 45, chest.y + Math.sin(a) * 45, it);
+    });
+    for (let i = 0; i < 3; i++) this.dropGold(chest.x + (i - 1) * 20, chest.y + 25, ilvl, C.goldMult * mult / 3);
+    const shards = Math.round(this.rng.range(C.shards[0], C.shards[1]) * mult);
+    this.ch.shards = (this.ch.shards || 0) + shards;
+    this.chestLoot = items.map((it) => ({ name: it.name, rarity: it.rarity, rune: it.rune || null }));
+    this.chestShards = shards;
+    this.addText(chest.x, chest.y - 40, `+${shards} mảnh`, '#c9b6ff', 15);
+    this.addFx({ kind: 'burst', x: chest.x, y: chest.y, dur: 0.8, r: 120, color: '#ffd76a' });
+    this.emit({ type: 'shake', amount: 4 });
+    for (const k of this.pickups) if (!k.dead && k.kind !== 'chest') k.pull = true;
+    this.victory.state = 'count';
+    this.victory.left = C.countdown;
+    this.emit({ type: 'chest' });
+  }
+
+  // Kết thúc màn (hết đếm ngược hoặc bỏ lượt sau khi đã hạ boss): đồ chưa bay tới vẫn được nhận.
+  finishVictory() {
+    if (this.over) return;
+    const p = this.player;
+    for (const k of this.pickups) {
+      if (k.dead || k.kind === 'chest' || k.skipped) continue;
+      k.x = p.x; k.y = p.y; k.mag = true; k.pull = true; k.sp = 1e6;
+    }
+    // Một bước nhặt cuối, chạy hai lần để quyết định bộ lọc rồi mới nhặt.
+    this.updatePickups(0.0001);
+    this.updatePickups(0.0001);
+    this.win();
   }
 
   // Cấp đồ rơi: cấp bản đồ + số phút đã chơi + thưởng theo loại quái.
@@ -1236,6 +1349,9 @@ export class Game {
         if (Math.hypot(p.x - pd.x, p.y - pd.y) < pd.r + p.r) this.hurtPlayer(pd.dmg, 'fire', `Nổ: ${pd.name}`);
         this.addFx({ kind: 'burst', x: pd.x, y: pd.y, dur: 0.35, r: pd.r, color: '#ff3b1f' });
         break;
+      case 'dive':
+        this.resolveDive(pd);
+        break;
       case 'pool':
         this.zones.push({ kind: 'poison', x: pd.x, y: pd.y, r: pd.r, t: 0, dur: pd.duration, tickT: pd.tick, tick: pd.tick, dps: pd.dps });
         break;
@@ -1282,6 +1398,8 @@ export class Game {
           const mult = this.skillMult(z.skill);
           this.areaDamage(z.x, z.y, z.r, () => z.dps * z.tick * mult, z.element, { slow: z.slow });
         }
+      } else if (z.kind === 'swarm') {
+        this.updateSwarmZone(z, dt);
       } else if (z.kind === 'poison') {
         z.tickT -= dt;
         if (z.tickT <= 0) {
@@ -1314,9 +1432,16 @@ export class Game {
       }
       if (e.slowT > 0) { e.slowT -= dt; if (e.slowT <= 0) e.slowPct = 0; }
       const spd = e.speed * (1 - e.slowPct);
+      // Mục tiêu: người chơi hoặc vật triệu hồi gần nhất (gấu khiêu khích). d = khoảng cách tới người chơi.
+      const tg = this.minions.length ? this.enemyTarget(e) : p;
       let dx = p.x - e.x, dy = p.y - e.y;
       const d = Math.hypot(dx, dy) || 0.001;
-      const ux = dx / d, uy = dy / d;
+      let ux = dx / d, uy = dy / d;
+      if (tg !== p) {
+        const tx = tg.x - e.x, ty = tg.y - e.y;
+        const td = Math.hypot(tx, ty) || 0.001;
+        ux = tx / td; uy = ty / td;
+      }
       let vx = 0, vy = 0;
 
       if (e.flee && e !== this.boss) {
@@ -1404,6 +1529,16 @@ export class Game {
       e.x = clamp(e.x, e.r, this.W - e.r);
       e.y = clamp(e.y, e.r, this.H - e.r);
 
+      // Chạm vật triệu hồi đang bị nhắm (mỗi quái đánh tối đa 1 lần / hitCooldown giây).
+      if (tg !== p && !e.flee && !(e.fearT > 0)) {
+        e.mhitT = (e.mhitT || 0) - dt;
+        const cx = tg.x - e.x, cy = tg.y - e.y;
+        const rr = e.r + tg.r + 2;
+        if (e.mhitT <= 0 && cx * cx + cy * cy < rr * rr) {
+          e.mhitT = this.cfg.summons?.hitCooldown ?? 0.4;
+          this.hurtMinion(tg, e.contact, e.dmgType, e);
+        }
+      }
       // Chạm người chơi.
       if (!e.flee && !(e.fearT > 0)) {
         const cx = p.x - e.x, cy = p.y - e.y;
@@ -1521,12 +1656,25 @@ export class Game {
       if (k.dead) continue;
       const dx = p.x - k.x, dy = p.y - k.y;
       const d = Math.hypot(dx, dy);
-      if (!k.mag && d < pr) {
-        if (k.kind === 'item' && firstFree(this.ch.inventory) < 0) {
-          if (this.time > this.invFullT) { this.invFullT = this.time + 3; this.addText(p.x, p.y - 44, 'Kho đồ đầy!', '#ff9a8a', 14); }
-          continue;
+      if (k.kind === 'chest') {
+        if (!k.opened && d < pr * 0.6 + 30) this.openChest(k);
+        continue;
+      }
+      if (!k.mag && (d < pr || k.pull)) {
+        if (k.kind === 'item') {
+          // Bộ lọc nhặt đồ: bỏ qua hoặc bán ngay.
+          if (!k.decision) k.decision = lootDecision(k.item, this.ch);
+          if (k.decision === 'skip') { k.skipped = true; continue; }
+          if (k.decision !== 'sell' && !k.pull && firstFree(this.ch.inventory) < 0) {
+            const freed = makeRoomFor(this.ch, k.item, this.data);
+            if (freed) this.addText(p.x, p.y - 60, `Tự bán ${freed.item.name} (+${freed.gold} vàng)`, '#ffd76a', 12);
+            else {
+              if (this.time > this.invFullT) { this.invFullT = this.time + 3; this.addText(p.x, p.y - 44, 'Kho đồ đầy!', '#ff9a8a', 14); }
+              continue;
+            }
+          }
         }
-        k.mag = true; k.sp = 120;
+        k.mag = true; k.sp = k.pull ? 300 : 120;
       }
       if (!k.mag) continue;
       k.sp = Math.min(drops.magnetSpeed * 2, k.sp + drops.magnetSpeed * 3 * dt);
@@ -1539,7 +1687,22 @@ export class Game {
           this.log.gold += k.value;
           this.addText(p.x, p.y - 30, `+${k.value} vàng`, '#ffd76a', 13);
         } else if (k.kind === 'item') {
-          if (!addToInventory(this.ch, k.item)) { k.dead = false; k.mag = false; continue; }
+          if (k.decision === 'sell') {
+            const v = sellValue(k.item, this.data);
+            this.ch.gold += v;
+            this.log.gold += v;
+            this.log.autoSold = (this.log.autoSold || 0) + 1;
+            this.addText(p.x, p.y - 30, `Bán ${k.item.name} +${v} vàng`, '#ffd76a', 12);
+            continue;
+          }
+          if (!addToInventory(this.ch, k.item)) {
+            const freed = makeRoomFor(this.ch, k.item, this.data);
+            if (!(freed && addToInventory(this.ch, k.item))) {
+              // Sau khi hạ boss: kho đầy thì cho vào túi tạm, chọn giữ / bán ở bảng kết quả.
+              if (k.pull) { (this.overflow ||= []).push(k.item); this.addText(p.x, p.y - 48, `${k.item.name} → túi tạm`, '#ffb070', 13); continue; }
+              k.dead = false; k.mag = false; continue;
+            }
+          }
           const col = k.item.type === 'rune' ? this.data.runes.byId[k.item.rune].color : this.data.items.rarities[k.item.rarity].color;
           this.log.itemsPicked.push({ rarity: k.item.rarity, name: k.item.name, ilvl: k.item.ilvl, t: Math.round(this.time) });
           this.addText(p.x, p.y - 48, k.item.name, col, 15);
@@ -1607,6 +1770,8 @@ export class Game {
     for (const e of this.enemies) if (!e.big) this.killEnemy(e, 'fire');
   }
 }
+
+Object.assign(Game.prototype, MinionMixin);
 
 export function segDist(px, py, x1, y1, x2, y2) {
   const dx = x2 - x1, dy = y2 - y1;

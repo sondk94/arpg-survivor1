@@ -1,6 +1,6 @@
 # ARPG Survivor – Giai đoạn 1 (Lõi ARPG)
 
-**20 màn chơi** (4 chương × 5 màn, mỗi màn 7 phút), **2 lớp nhân vật**: Pháp sư Nguyên tố (Lửa / Băng / Sét) và Chiến Binh cận chiến (Vũ Khí / Tiếng Thét / Huyết Chiến), mỗi lớp 3 nhánh × 6 kỹ năng. Có đồ đạc 4 bậc, kho đồ, làng, rương chung, lưu game, xuất/nhập mã nhân vật. Chạy trên trình duyệt, HTML5 Canvas + JavaScript thuần, không cần build, không có thư viện ngoài. Đồ hoạ vẽ bằng hình khối: nhân vật có thân, tay, đầu và chân chạy theo nhịp bước.
+**20 màn chơi** (4 chương × 5 màn, mỗi màn 7 phút), **3 lớp nhân vật**: Pháp sư Nguyên tố (Lửa / Băng / Sét), Chiến Binh cận chiến (Vũ Khí / Tiếng Thét / Huyết Chiến) và Triệu hồi sư Hoang dã (Bầy Sói / Mãnh Thú / Bầy Chim & Côn Trùng), mỗi lớp 3 nhánh × 6 kỹ năng. Có đồ đạc 4 bậc, kho đồ, làng, rương chung, lưu game, xuất/nhập mã nhân vật. Chạy trên trình duyệt, HTML5 Canvas + JavaScript thuần, không cần build, không có thư viện ngoài. Đồ hoạ vẽ bằng hình khối: nhân vật có thân, tay, đầu và chân chạy theo nhịp bước.
 
 ## Chạy game
 
@@ -106,10 +106,64 @@ Chỉ số cấp 1 so với pháp sư:
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
 
+## Rương thưởng boss và quản lý đồ (bản 1.7)
+
+**Rương thưởng khi hạ boss cuối màn:**
+- Boss chết thì đồ rơi như cũ, cộng thêm một **rương thưởng** phát sáng. Màn chưa kết thúc ngay.
+- Ngay khi boss chết: mọi quái còn lại biến mất, không sinh thêm quái, đồng hồ dừng (kỷ lục tính lúc hạ boss), người chơi bất tử.
+- Chạm vào rương thì rương mở: phun phần thưởng ra, rồi **mọi đồ, vàng, ngọc trên đất tự bay vào người**. Hiện "Kết thúc màn sau 5 giây", hết giờ thì sang bảng kết quả.
+- Không nhặt rương sau 30 giây thì rương tự mở. Bỏ lượt sau khi đã hạ boss vẫn tính thắng và nhận đủ đồ.
+- Trong rương: chắc chắn 1 món hiếm trở lên, thêm 1 món ma thuật trở lên, 25% có thêm 1 món độc nhất hoặc đồ bộ, 30% có 1 rune, vàng ×5, 4–10 mảnh lò chế. Lần đầu qua màn (ở độ khó đó) được thêm 1 món hiếm. Cấp đồ +6. Số liệu: `items.json` → `drops.chest`.
+- **Kho đầy**: đồ không vừa vào **túi tạm**. Ở làng có mục "Túi tạm" để Giữ (vào kho đồ, đầy thì vào rương chung) hoặc Bán từng món / tất cả. Túi tạm được lưu, không mất đồ.
+- Bảng kết quả liệt kê đồ trong rương và số mảnh.
+
+**Quản lý đồ (bảng Đồ đạc):**
+1. **Mũi tên so sánh** trên ô đồ: ↑ tốt hơn đồ đang mặc, ↓ kém hơn, ✕ đồ của lớp khác hoặc chưa đủ yêu cầu (chấm điểm theo nhánh nhiều điểm nhất của nhân vật).
+2. **Khoá đồ** 🔒: nút "Khoá" trong chi tiết món. Đồ khoá không bị bán / phân giải hàng loạt, không vứt được.
+3. **Bán nhanh** (ở làng): Đồ thường, Đồ ma thuật, Kém hơn đồ đang mặc, Đồ của lớp khác. Hộp xác nhận liệt kê từng món và tổng vàng. Mặc định không đụng tới độc nhất, đồ bộ, rune, trừ khi tick "Tính cả độc nhất, đồ bộ, rune".
+4. **Phân giải nhanh** ở Lò chế với cùng các bộ lọc (thêm "Đã đánh dấu rác"), ra mảnh.
+5. **Ctrl + bấm** (Cmd trên Mac) vào một món: ở làng bán ngay; trong màn đánh dấu rác 🗑. Đồ đánh dấu rác **tự bán khi về làng**.
+6. **Mua lại**: 10 món bán gần nhất, mua lại đúng giá đã bán.
+7. **Bộ lọc nhặt đồ**: đồ thường Nhặt / Tự bán khi nhặt / Không nhặt; không nhặt đồ ma thuật dưới cấp đồ X. Vàng, rune và đồ hiếm trở lên luôn được nhặt. Đồ bị bỏ qua vẽ mờ trên đất.
+8. **Kho đầy giữa màn**: tick "Kho đầy: tự bán món rác rẻ nhất" thì game bán món đồ thường / đánh dấu rác rẻ nhất (chưa khoá) để nhặt món mới.
+9. **Sắp xếp** kho đồ: theo thứ tự ô trang bị, rồi độ hiếm (đồ bộ, độc nhất, hiếm, ma thuật, thường), rồi cấp đồ; rune ở cuối.
+
+Bộ lọc, khoá, đánh dấu rác, danh sách mua lại và túi tạm đều được lưu và đi theo mã xuất nhân vật. Mã nguồn: `src/core/loot.js`.
+
+## Triệu hồi sư Hoang dã (bản 1.7)
+
+Lớp thứ ba: gọi bầy thú đánh thay mình. Chỉ số chính là **Năng lượng**.
+
+- Khởi đầu: Sức mạnh 15, Nhanh nhẹn 20, Thể lực 20, Năng lượng 25. Máu và mana ở mức giữa Pháp sư và Chiến Binh.
+- **Sức mạnh vật triệu hồi**: mỗi điểm Năng lượng cộng thêm cho thú +1 sát thương mỗi đòn (nhân `flatScale` của kỹ năng) và +1% máu. Thú dùng chỉ số "+% sát thương vật triệu hồi" (Năng lượng +0,5% mỗi điểm, đồ, bị động), không dùng %vật lý của Sức mạnh.
+- **Quái nhắm mục tiêu gần nhất**: người chơi hoặc thú mặt đất, tuỳ cái nào gần hơn. Gấu **khiêu khích** quái trong 170 px. Boss và quái ném xương vẫn nhắm người chơi. Chim bay không bị quái đánh.
+- Thú đi theo người chơi, tự chọn quái gần trong vùng 380 px quanh người chơi. Bị bỏ xa quá 600 px thì dịch chuyển về. Thú chết thì kỹ năng tự gọi lại khi hết hồi chiêu. Tổng tối đa 10 con (`config.json` → `summons`).
+- Sát thương thú ngang các lớp khác (theo yêu cầu "giữ nguyên"), không giảm 10–15%.
+
+| Nhánh | Kỹ năng (cấp mở) |
+|---|---|
+| Bầy Sói | Gọi Sói (1, thêm sói ở cấp kỹ năng 4/8/12, tối đa 4) · Tiếng Hú Bầy Đàn (6, thú đánh và chạy nhanh hơn) · Thông Thạo Thú (12, bị động: +sát thương, +máu thú) · Sói Đầu Đàn (12, cắn lan, sói thường +15%) · Cuồng Bạo Bầy Sói (18, cả bầy lao vào cụm quái) · Nanh Độc (24, bị động: độc cộng dồn 5 tầng) |
+| Mãnh Thú | Gọi Gấu (1, khiêu khích, vả vùng; thêm 1 gấu ở cấp 10) · Vỏ Gai (6, bị động: phản sát thương) · Da Dày (12, bị động: máu, giáp, kháng của thú) · Đập Đất (12, gấu đập đất gây choáng) · Hồi Sinh Hoang Dã (18, hồi máu thú và bạn) · Thú Bất Tử (24, bị động: thú chết có tỉ lệ sống lại với 50% máu) |
+| Bầy Chim & Côn Trùng | Đàn Quạ (1, 3 con, thêm ở cấp 5/10/15) · Bầy Ong (6, đám ong bay theo quái, sát thương theo giây) · Thông Thạo Hoang Dã (12, bị động: +sát thương thú bay, +chí mạng thú) · Đại Bàng (12, bổ nhào vào tinh anh / quái nhiều máu nhất) · Linh Hồn Thú (18, bị động: mỗi thú đang sống tăng hồi mana và +1% kháng) · Bão Lông Vũ (24, quét một vệt dài 520 px) |
+
+Đồ mới: Trượng Thú, Cột Vật Tổ, Vật Tổ Nguyên Thuỷ (vũ khí, +% sát thương vật triệu hồi), Bùa Xương, Bùa Linh Hồn (tay phụ, +% máu vật triệu hồi); các dòng "+% sát thương / máu vật triệu hồi", "+cấp kỹ năng Bầy Sói / Mãnh Thú / Bầy Chim & Côn Trùng"; 2 món độc nhất (Nanh Sói Trưởng, Bùa Linh Thú) và 3 bộ đồ (Tiếng Gọi Bầy Đàn, Ý Chí Mãnh Thú, Đôi Cánh Hoang Dã).
+
+Hình vẽ: Triệu hồi sư mặc áo choàng lông, mũ da sói có gạc hươu, cầm gậy vật tổ. Sói, sói đầu đàn (trắng, mắt đỏ), gấu có chân chạy; quạ và đại bàng vỗ cánh; ong là đám chấm vàng. Thú của mình có vòng xanh dưới chân và thanh máu nhỏ khi bị thương.
+
+**Cân bằng** (`balance.mjs --arena close`, trung bình 3 nhánh mỗi lớp, sát thương mỗi giây):
+
+| Cấp | Đám đông (PS / CB / TH) | Đơn mục tiêu (PS / CB / TH) | Hạ tinh anh 600 máu (PS / CB / TH) |
+|---|---|---|---|
+| 4 | 290 / 255 / 151 | 74 / 94 / 77 | 14 / 16 / 18 giây |
+| 10 | 523 / 523 / 356 | 227 / 256 / 199 | 4,0 / 4,3 / 5,4 giây |
+| 20 | 693 / 572 / 538 | 694 / 535 / 525 | 1,7 / 2,1 / 2,1 giây |
+
+Đám đông của Triệu hồi sư thấp hơn ở cấp thấp vì thú phải chạy tới quái và bài đo dùng quái 36 máu (đòn lớn bị thừa sát thương). Bù lại thú đỡ đòn cho người chơi. Mô phỏng cả 60 màn có đồ (`sim.mjs --campaign --items`): Bầy Sói, Mãnh Thú, Bầy Chim đều qua hết Bình thường, Ác mộng, Địa ngục ngay lần đầu (cấp 85–86), giống Pháp sư Lửa (cấp 86). Chiến Binh Vũ Khí cần 71 lượt (cấp 94).
+
 ## Sát thương cộng thẳng từ Sức mạnh / Năng lượng và máu quái +10% mỗi màn (bản 1.5–1.6)
 
 **Cộng thẳng mỗi đòn:**
-- Mỗi điểm **Sức mạnh cộng thêm** cho +2 sát thương mỗi đòn của kỹ năng vật lý. Mỗi điểm **Năng lượng cộng thêm** cho +2 sát thương mỗi đòn của kỹ năng phép.
+- Mỗi điểm **Sức mạnh cộng thêm** cho +1 sát thương mỗi đòn của kỹ năng vật lý. Mỗi điểm **Năng lượng cộng thêm** cho +1 sát thương mỗi đòn của kỹ năng phép, hoặc của vật triệu hồi với Triệu hồi sư. (Bản 1.5–1.6 là +2; bản 1.7 giảm về +1 cho mọi lớp vì game quá dễ: mọi lối chơi qua hết 60 màn gần như ngay lần đầu.)
   - "Cộng thêm" là phần vượt mức khởi đầu của lớp, tính cả điểm tự cộng lẫn điểm từ đồ.
   - Phần cộng thẳng được cộng vào sát thương gốc trước khi nhân hệ số %.
 - Số liệu: `config.json` → `attributes.str.physFlatPerPoint`, `attributes.ene.spellFlatPerPoint`.
@@ -126,7 +180,7 @@ Chỉ số cấp 1 so với pháp sư:
 
   Vùng gây sát thương theo giây (Bão Tuyết, Tường Lửa, Động Đất, vết cháy thiên thạch) nhận phần cộng thẳng tính theo giây. Mô tả kỹ năng trong bảng ghi rõ tỉ lệ nhận.
 - Bảng nhân vật hiện dòng "Sát thương vật lý / phép mỗi đòn".
-- So sánh hai lớp (`balance.mjs --arena close`, trung bình 3 nhánh mỗi lớp, Chiến Binh / Pháp sư):
+- So sánh hai lớp ở bản 1.6, khi còn +2 mỗi điểm (`balance.mjs --arena close`, trung bình 3 nhánh mỗi lớp, Chiến Binh / Pháp sư; số mới của bản 1.7 ở mục Triệu hồi sư):
 
   | Cấp | Một mục tiêu | Đám đông | Hạ tinh anh 600 máu |
   |---|---|---|---|
@@ -330,7 +384,7 @@ Tuỳ chọn của `sim.mjs`:
 - `--campaign`: chơi lần lượt các màn qua cả 3 độ khó (`--until nightmare` để dừng sớm).
 - `--difficulty nightmare`: chọn độ khó khi chạy một màn.
 
-- `--build fire|fire_ring|cold|lightning|hybrid|weapon|shout|blood` (3 kiểu sau là Chiến Binh)
+- `--build fire|fire_ring|cold|lightning|hybrid|weapon|shout|blood|pack|beast|swarm` (weapon/shout/blood là Chiến Binh, pack/beast/swarm là Triệu hồi sư)
 - `--items`: bot nhặt và tự mặc đồ.
 - `--persist`: giữ cấp giữa các lượt.
 - `--no-dodge`: bot không né đạn, vũng độc hay cú vồ.

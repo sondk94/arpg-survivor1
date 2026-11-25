@@ -8,7 +8,7 @@ export function setupDebug(el, app) {
     <div class="dbg-row">Tốc độ: <button data-dbg="ts1">×1</button><button data-dbg="ts2">×2</button><button data-dbg="ts4">×4</button></div>
     <div class="dbg-row"><button data-dbg="spawn300">Sinh 300 quái</button><button data-dbg="killall">Giết hết quái</button></div>
     <div class="dbg-row"><button data-dbg="gold">+500 vàng</button><button data-dbg="loot">Rơi 5 đồ</button><button data-dbg="unique">Rơi 1 độc nhất</button></div>
-    <div class="dbg-row"><label><input type="checkbox" data-dbg-check="bot"> Bot tự chơi</label><select id="dbg-build"><option value="fire">Lửa</option><option value="cold">Băng</option><option value="lightning">Sét</option><option value="hybrid">Lai Băng+Lửa</option><option value="weapon">CB: Vũ Khí</option><option value="shout">CB: Tiếng Thét</option><option value="blood">CB: Huyết Chiến</option></select></div>
+    <div class="dbg-row"><label><input type="checkbox" data-dbg-check="bot"> Bot tự chơi</label><select id="dbg-build"><option value="fire">Lửa</option><option value="cold">Băng</option><option value="lightning">Sét</option><option value="hybrid">Lai Băng+Lửa</option><option value="weapon">CB: Vũ Khí</option><option value="shout">CB: Tiếng Thét</option><option value="blood">CB: Huyết Chiến</option><option value="pack">TH: Bầy Sói</option><option value="beast">TH: Mãnh Thú</option><option value="swarm">TH: Chim &amp; Côn Trùng</option></select></div>
     <div class="dbg-row"><button data-dbg="quit">Bỏ lượt, về làng</button></div>`;
   el.addEventListener('click', (e) => {
     const b = e.target.closest('[data-dbg]');

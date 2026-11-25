@@ -3,6 +3,7 @@ import { Game, fmtTime } from './core/game.js';
 import * as P from './core/progression.js';
 import { botInput, botAllocate, botManageItems, BUILDS } from './core/bot.js';
 import * as I from './core/items.js';
+import * as L from './core/loot.js';
 import { RNG } from './core/rng.js';
 import { saveRoster, loadRoster, exportCode, importCode } from './core/save.js';
 import { Renderer } from './ui/render.js';
@@ -146,7 +147,7 @@ class App {
   botBuild() {
     const b = this.ui.botBuild;
     if (b && BUILDS[b] && BUILDS[b].class === this.ch.classId) return b;
-    return this.ch.classId === 'warrior' ? 'weapon' : 'fire';
+    return this.ch.classId === 'warrior' ? 'weapon' : this.ch.classId === 'summoner' ? 'pack' : 'fire';
   }
 
   togglePanel(tab) {
@@ -254,6 +255,7 @@ class App {
 
   quitRun() {
     if (this.state !== 'run' || !this.game) return;
+    if (!this.game.over && this.game.victory) this.game.finishVictory(); // đã hạ boss: vẫn tính thắng, nhận hết đồ
     if (!this.game.over) {
       this.game.over = true;
       this.game.result = { win: false, quit: true, time: this.game.time };
@@ -311,6 +313,14 @@ class App {
       slots: [...this.ch.slots],
       debugUsed: !!this.ui.debugTouched || this.ui.god || this.ui.bot || this.ui.timeScale !== 1,
     };
+    // Rương thưởng: đồ không vừa kho vào túi tạm; đồ đánh dấu rác tự bán khi về làng.
+    rec.chestLoot = r.chestLoot || null;
+    rec.chestShards = g.chestShards || 0;
+    if (r.overflow?.length) this.ch.overflow = [...(this.ch.overflow || []), ...r.overflow];
+    rec.overflow = r.overflow?.length || 0;
+    const junk = L.bulkCandidates(this.ch, this.data, 'junk', true);
+    rec.junkSold = junk.length ? L.sellItems(this.ch, junk, this.data) : null;
+    rec.autoSold = g.log.autoSold || 0;
     T.saveRun(rec);
     this.lastResult = rec;
     if (r.nextMap) this.selectedMap = r.nextMap;
@@ -483,7 +493,8 @@ class App {
         ? (r.newDifficulty ? `<div class="chest big">Đã mở độ khó mới: <b style="color:${data.difficultiesById[r.newDifficulty].color}">${esc(data.difficultiesById[r.newDifficulty].name)}</b>! Quái mạnh hơn nhiều, có kháng nguyên tố; đồ và kinh nghiệm tốt hơn.</div>` : '') +
           (r.newRecord ? `<div class="chest">Kỷ lục mới: hạ boss lúc ${fmtTime(r.timeSec)}!</div>` : '') +
           (nm ? `<div class="chest">Đã mở màn mới: <b>${esc(nm.id)} ${esc(nm.name)}</b> (máu quái ×${nm.hpMult.toFixed(2)}).</div>` : '') +
-          (r.flawless ? '<div class="chest">Hòm thưởng thêm: hoàn thành mà chưa chết lần nào ở bản đồ này!</div>' : '')
+          (r.flawless ? '<div class="chest">Hòm thưởng thêm: hoàn thành mà chưa chết lần nào ở bản đồ này!</div>' : '') +
+          (r.chestLoot ? `<div class="chest">Rương thưởng: ${r.chestLoot.map((x) => `<b style="color:${x.rune ? data.runes.byId[x.rune].color : data.items.rarities[x.rarity].color}">${esc(x.name)}</b>`).join(', ')}${r.chestShards ? ` · +${r.chestShards} mảnh` : ''}</div>` : '')
         : `<div>Nguyên nhân: <b>${esc(r.cause || '-')}</b>. Kinh nghiệm, cấp và đồ đã nhặt vẫn được giữ; màn phải chơi lại từ đầu.</div>`;
       const loot = (r.itemsPicked || []).filter((x) => x.rarity !== 'normal');
       resultHtml = `<div class="result ${r.result}">
@@ -494,6 +505,8 @@ class App {
           <div><span>Đã giết</span><b>${r.kills}</b></div>
           <div><span>Boss</span><b>${r.bossReached ? (r.result === 'win' ? 'Đã hạ' : `còn ${r.bossHpPct}%`) : 'Chưa gặp'}</b></div>
         </div>
+        ${r.junkSold ? `<div>Đã tự bán ${r.junkSold.n} món đánh dấu rác: +${r.junkSold.gold} vàng.</div>` : ''}
+        ${r.autoSold ? `<div>Bộ lọc nhặt đã tự bán ${r.autoSold} món thường.</div>` : ''}
         <div>Nhặt được ${(r.itemsPicked || []).length} món, ${r.gold || 0} vàng${loot.length ? ': ' + loot.map((x) => `<span style="color:${data.items.rarities[x.rarity].color}">${esc(x.name)}</span>`).join(', ') : ''}.</div>
         ${extra}
       </div>`;
@@ -503,7 +516,13 @@ class App {
     const sum = T.summarize(runs);
     const hist = recent.length ? `<table class="hist"><thead><tr><th>Người chơi</th><th>Kết quả</th><th>Thời gian</th><th>Cấp</th><th>Giết</th><th>Mở bảng</th><th>Nguyên nhân</th></tr></thead><tbody>${recent.map((x) => `<tr><td>${esc(x.tester)}</td><td>${x.result === 'win' ? 'Thắng' : x.result === 'quit' ? 'Bỏ' : 'Chết'}</td><td>${fmtTime(x.timeSec)}</td><td>${x.startLevel}→${x.endLevel}</td><td>${x.kills}</td><td>${x.panelOpens} lần, TB ${x.avgPanelSeconds}s</td><td>${esc(x.cause || '-')}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">Chưa có lượt nào.</p>';
     const invUsed = ch.inventory.filter(Boolean).length;
-    const sellable = ch.inventory.filter((it) => it && it.rarity === 'normal');
+    const over = ch.overflow || [];
+    const overflowHtml = over.length ? `<section class="tests overflow"><h3 class="sec-title">Túi tạm (${over.length} món từ rương thưởng, kho đồ đã đầy)</h3>
+      <p class="muted" style="margin:0 0 6px;font-size:12px">Giữ: cho vào kho đồ, kho đầy thì cho vào rương chung. Đồ trong túi tạm được lưu cho tới khi bạn chọn.</p>
+      <div class="ovf-list">${over.map((it, i) => `<div class="ovf"><span style="color:${it.type === 'rune' ? data.runes.byId[it.rune].color : data.items.rarities[it.rarity].color}">${esc(it.name)}</span><small>cấp đồ ${it.ilvl}</small>
+        <button data-ovf-keep="${i}">Giữ</button><button data-ovf-sell="${i}" class="ghost">Bán ${I.sellValue(it, data)}</button></div>`).join('')}</div>
+      <div class="row"><button id="ovf-keepall">Giữ hết</button><button id="ovf-sellall" class="ghost">Bán hết (${over.reduce((n, it) => n + I.sellValue(it, data), 0)} vàng)</button></div></section>` : '';
+    const quick = L.bulkCandidates(ch, data, 'normal');
     const cost = P.respecCost(ch, data);
     const trees = data.trees.filter((t) => P.classTrees(ch, data).includes(t.id)).map((t) => `${t.name} ${data.skillList.filter((s) => s.tree === t.id).reduce((n, s) => n + (ch.skills[s.id] || 0), 0)}`).join(' · ');
 
@@ -513,6 +532,7 @@ class App {
           <h1>ARPG Survivor <small>Bản ${esc(data.config.version)} · Làng</small></h1>
         </header>
         ${resultHtml}
+        ${overflowHtml}
         ${this.mapPickerHtml()}
         <div class="char">
           <div class="char-main">
@@ -534,7 +554,8 @@ class App {
         <section class="tests">
           <h3 style="margin:0 0 8px;color:var(--gold);font-size:15px">Làng</h3>
           <div class="village-tools">
-            <button id="v-sellnormal" ${sellable.length ? '' : 'disabled'}>Bán ${sellable.length} món thường (${sellable.reduce((n, it) => n + I.sellValue(it, data), 0)} vàng)</button>
+            <button id="v-sellnormal" ${quick.length ? '' : 'disabled'}>Bán ${quick.length} món thường (${L.sumValue(ch, quick, data)} vàng)</button>
+            <button id="v-bulk">Bán nhanh / quản lý đồ…</button>
             <button id="v-respec" ${ch.gold >= cost ? '' : 'disabled'}>Tẩy điểm (${cost} vàng)</button>
             <button id="v-export">Xuất mã nhân vật</button>
             <button id="v-import">Nhập mã</button>
@@ -549,7 +570,8 @@ class App {
             <li><b>WASD</b> hoặc phím mũi tên để di chuyển. Kỹ năng tự kích hoạt và tốn mana. Tối đa 4 kỹ năng chủ động, có thể lấy từ nhiều nhánh.</li>
             <li><b>Tab</b>, <b>C</b> hoặc nút <b>+</b>: bảng cộng điểm (thẻ Lửa / Băng / Sét). <b>I</b>: đồ đạc. Game dừng hẳn khi bảng mở. <b>Shift</b> + bấm để cộng 5 điểm.</li>
             <li>Phím <b>1</b>–<b>4</b>: cộng nhanh 1 điểm Sức mạnh / Nhanh nhẹn / Thể lực / Năng lượng.</li>
-            <li>Đồ tự nhặt khi đi qua (nếu kho còn chỗ). Đồ có yêu cầu cấp: nhặt sớm, lên cấp mới mặc được. Bán đồ và tẩy điểm ở làng.</li>
+            <li>Đồ tự nhặt khi đi qua (nếu kho còn chỗ). Đồ có yêu cầu cấp: nhặt sớm, lên cấp mới mặc được. Bán đồ và tẩy điểm ở làng. Ctrl + bấm vào đồ: bán ngay (ở làng) hoặc đánh dấu rác (trong màn).</li>
+            <li>Hạ boss cuối màn: quái biến mất, nhặt <b>rương thưởng</b> rồi 5 giây sau kết thúc màn.</li>
             <li>Băng: 3 đòn băng liên tiếp sẽ đóng băng quái 1 giây (tinh anh nửa thời gian, boss miễn nhiễm).</li>
           </ul>
         </details>
@@ -580,13 +602,32 @@ class App {
     $('#v-items').onclick = () => this.panel.open('items');
     $('#v-stash').onclick = () => this.panel.open('stash');
     $('#v-sellnormal').onclick = () => {
-      for (let i = 0; i < ch.inventory.length; i++) {
-        const it = ch.inventory[i];
-        if (it && it.rarity === 'normal') { ch.gold += I.sellValue(it, data); ch.inventory[i] = null; }
-      }
+      L.sellItems(ch, L.bulkCandidates(ch, data, 'normal'), data);
       this.save();
       this.renderVillage();
     };
+    $('#v-bulk').onclick = () => this.panel.open('items');
+    const ovfKeep = (i) => {
+      const it = ch.overflow[i];
+      if (I.addToInventory(ch, it)) { ch.overflow.splice(i, 1); return true; }
+      const j = this.stash.indexOf(null);
+      if (j >= 0) { this.stash[j] = it; ch.overflow.splice(i, 1); return true; }
+      return false;
+    };
+    const ovfSell = (i) => {
+      const it = ch.overflow[i];
+      const v = I.sellValue(it, data);
+      ch.gold += v;
+      ch.buyback = [{ item: it, price: v }, ...(ch.buyback || [])].slice(0, L.BUYBACK_MAX);
+      ch.overflow.splice(i, 1);
+    };
+    const after = () => { this.save(); this.renderVillage(); };
+    v.querySelectorAll('[data-ovf-keep]').forEach((b) => (b.onclick = () => { if (!ovfKeep(Number(b.dataset.ovfKeep))) alert('Kho đồ và rương chung đều đầy. Hãy bán bớt đồ trước.'); after(); }));
+    v.querySelectorAll('[data-ovf-sell]').forEach((b) => (b.onclick = () => { ovfSell(Number(b.dataset.ovfSell)); after(); }));
+    if (over.length) {
+      $('#ovf-keepall').onclick = () => { while (ch.overflow.length && ovfKeep(0)); if (ch.overflow.length) alert('Kho đồ và rương chung đều đầy, còn lại trong túi tạm.'); after(); };
+      $('#ovf-sellall').onclick = () => { if (!confirm(`Bán hết ${ch.overflow.length} món trong túi tạm?`)) return; while (ch.overflow.length) ovfSell(0); after(); };
+    }
     $('#v-respec').onclick = () => {
       if (!confirm(`Tẩy điểm với giá ${cost} vàng? Toàn bộ điểm thuộc tính và kỹ năng sẽ được trả lại để cộng lại từ đầu.`)) return;
       const res = P.respec(ch, data);

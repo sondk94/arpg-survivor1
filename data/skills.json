@@ -36,6 +36,24 @@
       "name": "Huyết Chiến",
       "color": "#e0504a",
       "class": "warrior"
+    },
+    {
+      "id": "pack",
+      "name": "Bầy Sói",
+      "color": "#b8a48a",
+      "class": "summoner"
+    },
+    {
+      "id": "beast",
+      "name": "Mãnh Thú",
+      "color": "#a0703a",
+      "class": "summoner"
+    },
+    {
+      "id": "swarm",
+      "name": "Bầy Chim & Côn Trùng",
+      "color": "#8fc0e0",
+      "class": "summoner"
     }
   ],
   "skills": [
@@ -1182,6 +1200,604 @@
       "hpPct": 0.3,
       "radius": 90,
       "deathBurst": true
+    },
+    {
+      "id": "summon_wolf",
+      "name": "Gọi Sói",
+      "short": "GS",
+      "tree": "pack",
+      "type": "active",
+      "kind": "summon",
+      "element": "physical",
+      "summon": true,
+      "unlock": 1,
+      "unlockTest": 1,
+      "grid": [
+        0,
+        0
+      ],
+      "color": "#b8a48a",
+      "desc": "Gọi sói chiến đấu cùng bạn. Cấp kỹ năng 4, 8, 12 gọi thêm 1 sói (tối đa 4). Sói chết thì tự gọi lại sau vài giây.",
+      "damage": {
+        "min": 5,
+        "max": 8,
+        "perLevel": 1.4
+      },
+      "flatScale": 0.35,
+      "minion": {
+        "kind": "wolf",
+        "hp": {
+          "base": 60,
+          "perLevel": 15
+        },
+        "armor": 5,
+        "speed": 210,
+        "atkInterval": 0.6,
+        "range": 24,
+        "radius": 11,
+        "countBase": 1,
+        "countAt": [
+          4,
+          8,
+          12
+        ]
+      },
+      "cooldown": 3,
+      "mana": 6,
+      "synergies": [
+        {
+          "from": "alpha_wolf",
+          "pct": 0.05
+        }
+      ],
+      "maxLevel": 20
+    },
+    {
+      "id": "pack_howl",
+      "name": "Tiếng Hú Bầy Đàn",
+      "short": "TH",
+      "tree": "pack",
+      "type": "active",
+      "kind": "buff",
+      "element": "physical",
+      "summon": true,
+      "unlock": 6,
+      "unlockTest": 2,
+      "grid": [
+        2,
+        0
+      ],
+      "color": "#d8c8a8",
+      "desc": "Cả bầy hú vang: mọi vật triệu hồi đánh nhanh và chạy nhanh hơn trong một thời gian.",
+      "buff": {
+        "summonAtkSpeed": {
+          "base": 0.3,
+          "perLevel": 0.02
+        },
+        "summonSpeed": 0.3
+      },
+      "duration": 6,
+      "cooldown": 12,
+      "mana": 6,
+      "synergies": [],
+      "maxLevel": 20
+    },
+    {
+      "id": "beast_mastery",
+      "name": "Thông Thạo Thú",
+      "short": "TT",
+      "tree": "pack",
+      "type": "passive",
+      "element": "physical",
+      "unlock": 12,
+      "unlockTest": 4,
+      "grid": [
+        1,
+        1
+      ],
+      "color": "#c0a070",
+      "desc": "Bị động: tăng sát thương và máu của mọi vật triệu hồi.",
+      "summonDmgPct": 0.04,
+      "summonHpPct": 0.05,
+      "maxLevel": 20
+    },
+    {
+      "id": "alpha_wolf",
+      "name": "Sói Đầu Đàn",
+      "short": "ĐĐ",
+      "tree": "pack",
+      "type": "active",
+      "kind": "summon",
+      "element": "physical",
+      "summon": true,
+      "unlock": 12,
+      "unlockTest": 4,
+      "grid": [
+        0,
+        2
+      ],
+      "color": "#e0d0b0",
+      "desc": "Gọi một sói đầu đàn to lớn, cắn lan sang quái bên cạnh. Sói thường được +15% sát thương khi có sói đầu đàn.",
+      "damage": {
+        "min": 14,
+        "max": 20,
+        "perLevel": 4
+      },
+      "flatScale": 1,
+      "minion": {
+        "kind": "alpha",
+        "hp": {
+          "base": 130,
+          "perLevel": 25
+        },
+        "armor": 10,
+        "speed": 200,
+        "atkInterval": 0.8,
+        "range": 28,
+        "radius": 16,
+        "cleave": 55,
+        "countBase": 1,
+        "packAura": 0.15
+      },
+      "cooldown": 5,
+      "mana": 10,
+      "synergies": [
+        {
+          "from": "summon_wolf",
+          "pct": 0.05
+        }
+      ],
+      "maxLevel": 20
+    },
+    {
+      "id": "pack_frenzy",
+      "name": "Cuồng Bạo Bầy Sói",
+      "short": "CB",
+      "tree": "pack",
+      "type": "active",
+      "kind": "rally",
+      "element": "physical",
+      "summon": true,
+      "unlock": 18,
+      "unlockTest": 6,
+      "grid": [
+        2,
+        2
+      ],
+      "color": "#ff9a6a",
+      "desc": "Cả bầy sói lao vào cụm quái đông nhất, mỗi con gây sát thương vùng khi tới nơi. Cần có sói đang sống.",
+      "damage": {
+        "min": 22,
+        "max": 32,
+        "perLevel": 7
+      },
+      "flatScale": 1,
+      "radius": 70,
+      "searchRange": 450,
+      "cooldown": 7,
+      "mana": 10,
+      "synergies": [
+        {
+          "from": "alpha_wolf",
+          "pct": 0.05
+        }
+      ],
+      "maxLevel": 20
+    },
+    {
+      "id": "venom_fangs",
+      "name": "Nanh Độc",
+      "short": "NĐ",
+      "tree": "pack",
+      "type": "passive",
+      "element": "physical",
+      "unlock": 24,
+      "unlockTest": 8,
+      "grid": [
+        1,
+        3
+      ],
+      "color": "#7fd06a",
+      "desc": "Bị động: đòn cắn của sói gây độc theo thời gian, cộng dồn tối đa 5 lần.",
+      "poison": {
+        "dps": {
+          "base": 3,
+          "perLevel": 1.5
+        },
+        "duration": 3,
+        "maxStacks": 5
+      },
+      "maxLevel": 20,
+      "summon": true
+    },
+    {
+      "id": "summon_bear",
+      "name": "Gọi Gấu",
+      "short": "GG",
+      "tree": "beast",
+      "type": "active",
+      "kind": "summon",
+      "element": "physical",
+      "summon": true,
+      "unlock": 1,
+      "unlockTest": 1,
+      "grid": [
+        0,
+        0
+      ],
+      "color": "#a0703a",
+      "desc": "Gọi gấu nhiều máu, khiêu khích quái quanh nó (quái quay sang đánh gấu) và vả gây sát thương vùng nhỏ. Cấp kỹ năng 10 gọi thêm 1 gấu.",
+      "damage": {
+        "min": 16,
+        "max": 24,
+        "perLevel": 6
+      },
+      "flatScale": 1,
+      "minion": {
+        "kind": "bear",
+        "hp": {
+          "base": 220,
+          "perLevel": 45
+        },
+        "armor": 25,
+        "speed": 150,
+        "atkInterval": 1.1,
+        "range": 30,
+        "radius": 20,
+        "aoe": 70,
+        "taunt": 170,
+        "countBase": 1,
+        "countAt": [
+          10
+        ]
+      },
+      "cooldown": 6,
+      "mana": 10,
+      "synergies": [
+        {
+          "from": "bear_slam",
+          "pct": 0.05
+        }
+      ],
+      "maxLevel": 20
+    },
+    {
+      "id": "thorn_hide",
+      "name": "Vỏ Gai",
+      "short": "VG",
+      "tree": "beast",
+      "type": "passive",
+      "element": "physical",
+      "unlock": 6,
+      "unlockTest": 2,
+      "grid": [
+        2,
+        0
+      ],
+      "color": "#8a9a50",
+      "desc": "Bị động: vật triệu hồi bị đánh thì phản lại một phần sát thương cho quái.",
+      "thorns": {
+        "base": 0.3,
+        "perLevel": 0.05
+      },
+      "maxLevel": 20
+    },
+    {
+      "id": "thick_hide",
+      "name": "Da Dày",
+      "short": "DD",
+      "tree": "beast",
+      "type": "passive",
+      "element": "physical",
+      "unlock": 12,
+      "unlockTest": 4,
+      "grid": [
+        1,
+        1
+      ],
+      "color": "#806040",
+      "desc": "Bị động: tăng máu, giáp và kháng của vật triệu hồi.",
+      "summonHpPct": 0.08,
+      "summonArmor": {
+        "base": 10,
+        "perLevel": 5
+      },
+      "summonResistPerLevel": 0.02,
+      "maxLevel": 20
+    },
+    {
+      "id": "bear_slam",
+      "name": "Đập Đất",
+      "short": "ĐĐ",
+      "tree": "beast",
+      "type": "active",
+      "kind": "minionNova",
+      "element": "physical",
+      "summon": true,
+      "unlock": 12,
+      "unlockTest": 4,
+      "grid": [
+        0,
+        2
+      ],
+      "color": "#c09060",
+      "desc": "Gấu đập mạnh xuống đất, gây sát thương và làm choáng quái quanh nó. Cần có gấu đang sống.",
+      "damage": {
+        "min": 48,
+        "max": 68,
+        "perLevel": 13
+      },
+      "flatScale": 1,
+      "minionKind": "bear",
+      "radius": 130,
+      "slow": {
+        "pct": 0.9,
+        "duration": 1
+      },
+      "cooldown": 3.5,
+      "mana": 6,
+      "synergies": [
+        {
+          "from": "summon_bear",
+          "pct": 0.05
+        }
+      ],
+      "maxLevel": 20
+    },
+    {
+      "id": "wild_regrowth",
+      "name": "Hồi Sinh Hoang Dã",
+      "short": "HS",
+      "tree": "beast",
+      "type": "active",
+      "kind": "heal",
+      "element": "physical",
+      "summon": true,
+      "unlock": 18,
+      "unlockTest": 6,
+      "grid": [
+        2,
+        2
+      ],
+      "color": "#7fe08a",
+      "desc": "Hồi máu theo % cho mọi vật triệu hồi và một phần nhỏ cho bạn. Tự dùng khi có thú hoặc bạn bị thương.",
+      "healPct": {
+        "base": 0.3,
+        "perLevel": 0.02
+      },
+      "playerHealPct": {
+        "base": 0.08,
+        "perLevel": 0.005
+      },
+      "cooldown": 9,
+      "mana": 10,
+      "synergies": [],
+      "maxLevel": 20
+    },
+    {
+      "id": "undying",
+      "name": "Thú Bất Tử",
+      "short": "BT",
+      "tree": "beast",
+      "type": "passive",
+      "element": "physical",
+      "unlock": 24,
+      "unlockTest": 8,
+      "grid": [
+        1,
+        3
+      ],
+      "color": "#e0e0a0",
+      "desc": "Bị động: vật triệu hồi chết có tỉ lệ sống lại ngay với 50% máu.",
+      "reviveChance": {
+        "base": 0.2,
+        "perLevel": 0.02
+      },
+      "maxLevel": 20
+    },
+    {
+      "id": "summon_crows",
+      "name": "Đàn Quạ",
+      "short": "ĐQ",
+      "tree": "swarm",
+      "type": "active",
+      "kind": "summon",
+      "element": "physical",
+      "summon": true,
+      "unlock": 1,
+      "unlockTest": 1,
+      "grid": [
+        0,
+        0
+      ],
+      "color": "#6a6a8a",
+      "desc": "Gọi đàn quạ bay quanh bạn, mổ quái gần. Nhỏ, yếu nhưng đông: 3 con, thêm 1 con ở cấp kỹ năng 5, 10, 15.",
+      "damage": {
+        "min": 4,
+        "max": 7,
+        "perLevel": 1.6
+      },
+      "flatScale": 0.15,
+      "minion": {
+        "kind": "crow",
+        "hp": {
+          "base": 25,
+          "perLevel": 6
+        },
+        "armor": 0,
+        "speed": 260,
+        "atkInterval": 0.6,
+        "range": 20,
+        "radius": 7,
+        "flying": true,
+        "countBase": 3,
+        "countAt": [
+          5,
+          10,
+          15
+        ]
+      },
+      "cooldown": 2,
+      "mana": 3,
+      "synergies": [
+        {
+          "from": "eagle",
+          "pct": 0.04
+        }
+      ],
+      "maxLevel": 20
+    },
+    {
+      "id": "bee_swarm",
+      "name": "Bầy Ong",
+      "short": "BO",
+      "tree": "swarm",
+      "type": "active",
+      "kind": "swarm",
+      "element": "physical",
+      "summon": true,
+      "unlock": 6,
+      "unlockTest": 2,
+      "grid": [
+        2,
+        0
+      ],
+      "color": "#ffd040",
+      "desc": "Thả một đám ong bay theo cụm quái gần nhất, gây sát thương liên tục trong 6 giây.",
+      "dps": {
+        "base": 20,
+        "perLevel": 7
+      },
+      "flatScale": 1,
+      "radius": 70,
+      "duration": 6,
+      "tick": 0.5,
+      "speed": 150,
+      "searchRange": 450,
+      "cooldown": 7,
+      "mana": 8,
+      "synergies": [
+        {
+          "from": "summon_crows",
+          "pct": 0.04
+        }
+      ],
+      "maxLevel": 20,
+      "flying": true
+    },
+    {
+      "id": "wild_mastery",
+      "name": "Thông Thạo Hoang Dã",
+      "short": "HD",
+      "tree": "swarm",
+      "type": "passive",
+      "element": "physical",
+      "unlock": 12,
+      "unlockTest": 4,
+      "grid": [
+        1,
+        1
+      ],
+      "color": "#8fc0e0",
+      "desc": "Bị động: tăng sát thương của thú bay (quạ, ong, đại bàng, bão lông vũ) và tỉ lệ chí mạng của mọi vật triệu hồi.",
+      "flyingDmgPct": 0.08,
+      "summonCritPerLevel": 0.01,
+      "maxLevel": 20
+    },
+    {
+      "id": "eagle",
+      "name": "Đại Bàng",
+      "short": "ĐB",
+      "tree": "swarm",
+      "type": "active",
+      "kind": "dive",
+      "element": "physical",
+      "summon": true,
+      "flying": true,
+      "unlock": 12,
+      "unlockTest": 4,
+      "grid": [
+        0,
+        2
+      ],
+      "color": "#d0a060",
+      "desc": "Đại bàng bổ nhào vào tinh anh hoặc quái nhiều máu nhất trong tầm, gây một đòn lớn.",
+      "damage": {
+        "min": 60,
+        "max": 90,
+        "perLevel": 18
+      },
+      "flatScale": 1,
+      "radius": 45,
+      "delay": 0.5,
+      "range": 550,
+      "cooldown": 4,
+      "mana": 8,
+      "synergies": [
+        {
+          "from": "summon_crows",
+          "pct": 0.05
+        }
+      ],
+      "maxLevel": 20
+    },
+    {
+      "id": "spirit_link",
+      "name": "Linh Hồn Thú",
+      "short": "LH",
+      "tree": "swarm",
+      "type": "passive",
+      "element": "physical",
+      "unlock": 18,
+      "unlockTest": 6,
+      "grid": [
+        2,
+        2
+      ],
+      "color": "#a0e0d0",
+      "desc": "Bị động: mỗi vật triệu hồi đang sống tăng tốc độ hồi mana và +1% kháng mọi nguyên tố cho bạn (tính tối đa 10 con).",
+      "perMinionManaRegen": {
+        "base": 0.05,
+        "perLevel": 0.01
+      },
+      "perMinionResist": 0.01,
+      "maxLevel": 20
+    },
+    {
+      "id": "feather_storm",
+      "name": "Bão Lông Vũ",
+      "short": "BL",
+      "tree": "swarm",
+      "type": "active",
+      "kind": "beam",
+      "element": "physical",
+      "summon": true,
+      "flying": true,
+      "unlock": 24,
+      "unlockTest": 8,
+      "grid": [
+        1,
+        3
+      ],
+      "color": "#f0e0c0",
+      "desc": "Một đàn chim lớn quét ngang một vệt rộng 520 px, gây sát thương lớn cho mọi quái trên đường.",
+      "damage": {
+        "min": 40,
+        "max": 70,
+        "perLevel": 14
+      },
+      "flatScale": 1,
+      "length": 520,
+      "width": 90,
+      "cooldown": 5,
+      "mana": 10,
+      "synergies": [
+        {
+          "from": "eagle",
+          "pct": 0.05
+        }
+      ],
+      "maxLevel": 20
     }
   ]
 }

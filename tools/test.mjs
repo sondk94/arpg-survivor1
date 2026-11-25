@@ -10,6 +10,8 @@ import * as P from '../src/core/progression.js';
 import * as I from '../src/core/items.js';
 import { exportCode, importCode, newStash, normalizeCharacter } from '../src/core/save.js';
 import { RNG } from '../src/core/rng.js';
+import * as L from '../src/core/loot.js';
+import * as S from '../src/core/save.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const data = await loadData(async (p) => JSON.parse(await readFile(path.join(root, p), 'utf8')));
@@ -77,8 +79,8 @@ t('Mốc mở kỹ năng chế độ thử nghiệm: Lửa 1/1/2/4/6/8, Băng v�
   assert.deepEqual(by('fire'), [1, 1, 2, 4, 6, 8]);
   assert.deepEqual(by('cold'), [1, 2, 4, 4, 6, 8]);
   assert.deepEqual(by('lightning'), [1, 2, 4, 4, 6, 8]);
-  assert.equal(data.skillList.length, 36);
-  for (const t of ['weapon', 'shout', 'blood']) assert.deepEqual(by(t), [1, 2, 4, 4, 6, 8], t);
+  assert.equal(data.skillList.length, 54);
+  for (const t of ['weapon', 'shout', 'blood', 'pack', 'beast', 'swarm']) assert.deepEqual(by(t), [1, 2, 4, 4, 6, 8], t);
 });
 
 t('Hoàn tác không hồi máu (cộng Thể lực rồi hoàn tác nhiều lần)', () => {
@@ -498,62 +500,285 @@ t('Tìm cụm quái không trả về NaN khi quái vừa sinh chưa vào lướ
   assert.ok(Number.isFinite(g.player.x) && Number.isFinite(g.player.y));
 });
 
-t('Mỗi điểm Sức mạnh cộng thêm cho +2 sát thương vật lý mỗi đòn (không áp dụng cho phép)', () => {
+t('Mỗi điểm Sức mạnh cộng thêm cho +1 sát thương vật lý mỗi đòn (không áp dụng cho phép)', () => {
   const w = P.createCharacter(data, 'warrior');
   w.attrPoints = 10;
   assert.equal(P.computeStats(w, data).physFlat, 0);
   P.addAttr(w, 'str', 10);
   const st = P.computeStats(w, data);
-  assert.equal(st.physFlat, 20);
+  assert.equal(st.physFlat, 10);
   const [a, b] = P.damageRange(data.skills.cleave, 1);
-  assert.deepEqual(P.hitRange(data.skills.cleave, 1, st), [a + 20 * 0.6, b + 20 * 0.6]); // Chém Bổ nhận 60%
+  assert.deepEqual(P.hitRange(data.skills.cleave, 1, st), [a + 10 * 0.6, b + 10 * 0.6]); // Chém Bổ nhận 60%
   // Sức mạnh từ đồ cũng tính
   w.equipment.ring1 = { uid: 'r', base: 'ring', type: 'ring', rarity: 'magic', name: 'r', ilvl: 1, req: { level: 1, str: 0 }, stats: { str: 5 }, sockets: 0, runes: [] };
-  assert.equal(P.computeStats(w, data).physFlat, 30);
+  assert.equal(P.computeStats(w, data).physFlat, 15);
   // kỹ năng phép không được cộng
   const m = P.createCharacter(data, 'mage');
   m.attrs.str += 10;
   const sm = P.computeStats(m, data);
   assert.deepEqual(P.hitRange(data.skills.fireball, 1, sm), P.damageRange(data.skills.fireball, 1));
-  // trong trận: đòn chém nhận +12 (60% của +20) trước khi nhân hệ số
+  // trong trận: đòn chém nhận +6 (60% của +10) trước khi nhân hệ số
   const g = new Game(data, w, { seed: 1, headless: true });
   w.equipment.ring1 = null; g.refreshStats();
   const mult = g.skillMult(data.skills.cleave);
   for (let i = 0; i < 20; i++) {
     const d = g.rollSkill(data.skills.cleave, 1, mult);
-    assert.ok(d >= (a + 12) * mult - 1e-9 && d <= (b + 12) * mult + 1e-9);
+    assert.ok(d >= (a + 6) * mult - 1e-9 && d <= (b + 6) * mult + 1e-9);
   }
 });
 
-t('Năng lượng cộng thêm: +2 sát thương phép mỗi đòn, nhân hệ số flatScale của từng kỹ năng', () => {
+t('Năng lượng cộng thêm: +1 sát thương phép mỗi đòn, nhân hệ số flatScale của từng kỹ năng', () => {
   const m = P.createCharacter(data, 'mage');
   m.attrPoints = 10;
   P.addAttr(m, 'ene', 10);
   const st = P.computeStats(m, data);
-  assert.equal(st.spellFlat, 20);
+  assert.equal(st.spellFlat, 10);
   assert.equal(st.physFlat, 0);
   const [a, b] = P.damageRange(data.skills.fireball, 1);
-  assert.deepEqual(P.hitRange(data.skills.fireball, 1, st), [a + 20, b + 20]);         // đòn đơn: đủ 100%
+  assert.deepEqual(P.hitRange(data.skills.fireball, 1, st), [a + 10, b + 10]);         // đòn đơn: đủ 100%
   const [oa] = P.damageRange(data.skills.frozen_orb, 1);
-  assert.ok(Math.abs(P.hitRange(data.skills.frozen_orb, 1, st)[0] - (oa + 2)) < 1e-9);  // mảnh Cầu Băng Xoay: 10%
+  assert.ok(Math.abs(P.hitRange(data.skills.frozen_orb, 1, st)[0] - (oa + 1)) < 1e-9);  // mảnh Cầu Băng Xoay: 10%
   const [ea] = P.damageRange(data.skills.ember_ring, 1);
-  assert.ok(Math.abs(P.hitRange(data.skills.ember_ring, 1, st)[0] - (ea + 5)) < 1e-9);  // Vòng Than: 25%
-  // vùng theo giây: Bão Tuyết nhận +20/giây
+  assert.ok(Math.abs(P.hitRange(data.skills.ember_ring, 1, st)[0] - (ea + 2.5)) < 1e-9);  // Vòng Than: 25%
+  // vùng theo giây: Bão Tuyết nhận +10/giây
   m.level = 10; m.skills.blizzard = 1;
   const g = new Game(data, m, { seed: 1, headless: true });
   g.spawnEnemy('zombie', g.player.x + 100, g.player.y);
   g.grid.rebuild(g.enemies);
   g.castStorm(data.skills.blizzard, 1);
-  assert.equal(g.zones[0].dps, P.lv(data.skills.blizzard.dps, 1) + 20);
+  assert.equal(g.zones[0].dps, P.lv(data.skills.blizzard.dps, 1) + 10);
   // Sức mạnh cũng theo flatScale: Lốc Xoáy 35%
   const w = P.createCharacter(data, 'warrior');
   w.attrPoints = 10; P.addAttr(w, 'str', 10);
   const sw = P.computeStats(w, data);
   const [wa] = P.damageRange(data.skills.whirlwind, 1);
-  assert.ok(Math.abs(P.hitRange(data.skills.whirlwind, 1, sw)[0] - (wa + 7)) < 1e-9);
+  assert.ok(Math.abs(P.hitRange(data.skills.whirlwind, 1, sw)[0] - (wa + 3.5)) < 1e-9);
   // Năng lượng không cộng cho kỹ năng vật lý
   w.attrs.ene += 10;
-  assert.ok(Math.abs(P.hitRange(data.skills.whirlwind, 1, P.computeStats(w, data))[0] - (wa + 7)) < 1e-9);
+  assert.ok(Math.abs(P.hitRange(data.skills.whirlwind, 1, P.computeStats(w, data))[0] - (wa + 3.5)) < 1e-9);
+});
+
+
+// ---------- Triệu hồi sư ----------
+function summoner(skills, ene = 0) {
+  const c = P.createCharacter(data, 'summoner');
+  c.level = 30;
+  c.attrPoints = ene;
+  if (ene) P.addAttr(c, 'ene', ene);
+  Object.assign(c.skills, skills);
+  c.slots = Object.keys(skills).filter((id) => data.skills[id].type === 'active').slice(0, 4);
+  while (c.slots.length < 4) c.slots.push(null);
+  return c;
+}
+
+t('Triệu hồi sư: Năng lượng cộng thêm +1 sát thương mỗi đòn và +1% máu cho vật triệu hồi', () => {
+  const c = summoner({ summon_wolf: 1 }, 10);
+  const st = P.computeStats(c, data);
+  assert.equal(st.summonFlat, 10);
+  assert.ok(Math.abs(st.summonHpMult - 1.1) < 1e-9);
+  const sk = data.skills.summon_wolf;
+  const [a] = P.damageRange(sk, 1);
+  assert.ok(Math.abs(P.hitRange(sk, 1, st)[0] - (a + 10 * sk.flatScale)) < 1e-9);
+  // hệ số sát thương của thú không dùng %vật lý của Sức mạnh
+  c.attrs.str += 50;
+  const m1 = P.damageMult(c, sk, P.computeStats(c, data), data);
+  c.attrs.str -= 50;
+  assert.ok(Math.abs(m1 - P.damageMult(c, sk, st, data)) < 1e-9);
+});
+
+t('Gọi Sói: số sói theo cấp, chết thì gọi lại, không vượt giới hạn', () => {
+  const sk = data.skills.summon_wolf;
+  const c = summoner({ summon_wolf: 12 });
+  const g = new Game(data, c, { seed: 3, headless: true });
+  g.update(1 / 60);
+  assert.equal(g.minions.filter((m) => m.kind === 'wolf').length, 4);
+  // không gọi thêm khi đủ
+  assert.equal(g.castSummon(sk, 12), false);
+  g.minions[0].hp = 0; g.minions[0].dead = true;
+  g.minions = g.minions.filter((m) => !m.dead);
+  assert.equal(g.castSummon(sk, 12), true);
+  assert.equal(g.minions.length, 4);
+});
+
+t('Quái đuổi vật triệu hồi gần hơn; gấu khiêu khích quái trong tầm', () => {
+  const c = summoner({ summon_bear: 1 });
+  const g = new Game(data, c, { seed: 4, headless: true });
+  const p = g.player;
+  const bear = g.spawnMinion(data.skills.summon_bear, 1, p.x + 300, p.y);
+  const e = g.spawnEnemy('zombie', p.x + 300 + 120, p.y);
+  assert.equal(g.enemyTarget(e), bear); // trong tầm khiêu khích
+  const e2 = g.spawnEnemy('zombie', p.x - 60, p.y);
+  assert.equal(g.enemyTarget(e2), p); // người chơi gần hơn, ngoài tầm khiêu khích
+  // quái chạm gấu thì gấu mất máu
+  e.x = bear.x + 10; e.y = bear.y;
+  const hp = bear.hp;
+  g.grid.rebuild(g.enemies);
+  g.updateEnemies(1 / 60);
+  assert.ok(bear.hp < hp);
+});
+
+t('Vật triệu hồi tự đánh quái và gây sát thương', () => {
+  const c = summoner({ summon_wolf: 5, summon_bear: 1 }, 20);
+  const g = new Game(data, c, { seed: 5, headless: true });
+  g.events = []; g.updateSpawner = () => {};
+  const p = g.player;
+  const e = g.spawnEnemy('zombie', p.x + 150, p.y);
+  e.speed = 0; e.hp = e.maxHp = 1e6;
+  for (let i = 0; i < 300; i++) g.update(1 / 60);
+  assert.ok(g.effDamage > 0);
+  assert.ok(g.minions.length >= 2);
+});
+
+t('Đồ của Triệu hồi sư: +% sát thương / máu vật triệu hồi và +cấp nhánh', () => {
+  const c = summoner({ summon_wolf: 1 });
+  c.equipment.weapon = { uid: 'w', base: 'beast_staff', type: 'weapon', rarity: 'magic', name: 'x', ilvl: 1, req: { level: 1, str: 0 }, stats: { summonDmgPct: 20, summonHpPct: 30, packSkills: 2 }, sockets: 0, runes: [] };
+  const st = P.computeStats(c, data);
+  const base = P.computeStats(summoner({ summon_wolf: 1 }), data);
+  assert.ok(Math.abs(st.summonDmgPct - base.summonDmgPct - 0.2) < 1e-9);
+  assert.ok(Math.abs(st.summonHpMult - base.summonHpMult - 0.3) < 1e-9);
+  assert.equal(P.skillLevel(c, 'summon_wolf', data, st), 3);
+});
+
+// ---------- Rương thưởng và quản lý đồ ----------
+function bossGame(fill = 0) {
+  const c = P.createCharacter(data, 'mage');
+  c.level = 10; c.skills.fireball = 1; c.slots[0] = 'fireball';
+  const r = new RNG(3);
+  for (let i = 0; i < fill; i++) c.inventory[i] = I.generateItem(r, data, 10);
+  const g = new Game(data, c, { seed: 9, headless: true });
+  g.events = []; g.updateSpawner = () => {};
+  g.spawnBoss('swamp_lord');
+  for (let i = 0; i < 5; i++) g.spawnEnemy('zombie', g.player.x + 300, g.player.y + i * 20);
+  return { c, g };
+}
+
+t('Hạ boss: quái biến mất, rơi rương, chưa kết thúc; nhặt rương 5 giây sau mới kết thúc', () => {
+  const { c, g } = bossGame();
+  g.killEnemy(g.boss, 'fire');
+  assert.equal(g.over, false);
+  assert.ok(g.victory);
+  assert.equal(g.enemies.filter((e) => !e.dead).length, 0);
+  const chest = g.pickups.find((k) => k.kind === 'chest');
+  assert.ok(chest);
+  const t0 = g.time;
+  for (let i = 0; i < 120; i++) g.update(1 / 60);
+  assert.equal(g.time, t0); // đồng hồ dừng
+  assert.equal(g.enemies.length, 0); // không sinh thêm quái
+  assert.equal(g.hurtPlayer(999, 'physical', 'thử'), false); // bất tử
+  g.player.x = chest.x; g.player.y = chest.y;
+  g.update(1 / 60);
+  assert.equal(g.victory.state, 'count');
+  const gold0 = c.gold;
+  for (let i = 0; i < 60 * 4.5; i++) g.update(1 / 60);
+  assert.equal(g.over, false);
+  for (let i = 0; i < 60; i++) g.update(1 / 60);
+  assert.equal(g.over, true);
+  assert.ok(g.result.win);
+  assert.ok(g.result.chestLoot.length >= 2); // ít nhất 1 món hiếm + 1 món thêm
+  assert.ok(c.gold > gold0);
+  assert.ok(c.inventory.filter(Boolean).length >= 2);
+});
+
+t('Rương tự mở sau 30 giây; kho đầy thì đồ vào túi tạm, không mất', () => {
+  const { g } = bossGame(30);
+  g.killEnemy(g.boss, 'fire');
+  for (let i = 0; i < 60 * 31; i++) g.update(1 / 60);
+  assert.equal(g.victory.state, 'count');
+  for (let i = 0; i < 60 * 6; i++) g.update(1 / 60);
+  assert.ok(g.over);
+  assert.ok(g.result.overflow.length >= g.result.chestLoot.length);
+});
+
+t('Bán nhanh: bỏ qua đồ khoá, độc nhất / đồ bộ / rune (trừ khi chọn); mua lại', () => {
+  const c = P.createCharacter(data, 'mage');
+  const r = new RNG(5);
+  c.inventory[0] = I.generateItem(r, data, 5, { rarity: 'normal' });
+  c.inventory[1] = I.generateItem(r, data, 5, { rarity: 'normal' });
+  c.inventory[1].locked = true;
+  c.inventory[2] = I.generateItem(r, data, 20, { rarity: 'unique' });
+  c.inventory[3] = I.generateRune(r, data, 5);
+  c.inventory[4] = I.generateItem(r, data, 5, { rarity: 'magic' });
+  assert.deepEqual(L.bulkCandidates(c, data, 'normal'), [0]);
+  assert.deepEqual(L.bulkCandidates(c, data, 'magic'), [4]);
+  const worse = L.bulkCandidates(c, data, 'worse');
+  assert.ok(!worse.includes(2) && !worse.includes(3) && !worse.includes(1));
+  const g0 = c.gold;
+  const res = L.sellItems(c, [0, 1], data);
+  assert.equal(res.n, 1); // món khoá không bị bán
+  assert.equal(c.gold, g0 + res.gold);
+  assert.equal(c.buyback.length, 1);
+  assert.equal(L.buyBack(c, 0), 'ok');
+  assert.equal(c.gold, g0);
+  assert.equal(c.buyback.length, 0);
+  // tính cả đồ đặc biệt
+  assert.ok(L.bulkCandidates(c, data, 'normal', true).length >= 1);
+  // mua lại giữ tối đa 10 món
+  for (let i = 0; i < 14; i++) { c.inventory[10] = I.generateItem(r, data, 5); L.sellItems(c, [10], data); }
+  assert.equal(c.buyback.length, 10);
+});
+
+t('Đồ của lớp khác bị nhận ra; so sánh với đồ đang mặc', () => {
+  const c = P.createCharacter(data, 'mage');
+  const mk = (stats, base = 'ring') => ({ uid: 'x' + Math.random(), base, type: data.items.basesById[base].type, rarity: 'magic', name: 'x', ilvl: 1, req: { level: 1, str: 0 }, stats, sockets: 0, runes: [] });
+  assert.equal(L.wrongClass(mk({ physDmgPct: 10 }), c), true);
+  assert.equal(L.wrongClass(mk({ physDmgPct: 10, fireDmgPct: 5 }), c), false);
+  assert.equal(L.wrongClass(mk({ maxHp: 10 }), c), false);
+  assert.equal(L.itemVerdict(mk({ physDmgPct: 10 }), c, data), 'cant');
+  assert.equal(L.itemVerdict(mk({ spellDmgPct: 10 }), c, data), 'up'); // ô trống
+  c.equipment.ring1 = mk({ spellDmgPct: 30 }); c.equipment.ring2 = mk({ spellDmgPct: 30 });
+  assert.equal(L.itemVerdict(mk({ spellDmgPct: 5 }), c, data), 'down');
+});
+
+t('Bộ lọc nhặt: bỏ qua / tự bán đồ thường; kho đầy tự bán món rác rẻ nhất', () => {
+  const c = P.createCharacter(data, 'mage');
+  const g = new Game(data, c, { seed: 2, headless: true });
+  g.events = []; g.updateSpawner = () => {};
+  const r = new RNG(1);
+  c.lootFilter = { normal: 'skip', magicMinLevel: 10, makeRoom: false };
+  const n = I.generateItem(r, data, 5, { rarity: 'normal' });
+  assert.equal(L.lootDecision(n, c), 'skip');
+  assert.equal(L.lootDecision(I.generateItem(r, data, 5, { rarity: 'magic' }), c), 'skip');
+  assert.equal(L.lootDecision(I.generateItem(r, data, 12, { rarity: 'magic' }), c), 'pick');
+  assert.equal(L.lootDecision(I.generateItem(r, data, 5, { rarity: 'rare' }), c), 'pick');
+  g.dropItem(g.player.x, g.player.y, n);
+  g.update(1 / 60); g.update(1 / 60);
+  assert.equal(c.inventory.filter(Boolean).length, 0);
+  // tự bán
+  c.lootFilter.normal = 'sell';
+  const gold = c.gold;
+  g.dropItem(g.player.x + 5, g.player.y, I.generateItem(r, data, 5, { rarity: 'normal' }));
+  for (let i = 0; i < 10; i++) g.update(1 / 60);
+  assert.ok(c.gold > gold);
+  assert.equal(c.inventory.filter(Boolean).length, 0);
+  // kho đầy + tự bán rác lấy chỗ
+  for (let i = 0; i < c.inventory.length; i++) c.inventory[i] = I.generateItem(r, data, 5, { rarity: i === 7 ? 'normal' : 'magic' });
+  c.lootFilter = { normal: 'pick', magicMinLevel: 0, makeRoom: true };
+  const rare = I.generateItem(r, data, 8, { rarity: 'rare' });
+  g.dropItem(g.player.x + 5, g.player.y, rare);
+  for (let i = 0; i < 20; i++) g.update(1 / 60);
+  assert.ok(c.inventory.includes(rare));
+  assert.equal(c.inventory.filter((x) => x && x.rarity === 'normal').length, 0);
+});
+
+t('Sắp xếp kho, lưu khoá / bộ lọc / mua lại / túi tạm qua mã xuất', () => {
+  const c = P.createCharacter(data, 'mage');
+  const r = new RNG(4);
+  c.inventory[5] = I.generateRune(r, data, 5);
+  c.inventory[9] = I.generateItem(r, data, 5, { rarity: 'normal', type: 'ring' });
+  c.inventory[2] = I.generateItem(r, data, 5, { rarity: 'rare', type: 'head' });
+  c.inventory[2].locked = true;
+  L.sortInventory(c, data);
+  assert.equal(c.inventory[0].type, 'head');
+  assert.equal(c.inventory[2].type, 'rune');
+  assert.equal(c.inventory[3], null);
+  c.lootFilter = { normal: 'sell', magicMinLevel: 7, makeRoom: true };
+  c.overflow = [I.generateItem(r, data, 5)];
+  L.sellItems(c, [1], data);
+  const back = S.importCode(S.exportCode(c, S.newStash(data), data), data).ch;
+  assert.deepEqual(back.lootFilter, c.lootFilter);
+  assert.equal(back.buyback.length, 1);
+  assert.equal(back.overflow.length, 1);
+  assert.equal(back.inventory[0].locked, true);
 });
 
 console.log(`\n${n} kiểm tra đều qua.`);
