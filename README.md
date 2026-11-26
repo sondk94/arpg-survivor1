@@ -27,6 +27,9 @@ Repo riêng tư chỉ dùng được GitHub Pages khi tài khoản có gói tr�
 | Phím | Tác dụng |
 |---|---|
 | WASD / phím mũi tên | Di chuyển. Kỹ năng tự kích hoạt |
+| Giữ chuột trái | Nhân vật đi về phía con trỏ, thả chuột thì dừng. Con trỏ sát nhân vật thì đứng yên. Đang bấm phím di chuyển thì phím được ưu tiên |
+| B | Gọi boss sớm (khi đã giết đủ 800 quái) |
+| Enter (ở làng) | Vào màn đang chọn |
 | Tab, C hoặc nút **+** | Bảng nhân vật: thuộc tính + cây kỹ năng (thẻ Lửa / Băng / Sét). Game dừng hẳn khi bảng mở |
 | I | Thẻ Đồ đạc (trang bị + kho đồ) |
 | Shift + bấm "+" | Cộng 5 điểm thuộc tính một lần |

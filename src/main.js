@@ -687,7 +687,7 @@ class App {
     if (m === 'overflow') return close + `<h2>Túi tạm</h2>${this.overflowHtml() || '<p class="muted">Túi tạm trống.</p>'}<div class="vm-btns"><button data-vm-close class="primary">Xong</button></div>`;
     if (m === 'help') {
       return close + `<h2>Cách chơi</h2><ul class="help-list">
-        <li><b>WASD</b> hoặc phím mũi tên để di chuyển. Kỹ năng tự kích hoạt và tốn mana. Tối đa 4 kỹ năng chủ động, có thể lấy từ nhiều nhánh.</li>
+        <li><b>WASD</b>, phím mũi tên hoặc <b>giữ chuột trái</b> (nhân vật đi về phía con trỏ, thả chuột thì dừng) để di chuyển. Kỹ năng tự kích hoạt và tốn mana. Tối đa 4 kỹ năng chủ động, có thể lấy từ nhiều nhánh.</li>
         <li><b>Tab</b>, <b>C</b> hoặc nút <b>+</b>: bảng cộng điểm. <b>I</b>: đồ đạc. Game dừng hẳn khi bảng mở. <b>Shift</b> + bấm để cộng 5 điểm.</li>
         <li>Phím <b>1</b>–<b>4</b>: cộng nhanh 1 điểm Sức mạnh / Nhanh nhẹn / Thể lực / Năng lượng.</li>
         <li>Đồ tự nhặt khi đi qua (nếu kho còn chỗ). Đồ có yêu cầu cấp: nhặt sớm, lên cấp mới mặc được. Bán đồ và tẩy điểm ở làng. Ctrl + bấm vào đồ: bán ngay (ở làng) hoặc đánh dấu rác (trong màn).</li>
