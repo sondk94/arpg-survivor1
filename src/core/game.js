@@ -2,7 +2,7 @@
 import { RNG } from './rng.js';
 import { Grid } from './grid.js';
 import * as P from './progression.js';
-import { generateItem, generateRune, addToInventory, firstFree } from './items.js';
+import { generateItem, generateRune, addToInventory, canAdd } from './items.js';
 import { MinionMixin } from './minions.js';
 import { lootDecision, makeRoomFor } from './loot.js';
 import { sellValue } from './items.js';
@@ -362,6 +362,8 @@ export class Game {
       big: def.ai === 'boss' || def.ai === 'miniboss',
       flee: false, fleeT: 0, dead: false,
     };
+    // Boss và trùm nhỏ có thêm máu riêng theo độ khó (×1,5 / ×2 / ×2,5).
+    if (e.big && D.bossHpMult) { e.hp *= D.bossHpMult; e.maxHp = e.hp; }
     if (def.ai === 'miniboss') e.summonT = def.summonInterval;
     if (def.ai === 'boss') e.b = { state: 'chase', atkT: def.attackInterval, next: 'slam', t: 0, phase2: false, batT: def.phase2.batInterval };
     this.enemies.push(e);
@@ -1665,7 +1667,7 @@ export class Game {
           // Bộ lọc nhặt đồ: bỏ qua hoặc bán ngay.
           if (!k.decision) k.decision = lootDecision(k.item, this.ch);
           if (k.decision === 'skip') { k.skipped = true; continue; }
-          if (k.decision !== 'sell' && !k.pull && firstFree(this.ch.inventory) < 0) {
+          if (k.decision !== 'sell' && !k.pull && !canAdd(this.ch, k.item)) {
             const freed = makeRoomFor(this.ch, k.item, this.data);
             if (freed) this.addText(p.x, p.y - 60, `Tự bán ${freed.item.name} (+${freed.gold} vàng)`, '#ffd76a', 12);
             else {

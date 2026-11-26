@@ -760,7 +760,7 @@ class App {
     const over = this.ch.overflow || [];
     if (!over.length) return '';
     return `<p class="muted" style="margin:0 0 6px;font-size:12px">${over.length} món từ rương thưởng chưa vừa kho đồ. Giữ: cho vào kho đồ, kho đầy thì cho vào rương chung. Đồ trong túi tạm được lưu cho tới khi bạn chọn.</p>
-      <div class="ovf-list">${over.map((it, i) => `<div class="ovf"><span style="color:${it.type === 'rune' ? data.runes.byId[it.rune].color : data.items.rarities[it.rarity].color}">${esc(it.name)}</span><small>cấp đồ ${it.ilvl}</small>
+      <div class="ovf-list">${over.map((it, i) => `<div class="ovf"><span style="color:${it.type === 'rune' ? data.runes.byId[it.rune].color : data.items.rarities[it.rarity].color}">${esc(it.name)}${I.runeQty(it) > 1 ? ` ×${I.runeQty(it)}` : ''}</span><small>cấp đồ ${it.ilvl}</small>
         <button data-ovf-keep="${i}">Giữ</button><button data-ovf-sell="${i}" class="ghost">Bán ${I.sellValue(it, data)}</button></div>`).join('')}</div>
       <div class="row"><button id="ovf-keepall">Giữ hết</button><button id="ovf-sellall" class="ghost">Bán hết (${over.reduce((n, it) => n + I.sellValue(it, data), 0)} vàng)</button></div>`;
   }
@@ -776,8 +776,7 @@ class App {
     const ovfKeep = (i) => {
       const it = ch.overflow[i];
       if (I.addToInventory(ch, it)) { ch.overflow.splice(i, 1); return true; }
-      const j = this.stash.indexOf(null);
-      if (j >= 0) { this.stash[j] = it; ch.overflow.splice(i, 1); return true; }
+      if (I.addToArray(this.stash, it)) { ch.overflow.splice(i, 1); return true; }
       return false;
     };
     const ovfSell = (i) => {
@@ -826,7 +825,7 @@ class App {
           if (!confirm(dup ? `Ghi đè nhân vật "${dup.name}" (cấp ${dup.level}) bằng bản trong mã (cấp ${res.ch.level})?` : `Thêm nhân vật "${res.ch.name}" cấp ${res.ch.level}?`)) return;
           this.ch = res.ch;
           const have = new Set(this.stash.filter(Boolean).map((x) => x.uid));
-          for (const it of res.stash) if (it && !have.has(it.uid)) { const j = this.stash.indexOf(null); if (j >= 0) this.stash[j] = it; }
+          for (const it of res.stash) if (it && !have.has(it.uid)) I.addToArray(this.stash, it);
           this.lastResult = null;
           this.villageModal = null;
           this.viewChap = null;

@@ -1,5 +1,5 @@
 {
-  "version": "1.8",
+  "version": "1.10",
   "testMode": true,
   "run": {
     "duration": 420,
@@ -75,7 +75,8 @@
     "armorReduction": 0.75,
     "playerResist": 0.75,
     "monsterResistMin": -0.5,
-    "monsterResistMax": 0.75
+    "monsterResistMax": 0.75,
+    "leech": 0.2
   },
   "armor": {
     "base": 50,
@@ -134,13 +135,14 @@
       "playerResistPenalty": 0,
       "rareMult": 1,
       "uniqueMult": 1,
-      "color": "#d9b35c"
+      "color": "#d9b35c",
+      "bossHpMult": 1.5
     },
     {
       "id": "nightmare",
       "name": "Ác mộng",
-      "hpMult": 5,
-      "dmgMult": 3,
+      "hpMult": 7,
+      "dmgMult": 3.5,
       "xpMult": 2,
       "ilvlBonus": 18,
       "monsterResist": 0.2,
@@ -148,13 +150,14 @@
       "rareMult": 1.5,
       "uniqueMult": 1.5,
       "color": "#c06cff",
-      "unlockAfter": "normal"
+      "unlockAfter": "normal",
+      "bossHpMult": 2
     },
     {
       "id": "hell",
       "name": "Địa ngục",
-      "hpMult": 14,
-      "dmgMult": 6,
+      "hpMult": 22,
+      "dmgMult": 7.5,
       "xpMult": 3.5,
       "ilvlBonus": 32,
       "monsterResist": 0.35,
@@ -162,7 +165,8 @@
       "rareMult": 2,
       "uniqueMult": 2,
       "color": "#ff4040",
-      "unlockAfter": "nightmare"
+      "unlockAfter": "nightmare",
+      "bossHpMult": 2.5
     }
   ],
   "summons": {

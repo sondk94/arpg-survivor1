@@ -194,7 +194,8 @@ t('Trường Tĩnh Điện: 15% máu hiện tại, boss 5%', () => {
   g.grid.rebuild(g.enemies);
   g.castStatic(data.skills.static_field, 1);
   assert.equal(z.hp, 850);
-  assert.equal(b.hp, 2500 * 0.95);
+  assert.equal(b.hp, b.maxHp * 0.95); // boss chỉ mất 5% (máu boss đã nhân hệ số boss của độ khó)
+  assert.equal(b.maxHp, 2500 * data.difficultiesById.normal.bossHpMult);
 });
 
 t('Đồ: sinh đủ 5 bậc (cả đồ bộ), yêu cầu cấp chặn mặc đồ, chỉ số đồ cộng vào nhân vật', () => {
@@ -256,15 +257,15 @@ t('Xuất mã rồi nhập lại vẫn đủ cấp, điểm, đồ và rương',
   assert.throws(() => importCode('xyz', data), /định dạng/);
 });
 
-t('20 màn: máu quái +10% mỗi màn, sát thương +5%, kinh nghiệm +5% (cộng dồn)', () => {
+t('20 màn: máu quái và sát thương tăng theo hpStep / dmgStep mỗi màn, kinh nghiệm +5% (cộng dồn)', () => {
   assert.equal(data.mapOrder.length, 20);
   data.mapOrder.forEach((id, i) => {
     const m = data.maps[id];
     assert.equal(m.index, i);
     if (i > 0) {
       const prev = data.maps[data.mapOrder[i - 1]];
-      assert.ok(Math.abs(m.hpMult / prev.hpMult - 1.10) < 1e-9, id);
-      assert.ok(Math.abs(m.dmgMult / prev.dmgMult - 1.05) < 1e-9, id);
+      assert.ok(Math.abs(m.hpMult / prev.hpMult - (1 + data.campaign.hpStep)) < 1e-9, id);
+      assert.ok(Math.abs(m.dmgMult / prev.dmgMult - (1 + data.campaign.dmgStep)) < 1e-9, id);
     }
   });
   const ch = P.createCharacter(data);
@@ -272,13 +273,13 @@ t('20 màn: máu quái +10% mỗi màn, sát thương +5%, kinh nghiệm +5% (c�
   const g2 = new Game(data, ch, { seed: 1, headless: true, mapId: '1-2' });
   const g20 = new Game(data, ch, { seed: 1, headless: true, mapId: '4-5' });
   const z1 = g1.spawnEnemy('zombie', 100, 100), z2 = g2.spawnEnemy('zombie', 100, 100), z20 = g20.spawnEnemy('zombie', 100, 100);
-  assert.ok(Math.abs(z2.maxHp / z1.maxHp - 1.10) < 1e-9);
-  assert.ok(Math.abs(z2.contact / z1.contact - 1.05) < 1e-9);
+  assert.ok(Math.abs(z2.maxHp / z1.maxHp - (1 + data.campaign.hpStep)) < 1e-9);
+  assert.ok(Math.abs(z2.contact / z1.contact - (1 + data.campaign.dmgStep)) < 1e-9);
   assert.ok(Math.abs(z2.xp / z1.xp - 1.05) < 1e-9);
-  assert.ok(Math.abs(z20.maxHp / z1.maxHp - Math.pow(1.10, 19)) < 1e-9);
-  assert.ok(Math.abs(z20.contact / z1.contact - Math.pow(1.05, 19)) < 1e-9);
+  assert.ok(Math.abs(z20.maxHp / z1.maxHp - Math.pow(1 + data.campaign.hpStep, 19)) < 1e-9);
+  assert.ok(Math.abs(z20.contact / z1.contact - Math.pow(1 + data.campaign.dmgStep, 19)) < 1e-9);
   const b1 = g1.spawnEnemy('swamp_lord', 100, 100), b2 = g2.spawnEnemy('swamp_lord', 100, 100);
-  assert.ok(Math.abs(b2.maxHp / b1.maxHp - 1.10) < 1e-9);
+  assert.ok(Math.abs(b2.maxHp / b1.maxHp - (1 + data.campaign.hpStep)) < 1e-9);
 });
 
 t('Qua màn thì mở màn sau; tiến độ được lưu trong mã nhân vật', () => {
@@ -779,6 +780,155 @@ t('Sắp xếp kho, lưu khoá / bộ lọc / mua lại / túi tạm qua mã xu�
   assert.equal(back.buyback.length, 1);
   assert.equal(back.overflow.length, 1);
   assert.equal(back.inventory[0].locked, true);
+});
+
+// ---------- Sức mạnh theo cấp đồ và rune gộp chồng ----------
+t('Độc nhất / đồ bộ tăng 1,65% mỗi cấp đồ vượt yêu cầu (tối đa 165%), yêu cầu cấp = cấp đồ − 10', () => {
+  const r = new RNG(21);
+  const u = data.items.uniques.find((x) => x.id === 'ash_crown');
+  const lo = I.generateItem(r, data, u.req, { rarity: 'unique', type: 'head' });
+  // ở đúng cấp yêu cầu: chỉ số gốc
+  if (lo.unique === 'ash_crown') assert.deepEqual(lo.stats, u.stats);
+  let hi;
+  for (let i = 0; i < 200 && !(hi && hi.unique === 'ash_crown'); i++) hi = I.generateItem(r, data, 46, { rarity: 'unique', type: 'head' });
+  assert.equal(hi.unique, 'ash_crown');
+  const mult = 1 + 0.0165 * (46 - u.req);
+  assert.ok(Math.abs(hi.power - mult) < 0.001);
+  assert.equal(hi.stats.fireDmgPct, Math.round(u.stats.fireDmgPct * mult));
+  assert.equal(hi.stats.fireSkills, u.stats.fireSkills); // +cấp kỹ năng không tăng
+  assert.equal(hi.req.level, 36);
+  const top = I.generateItem(r, data, 500, { rarity: 'unique', type: 'head' });
+  assert.ok(top.power <= 2.65 + 1e-9);
+  // đồ bộ cùng hệ số
+  const sp = I.generateItem(r, data, 60, { rarity: 'set' });
+  const pc = data.items.setsById[sp.set].pieces.find((x) => x.id === sp.piece);
+  assert.ok(Math.abs(sp.power - Math.min(2.65, 1 + 0.0165 * (60 - pc.req))) < 0.001);
+});
+
+t('Đồ thường / xanh / vàng tăng 0,5% mỗi cấp (tối đa 50%), ít hơn độc nhất; bậc cao được ưu tiên', () => {
+  const r = new RNG(22);
+  let maxPow = 0;
+  for (let i = 0; i < 300; i++) {
+    const it = I.generateItem(r, data, 200, { rarity: i % 2 ? 'rare' : 'magic' });
+    maxPow = Math.max(maxPow, it.power);
+    assert.ok(it.power <= 1.5 + 1e-9);
+  }
+  assert.ok(maxPow > 1.4);
+  // ở cấp đồ cao, bậc cao nhất của Sức mạnh (bậc 5: 18–24) xuất hiện nhiều hơn mỗi bậc thấp
+  const tiers = data.items.affixes.find((a) => a.stat === 'str').tiers;
+  let top = 0, bottom = 0;
+  for (let i = 0; i < 400; i++) {
+    const it = I.generateItem(r, data, 45, { rarity: 'rare' });
+    if (!it.stats.str) continue;
+    const raw = it.stats.str / it.power;
+    if (raw >= tiers[4][2] - 0.6) top++;
+    else if (raw <= tiers[0][3] + 0.6) bottom++;
+  }
+  assert.ok(top > bottom);
+});
+
+t('Thưởng đồ bộ tăng theo sức mạnh trung bình các món; save cũ: độc nhất / đồ bộ được tính lại', () => {
+  const c = P.createCharacter(data, 'mage');
+  c.level = 99;
+  const set = data.items.sets.find((s) => s.id === 'set_fire');
+  const mk = (pc, ilvl) => {
+    const base = data.items.basesById[pc.base];
+    return { uid: pc.id, base: base.id, type: base.type, rarity: 'set', set: set.id, piece: pc.id, name: pc.name, baseName: base.name, ilvl, req: { level: pc.req, str: 0 }, stats: { ...pc.stats }, sockets: 0, runes: [] };
+  };
+  // đồ cũ (chưa có power): chuẩn hoá qua mã xuất sẽ tính lại
+  c.equipment.head = mk(set.pieces[0], 52);
+  c.equipment.body = mk(set.pieces[1], 52);
+  const back = importCode(exportCode(c, newStash(data), data), data).ch;
+  const h = back.equipment.head;
+  const m = 1 + 0.0165 * (52 - set.pieces[0].req);
+  assert.ok(Math.abs(h.power - m) < 0.001);
+  assert.equal(h.stats.fireDmgPct, Math.round(set.pieces[0].stats.fireDmgPct * m));
+  assert.equal(h.req.level, 42);
+  const st = I.sumGear(back, data);
+  const pw = (back.equipment.head.power + back.equipment.body.power) / 2;
+  const expect = Math.round(set.bonus['2'].fireDmgPct * pw) + (h.stats.fireDmgPct || 0) + (back.equipment.body.stats.fireDmgPct || 0);
+  assert.equal(st.stats.fireDmgPct, expect);
+});
+
+t('Rune cùng loại gộp một ô: nhặt, ghép vào đồ, ghép 3→1, chuyển rương, bán 1 viên, gộp save cũ', () => {
+  const c = P.createCharacter(data, 'mage');
+  const r = new RNG(23);
+  for (let i = 0; i < 4; i++) I.addToInventory(c, I.generateRune(r, data, 5, 'r_ash'));
+  I.addToInventory(c, I.generateRune(r, data, 5, 'r_frost'));
+  assert.equal(c.inventory.filter(Boolean).length, 2);
+  assert.equal(I.runeQty(c.inventory[0]), 4);
+  assert.equal(I.runeCounts(c).r_ash, 4);
+  // kho đầy vẫn nhặt được rune đã có ô
+  for (let i = 2; i < c.inventory.length; i++) c.inventory[i] = I.generateItem(r, data, 5);
+  assert.equal(I.canAdd(c, I.generateRune(r, data, 5, 'r_ash')), true);
+  assert.equal(I.canAdd(c, I.generateRune(r, data, 5, 'r_storm')), false);
+  // ghép vào đồ: trừ 1
+  const w = I.generateItem(r, data, 5, { type: 'weapon' }); w.sockets = 1;
+  assert.equal(I.insertRune(c, 0, w, data), 'ok');
+  assert.equal(I.runeQty(c.inventory[0]), 3);
+  // ghép 3 → 1 bậc cao hơn
+  c.gold = 9999;
+  c.inventory[5] = null;
+  const nextId = data.runes.list.find((x) => x.tier === data.runes.byId.r_ash.tier + 1).id; // Rune Sương
+  const before = I.runeCounts(c)[nextId] || 0;
+  assert.equal(I.combineRunes(c, 'r_ash', data, r), 'ok');
+  assert.equal(I.runeCounts(c).r_ash || 0, 0);
+  assert.equal(I.runeCounts(c)[nextId], before + 1); // gộp vào ô Rune Sương có sẵn
+  assert.equal(c.inventory.filter((x) => x && x.rune === nextId).length, 1);
+  // bán: giá cả ô = giá 1 viên × số viên
+  const st = { ...I.generateRune(r, data, 5, 'r_frost'), qty: 3 };
+  assert.equal(I.sellValue(st, data), I.unitSellValue(st, data) * 3);
+  // chuyển sang rương gộp vào ô có sẵn
+  const stash = newStash(data);
+  stash[7] = I.generateRune(r, data, 5, 'r_frost');
+  const fi = c.inventory.findIndex((x) => x && x.rune === 'r_frost');
+  const moving = I.runeQty(c.inventory[fi]);
+  assert.equal(I.transfer(c.inventory, fi, stash), 'ok');
+  assert.equal(I.runeQty(stash[7]), moving + 1);
+  assert.equal(stash.filter(Boolean).length, 1);
+  // save cũ: các ô rune rời được gộp lại
+  const old = P.createCharacter(data, 'mage');
+  old.inventory[0] = I.generateRune(r, data, 5, 'r_ash'); delete old.inventory[0].qty;
+  old.inventory[3] = I.generateRune(r, data, 5, 'r_ash'); delete old.inventory[3].qty;
+  const back = importCode(exportCode(old, newStash(data), data), data).ch;
+  assert.equal(back.inventory.filter(Boolean).length, 1);
+  assert.equal(I.runeQty(back.inventory[0]), 2);
+});
+
+t('Quái mạnh hơn (bản 1.10): +12% máu, +6% sát thương mỗi màn; Ác mộng ×7/×3,5, Địa ngục ×22/×7,5; boss thêm ×1,5/×2/×2,5', () => {
+  assert.equal(data.campaign.hpStep, 0.12);
+  assert.equal(data.campaign.dmgStep, 0.06);
+  const last = data.maps[data.mapOrder[data.mapOrder.length - 1]];
+  assert.ok(Math.abs(last.hpMult - Math.pow(1.12, 19)) < 1e-9);
+  const D = data.difficultiesById;
+  assert.deepEqual([D.nightmare.hpMult, D.nightmare.dmgMult, D.hell.hpMult, D.hell.dmgMult], [7, 3.5, 22, 7.5]);
+  const ch = P.createCharacter(data);
+  for (const [id, m] of [['normal', 1.5], ['nightmare', 2], ['hell', 2.5]]) {
+    const g = new Game(data, ch, { seed: 1, headless: true, mapId: '1-1', difficulty: id });
+    const z = g.spawnEnemy('zombie', 100, 100);
+    const b = g.spawnEnemy('swamp_lord', 300, 300);
+    const zb = data.monsters.zombie.hp, bb = data.monsters.swamp_lord.hp;
+    assert.ok(Math.abs(b.maxHp / z.maxHp - (bb / zb) * m) < 1e-6, id); // chỉ boss / trùm nhỏ được nhân thêm
+  }
+});
+
+t('Dòng đồ "Hút % sát thương thành máu": cộng với bị động, tối đa 20%, hồi máu khi đánh', () => {
+  const c = P.createCharacter(data, 'mage');
+  assert.equal(P.computeStats(c, data).leech, 0);
+  const ring = (v) => ({ uid: 'l' + v, base: 'ring', type: 'ring', rarity: 'magic', name: 'r', ilvl: 1, req: { level: 1, str: 0 }, stats: { leechPct: v }, sockets: 0, runes: [] });
+  c.equipment.ring1 = ring(5);
+  assert.ok(Math.abs(P.computeStats(c, data).leech - 0.05) < 1e-9);
+  c.equipment.ring2 = ring(30);
+  assert.ok(Math.abs(P.computeStats(c, data).leech - data.config.caps.leech) < 1e-9);
+  c.equipment.ring2 = null;
+  const g = new Game(data, c, { seed: 1, headless: true });
+  g.player.hp = 10;
+  const e = g.spawnEnemy('zombie', g.player.x + 50, g.player.y); e.hp = e.maxHp = 1000;
+  g.damageEnemy(e, 100, 'fire', { noCrit: true });
+  assert.ok(g.player.hp > 10 && g.player.hp <= 10 + 100 * 0.05 + 1e-9);
+  // có trong danh sách dòng chỉ số đồ, không tăng theo cấp đồ
+  assert.ok(data.items.affixes.some((a) => a.stat === 'leechPct'));
+  assert.ok(data.items.ilvlScaling.exclude.includes('leechPct'));
 });
 
 console.log(`\n${n} kiểm tra đều qua.`);
