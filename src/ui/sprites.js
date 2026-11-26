@@ -176,13 +176,70 @@ export function buildSprites(monsters, pxPerUnit) {
 }
 
 // ---------- Người chơi: pháp sư áo choàng, mũ nhọn, gậy phép ----------
+// Vũ khí trên tay, vẽ dọc trục +x tính từ chỗ cầm (gốc toạ độ). glow: màu độ hiếm (đồ xanh trở lên).
+export function drawWeapon(ctx, family, r, glow) {
+  ctx.save();
+  if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = 0.5 * r; }
+  const wood = '#6b4a2a', steel = '#d9dde3', gold = '#b08a3a';
+  if (family === 'wand') {
+    limb(ctx, -0.3 * r, 0, 0.75 * r, 0, 0.07 * r, wood);
+    ctx.fillStyle = glow || '#9fd3ff';
+    ctx.beginPath(); ctx.arc(0.82 * r, 0, 0.1 * r, 0, TAU); ctx.fill();
+  } else if (family === 'staff') {
+    limb(ctx, -0.95 * r, 0, 0.85 * r, 0, 0.1 * r, '#7a5230');
+    ctx.fillStyle = glow ? `${glow}59` : 'rgba(255,170,60,0.35)';
+    ctx.beginPath(); ctx.arc(0.95 * r, 0, 0.3 * r, 0, TAU); ctx.fill();
+    ctx.fillStyle = glow || '#ffb347';
+    ctx.beginPath(); ctx.arc(0.95 * r, 0, 0.15 * r, 0, TAU); ctx.fill();
+  } else if (family === 'totem') {
+    limb(ctx, -0.95 * r, 0, 0.85 * r, 0, 0.1 * r, wood);
+    ctx.fillStyle = glow ? `${glow}59` : 'rgba(95,191,106,0.35)';
+    ctx.beginPath(); ctx.arc(0.95 * r, 0, 0.3 * r, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#efe6cf';
+    ctx.beginPath(); ctx.ellipse(0.95 * r, 0, 0.13 * r, 0.16 * r, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#2a2a2a';
+    ctx.beginPath(); ctx.arc(0.97 * r, -0.05 * r, 0.035 * r, 0, TAU); ctx.fill();
+    ctx.fillStyle = glow || '#c0503a';
+    ctx.beginPath(); ctx.ellipse(0.7 * r, 0.12 * r, 0.16 * r, 0.05 * r, 0.3, 0, TAU); ctx.fill();
+  } else if (family === 'sword') {
+    ctx.fillStyle = steel;
+    ctx.beginPath(); ctx.moveTo(0.12 * r, -0.07 * r); ctx.lineTo(0.95 * r, -0.05 * r); ctx.lineTo(1.08 * r, 0); ctx.lineTo(0.95 * r, 0.05 * r); ctx.lineTo(0.12 * r, 0.07 * r); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = gold; ctx.fillRect(0.06 * r, -0.18 * r, 0.08 * r, 0.36 * r);
+    ctx.fillStyle = '#5a3d22'; ctx.fillRect(-0.18 * r, -0.05 * r, 0.24 * r, 0.1 * r);
+  } else if (family === 'axe') {
+    limb(ctx, -0.25 * r, 0, 1.2 * r, 0, 0.08 * r, wood);
+    ctx.fillStyle = steel;
+    ctx.beginPath();
+    ctx.moveTo(0.95 * r, -0.05 * r); ctx.quadraticCurveTo(1.05 * r, -0.4 * r, 1.3 * r, -0.38 * r);
+    ctx.quadraticCurveTo(1.2 * r, 0, 1.3 * r, 0.38 * r); ctx.quadraticCurveTo(1.05 * r, 0.4 * r, 0.95 * r, 0.05 * r);
+    ctx.closePath(); ctx.fill();
+  } else {
+    // greatsword (kiếm lớn mặc định của Chiến Binh)
+    ctx.fillStyle = steel;
+    ctx.beginPath(); ctx.moveTo(0.15 * r, -0.1 * r); ctx.lineTo(1.45 * r, -0.07 * r); ctx.lineTo(1.6 * r, 0); ctx.lineTo(1.45 * r, 0.07 * r); ctx.lineTo(0.15 * r, 0.1 * r); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = gold; ctx.fillRect(0.08 * r, -0.25 * r, 0.1 * r, 0.5 * r);
+    ctx.fillStyle = '#5a3d22'; ctx.fillRect(-0.25 * r, -0.06 * r, 0.33 * r, 0.12 * r);
+  }
+  ctx.restore();
+}
+
+// Cầm vũ khí dựng đứng (Pháp sư, Triệu hồi sư): xoay trục +x lên trên.
+function heldUpright(ctx, look, sx, sy, r) {
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.rotate(-Math.PI / 2 + 0.05);
+  drawWeapon(ctx, look.weapon, r, look.weaponGlow);
+  ctx.restore();
+}
+
 export function drawMage(ctx, x, y, r, face, phase, moving, opts = {}) {
   const a = phase * TAU, s = moving ? Math.sin(a) : 0, c = Math.cos(a);
   const bob = moving ? -Math.abs(c) * 0.08 * r : 0;
   ctx.save();
   ctx.translate(x, y);
   if (face < 0) ctx.scale(-1, 1);
-  const robe = opts.hurt ? '#c0506a' : '#5b4bc4', robeDark = opts.hurt ? '#93394f' : '#3f328f';
+  const look = opts.look || {};
+  const robe = opts.hurt ? '#c0506a' : look.body?.[0] || '#5b4bc4', robeDark = opts.hurt ? '#93394f' : look.body?.[1] || '#3f328f';
   const hipY = 0.35 * r + bob, L = 0.85 * r;
   // chân (lộ ra dưới áo choàng)
   leg(ctx, -0.08 * r, hipY, L, -s * 0.55, 0.24 * r, '#2b2233', '#3a2a1e');
@@ -221,11 +278,7 @@ export function drawMage(ctx, x, y, r, face, phase, moving, opts = {}) {
   ctx.beginPath(); ctx.arc(0.05 * r, -1.25 * r + bob, 0.07 * r, 0, TAU); ctx.fill();
   // gậy phép + tay
   const sx = 0.62 * r, sy = -0.1 * r + bob - s * 0.05 * r;
-  limb(ctx, sx, sy - 0.85 * r, sx + 0.05 * r, sy + 0.95 * r, 0.1 * r, '#7a5230');
-  ctx.fillStyle = 'rgba(255,170,60,0.35)';
-  ctx.beginPath(); ctx.arc(sx, sy - 0.95 * r, 0.3 * r, 0, TAU); ctx.fill();
-  ctx.fillStyle = '#ffb347';
-  ctx.beginPath(); ctx.arc(sx, sy - 0.95 * r, 0.15 * r, 0, TAU); ctx.fill();
+  heldUpright(ctx, { weapon: look.weapon || 'staff', weaponGlow: look.weaponGlow }, sx, sy, r);
   limb(ctx, 0.1 * r, -0.4 * r + bob, sx, sy, 0.18 * r, robe);
   ctx.fillStyle = '#f0c9a0';
   ctx.beginPath(); ctx.arc(sx, sy, 0.1 * r, 0, TAU); ctx.fill();
@@ -322,7 +375,8 @@ export function drawWarrior(ctx, x, y, r, face, phase, moving, opts = {}) {
   ctx.save();
   ctx.translate(x, y);
   if (face < 0) ctx.scale(-1, 1);
-  const plate = opts.hurt ? '#d08080' : '#8e959e', plateDark = opts.hurt ? '#a05a5a' : '#5d636b', cloth = '#8a2f2a';
+  const look = opts.look || {};
+  const plate = opts.hurt ? '#d08080' : '#8e959e', plateDark = opts.hurt ? '#a05a5a' : '#5d636b', cloth = look.body?.[0] || '#8a2f2a';
   const hipY = 0.3 * r + bob, L = 0.95 * r;
   leg(ctx, -0.12 * r, hipY, L, -s * 0.6, 0.3 * r, '#3a3330', '#2a2522');
   // áo choàng đỏ sau lưng
@@ -333,8 +387,9 @@ export function drawWarrior(ctx, x, y, r, face, phase, moving, opts = {}) {
   // thân giáp
   ctx.fillStyle = plate;
   ctx.beginPath(); ctx.roundRect(-0.42 * r, -0.62 * r + bob, 0.84 * r, 0.98 * r, 0.2 * r); ctx.fill();
-  ctx.fillStyle = plateDark;
+  ctx.fillStyle = look.body?.[1] || plateDark; // thắt lưng theo màu áo
   ctx.fillRect(-0.42 * r, 0.05 * r + bob, 0.84 * r, 0.12 * r);
+  ctx.fillStyle = plateDark;
   ctx.beginPath(); ctx.arc(-0.38 * r, -0.5 * r + bob, 0.2 * r, 0, TAU); ctx.fill(); // vai sau
   leg(ctx, 0.12 * r, hipY, L, s * 0.6, 0.3 * r, '#4a423d', '#2e2824');
   // đầu + mũ sừng
@@ -360,12 +415,7 @@ export function drawWarrior(ctx, x, y, r, face, phase, moving, opts = {}) {
   ctx.save();
   ctx.translate(hx, hy);
   ctx.rotate(ang);
-  ctx.fillStyle = '#d9dde3';
-  ctx.beginPath(); ctx.moveTo(0.15 * r, -0.1 * r); ctx.lineTo(1.45 * r, -0.07 * r); ctx.lineTo(1.6 * r, 0); ctx.lineTo(1.45 * r, 0.07 * r); ctx.lineTo(0.15 * r, 0.1 * r); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#b08a3a';
-  ctx.fillRect(0.08 * r, -0.25 * r, 0.1 * r, 0.5 * r);
-  ctx.fillStyle = '#5a3d22';
-  ctx.fillRect(-0.25 * r, -0.06 * r, 0.33 * r, 0.12 * r);
+  drawWeapon(ctx, look.weapon || 'greatsword', r, look.weaponGlow);
   ctx.restore();
   limb(ctx, 0.05 * r, -0.4 * r + bob, hx, hy, 0.22 * r, plate);
   ctx.fillStyle = plateDark;
@@ -380,7 +430,8 @@ export function drawSummoner(ctx, x, y, r, face, phase, moving, opts = {}) {
   ctx.save();
   ctx.translate(x, y);
   if (face < 0) ctx.scale(-1, 1);
-  const fur = opts.hurt ? '#c07060' : '#7a5a3a', furDark = opts.hurt ? '#904a40' : '#5a3f28', tunic = '#3f6b3a';
+  const look = opts.look || {};
+  const fur = opts.hurt ? '#c07060' : '#7a5a3a', furDark = opts.hurt ? '#904a40' : '#5a3f28', tunic = look.body?.[0] || '#3f6b3a';
   const hipY = 0.33 * r + bob, L = 0.88 * r;
   leg(ctx, -0.1 * r, hipY, L, -s * 0.58, 0.26 * r, '#3b3326', '#2a2018');
   // áo choàng lông sau lưng
@@ -418,15 +469,7 @@ export function drawSummoner(ctx, x, y, r, face, phase, moving, opts = {}) {
   ctx.fillRect(0.12 * r, -0.74 * r + bob, 0.2 * r, 0.04 * r);
   // gậy vật tổ có đầu lâu thú và lông vũ
   const sx = 0.6 * r, sy = -0.1 * r + bob - s * 0.05 * r;
-  limb(ctx, sx, sy - 0.85 * r, sx + 0.05 * r, sy + 0.95 * r, 0.1 * r, '#6b4a2a');
-  ctx.fillStyle = '#efe6cf';
-  ctx.beginPath(); ctx.ellipse(sx, sy - 0.95 * r, 0.16 * r, 0.13 * r, 0, 0, TAU); ctx.fill();
-  ctx.fillStyle = '#2a2a2a';
-  ctx.beginPath(); ctx.arc(sx + 0.05 * r, sy - 0.97 * r, 0.035 * r, 0, TAU); ctx.fill();
-  ctx.fillStyle = 'rgba(95,191,106,0.35)';
-  ctx.beginPath(); ctx.arc(sx, sy - 0.95 * r, 0.3 * r, 0, TAU); ctx.fill();
-  ctx.fillStyle = '#c0503a';
-  ctx.beginPath(); ctx.ellipse(sx - 0.12 * r, sy - 0.7 * r, 0.05 * r, 0.16 * r, 0.3, 0, TAU); ctx.fill();
+  heldUpright(ctx, { weapon: look.weapon || 'totem', weaponGlow: look.weaponGlow }, sx, sy, r);
   limb(ctx, 0.1 * r, -0.4 * r + bob, sx, sy, 0.18 * r, tunic);
   ctx.fillStyle = '#e2b48a';
   ctx.beginPath(); ctx.arc(sx, sy, 0.1 * r, 0, TAU); ctx.fill();
@@ -522,8 +565,43 @@ export function drawBird(ctx, x, y, size, face, t, color, beak) {
   ctx.restore();
 }
 
-// Ảnh chân dung cho màn chọn nhân vật.
-export function drawPortrait(canvas, look) {
+// Hào quang bộ SSR đủ 5 món. back: vẽ phía sau nhân vật (true) hay phía trước (false).
+export function drawSSRAura(ctx, cls, x, y, r, t, face, back) {
+  if (cls === 'mage') {
+    // 3 quả cầu lửa / băng / sét bay vòng quanh; nửa vòng sau vẽ trước nhân vật.
+    const cols = ['#ff7a2a', '#9fe3ff', '#ffe14d'];
+    for (let i = 0; i < 3; i++) {
+      const a = t * 2.2 + (i * TAU) / 3;
+      const behind = Math.sin(a) < 0;
+      if (behind !== back) continue;
+      const ox = x + Math.cos(a) * r * 1.5, oy = y - r * 0.3 + Math.sin(a) * r * 0.55;
+      const g = ctx.createRadialGradient(ox, oy, 1, ox, oy, r * 0.45);
+      g.addColorStop(0, cols[i]); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(ox, oy, r * 0.45, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(ox, oy, r * 0.1, 0, TAU); ctx.fill();
+    }
+  } else if (cls === 'warrior' && back) {
+    // Áo choàng lửa: các lưỡi lửa bập bùng sau lưng.
+    for (let i = 0; i < 6; i++) {
+      const k = (t * 1.6 + i * 0.37) % 1;
+      const bx = x - face * r * (0.35 + 0.1 * Math.sin(i * 2.1)), by = y + r * 0.4 - k * r * 1.6;
+      const sz = r * (0.35 - k * 0.25);
+      ctx.fillStyle = `rgba(255,${120 + ((i * 30) % 100)},40,${0.75 * (1 - k)})`;
+      ctx.beginPath(); ctx.moveTo(bx - sz * 0.5, by); ctx.quadraticCurveTo(bx, by - sz * 2, bx + sz * 0.5, by); ctx.closePath(); ctx.fill();
+    }
+  } else if (cls === 'summoner' && back) {
+    // Linh hồn sói mờ đi theo phía sau.
+    ctx.save();
+    ctx.globalAlpha = 0.35 + 0.1 * Math.sin(t * 3);
+    drawWolf(ctx, { x: x - face * r * 1.6, y: y + r * 0.6, r: r * 0.6, moving: true, swing: 0, hit: 0 }, face, (t * 1.5) % 1, true);
+    ctx.restore();
+  }
+}
+
+// Ảnh chân dung cho màn chọn nhân vật. ap: ngoại hình theo đồ đang mặc (tuỳ chọn).
+export function drawPortrait(canvas, look, ap = null) {
   const ctx = canvas.getContext('2d');
   const w = canvas.width, h = canvas.height;
   ctx.clearRect(0, 0, w, h);
@@ -535,10 +613,14 @@ export function drawPortrait(canvas, look) {
   const r = h * 0.2;
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.beginPath(); ctx.ellipse(w / 2, h * 0.58 + r * 1.3, r * 0.9, r * 0.25, 0, 0, TAU); ctx.fill();
-  if (look === 'warrior') drawWarrior(ctx, w / 2 - r * 0.2, h * 0.58, r, 1, 0.15, true, { swing: 0 });
-  else if (look === 'summoner') {
+  const o = { swing: 0, look: ap || {} };
+  const cls = look === 'warrior' ? 'warrior' : look === 'summoner' ? 'summoner' : 'mage';
+  const px = w / 2 - r * (cls === 'summoner' ? 0.3 : 0.2), py = h * 0.58;
+  if (ap?.ssr) drawSSRAura(ctx, ap.ssr, px, py, r, 0.4, 1, true);
+  if (cls === 'warrior') drawWarrior(ctx, px, py, r, 1, 0.15, true, o);
+  else if (cls === 'summoner') {
     drawWolf(ctx, { x: w / 2 + r * 0.95, y: h * 0.58 + r * 0.55, r: r * 0.45, moving: false, swing: 0, hit: 0 }, -1, 0, false);
-    drawSummoner(ctx, w / 2 - r * 0.3, h * 0.58, r, 1, 0.15, true, {});
-  }
-  else drawMage(ctx, w / 2 - r * 0.2, h * 0.58, r, 1, 0.15, true, {});
+    drawSummoner(ctx, px, py, r, 1, 0.15, true, o);
+  } else drawMage(ctx, px, py, r, 1, 0.15, true, o);
+  if (ap?.ssr) drawSSRAura(ctx, ap.ssr, px, py, r, 0.4, 1, false);
 }

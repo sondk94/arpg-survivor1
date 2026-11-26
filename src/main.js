@@ -8,6 +8,7 @@ import { RNG } from './core/rng.js';
 import { saveRoster, loadRoster, exportCode, importCode } from './core/save.js';
 import { Renderer } from './ui/render.js';
 import { drawPortrait } from './ui/sprites.js';
+import { appearance } from './ui/look.js';
 import { Panel } from './ui/panel.js';
 import { Input } from './ui/input.js';
 import { setupDebug } from './ui/debug.js';
@@ -378,7 +379,7 @@ class App {
       return `<div class="pcard ${c.uid === this.roster.active ? 'on' : ''}" style="--cc:${cls.color}" data-play="${c.uid}" tabindex="0" title="Bấm để vào làng">
         <button class="pc-more" data-more="${c.uid}" title="Tuỳ chọn">⋯</button>
         <div class="pc-menu hidden" data-menu="${c.uid}"><button data-del="${c.uid}" class="danger">Xoá nhân vật</button></div>
-        <canvas data-portrait="${cls.look}" width="120" height="150"></canvas>
+        <canvas data-portrait="${cls.look}" data-uid="${c.uid}" width="120" height="150"></canvas>
         <b>${esc(c.name)}</b>
         <span>${esc(cls.short)} · cấp ${c.level}</span>
         <small>Màn ${esc(cur.id)} · ${prog}/${data.mapOrder.length}</small>
@@ -407,7 +408,10 @@ class App {
       </section>` : ''}
       <p class="muted sel-note">Mỗi nhân vật có cấp, kỹ năng, đồ và tiến độ riêng. Rương chung dùng chung cho mọi nhân vật. Lần sau mở game sẽ vào thẳng nhân vật chơi gần nhất.</p>
     </div>`;
-    v.querySelectorAll('canvas[data-portrait]').forEach((c) => drawPortrait(c, c.dataset.portrait));
+    v.querySelectorAll('canvas[data-portrait]').forEach((c) => {
+      const owner = c.dataset.uid && chars.find((x) => x.uid === c.dataset.uid);
+      drawPortrait(c, c.dataset.portrait, owner ? appearance(owner, data) : null);
+    });
     v.querySelectorAll('[data-play]').forEach((el) => {
       el.onclick = (e) => { if (e.target.closest('.pc-more, .pc-menu')) return; this.selectChar(el.dataset.play); };
       el.onkeydown = (e) => { if (e.key === 'Enter') this.selectChar(el.dataset.play); };
@@ -572,7 +576,7 @@ class App {
       </header>
       <aside class="hub-char" style="--cc:${cls.color}">
         <div class="hc-head">
-          <canvas data-portrait="${cls.look}" width="96" height="120"></canvas>
+          <canvas data-portrait="${cls.look}" data-self="1" width="96" height="120"></canvas>
           <div class="hc-id"><b>${esc(ch.name)}</b><span>${esc(cls.name)}</span>
             <button id="v-switch" class="ghost mini" title="Đổi / tạo nhân vật">⇄ Đổi nhân vật</button></div>
         </div>
@@ -600,7 +604,7 @@ class App {
     </div>
     ${this.villageModal ? `<div class="vmodal" id="v-modal"><div class="vm-box ${this.villageModal}">${this.modalHtml(this.villageModal)}</div></div>` : ''}`;
 
-    v.querySelectorAll('canvas[data-portrait]').forEach((c) => drawPortrait(c, c.dataset.portrait));
+    v.querySelectorAll('canvas[data-portrait]').forEach((c) => drawPortrait(c, c.dataset.portrait, c.dataset.self ? appearance(ch, data) : null));
     const go = () => this.startRun();
     $('#v-start').onclick = go;
     v.querySelectorAll('[data-diff]').forEach((b) => (b.onclick = () => { this.selectedDiff = b.dataset.diff; this.selectedMap = null; this.viewChap = null; this.renderVillage(); }));

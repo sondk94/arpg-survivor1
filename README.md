@@ -106,6 +106,15 @@ Chỉ số cấp 1 so với pháp sư:
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
 
+## Ngoại hình theo đồ đang mặc (bản 1.14, bản rút gọn)
+
+Mã nguồn: `src/ui/look.js` (chọn kiểu), `drawWeapon` / `drawSSRAura` trong `src/ui/sprites.js` (vẽ).
+- **Vũ khí trên tay** đổi hình theo loại vũ khí đang mặc: đũa, gậy (gậy / gậy lớn / gậy bóng tối / gậy hư không), vật tổ (trượng thú / cột vật tổ / vật tổ nguyên thuỷ), kiếm ngắn, rìu (rìu chiến / dao phay), đại kiếm (đại kiếm / kiếm titan). Tay không thì dùng vũ khí mặc định của lớp. Vũ khí từ đồ xanh trở lên phát sáng theo màu độ hiếm.
+- **Màu áo** theo độ hiếm của áo đang mặc: Ma thuật xanh dương, Hiếm vàng, Độc nhất cam, Đồ bộ xanh lá, SSR đỏ cam. Đồ thường hoặc không mặc áo giữ màu gốc. Pháp sư đổi màu áo choàng và mũ, Chiến Binh đổi màu áo choàng và đai, Triệu hồi sư đổi màu áo trong.
+- **Hào quang khi mặc đủ 5 món SSR:** Pháp sư có 3 quả cầu lửa / băng / sét bay quanh; Chiến Binh có áo choàng lửa bập bùng sau lưng; Triệu hồi sư có linh hồn sói mờ đi theo.
+- Ảnh chân dung ở màn chọn nhân vật và ở làng cũng hiện đúng đồ đang mặc.
+- Găng, đai, giày, nhẫn, dây chuyền, mũ và tay phụ chưa vẽ riêng (để dành cho bản đầy đủ).
+
 ## Đồ Thần thoại (SSR) và tỉ lệ rơi đồ ×1,4 (bản 1.13)
 
 **Bậc Thần thoại (SSR)** (`items.json` → `rarities.ssr`, `drops.ssr`, các bộ có `"rarity": "ssr"`):
