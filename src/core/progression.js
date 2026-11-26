@@ -175,9 +175,10 @@ export function computeStats(ch, data) {
     pickupRadius: p.pickupRadius * (1 + pct('pickupPct')),
     critChance: p.critChance + pct('critChance') + pb.crit,
     critMult: p.critMult + pb.critMult,
-    armor: (p.baseArmor || 0) + (g.armor || 0) + pb.armor,
-    // Hút máu: bị động (Chiến Binh) + dòng "Hút % sát thương thành máu" trên đồ, tối đa caps.leech.
-    leech: Math.min(c.caps.leech ?? 1, pb.leech + pct('leechPct')),
+    // Chiến Binh: tổng giáp ×1,5 (classes.json → player.armorMult).
+    armor: Math.round(((p.baseArmor || 0) + (g.armor || 0) + pb.armor) * (p.armorMult || 1)),
+    // Hút máu: bị động (Chiến Binh) + dòng "Hút % sát thương thành máu" trên đồ, tối đa caps.leech (Chiến Binh 30%).
+    leech: Math.min(p.leechCap ?? c.caps.leech ?? 1, pb.leech + pct('leechPct')),
     resist: {
       fire: pct('resFire') + resAll,
       cold: pct('resCold') + resAll,
