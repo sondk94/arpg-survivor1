@@ -1114,7 +1114,7 @@ t('SSR rơi từ rương boss: Địa ngục 3%, Ác mộng 1%, Bình thường 
 });
 
 // Nạp các file giao diện để bắt lỗi cú pháp (vd. khai báo trùng tên biến) mà các kiểm tra lõi không chạm tới.
-for (const f of ['render', 'panel', 'sprites', 'skilltext', 'tooltip', 'debug', 'input', 'telemetry']) {
+for (const f of ['render', 'panel', 'sprites', 'skilltext', 'tooltip', 'debug', 'input', 'telemetry', 'look']) {
   try { await import(`../src/ui/${f}.js`); n++; console.log(`ok - nạp được src/ui/${f}.js`); }
   catch (e) { console.error(`LỖI - src/ui/${f}.js: ${e.message}`); throw e; }
 }

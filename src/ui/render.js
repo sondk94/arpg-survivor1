@@ -1,7 +1,8 @@
 // Vẽ thế giới và HUD bằng Canvas 2D, hình khối đơn giản.
 import { fmtTime } from '../core/game.js';
 import { xpToNext } from '../core/progression.js';
-import { buildSprites, drawMage, drawWarrior, drawGravedigger, drawSwampLord, drawSummoner, drawWolf, drawBear, drawBird } from './sprites.js';
+import { buildSprites, drawMage, drawWarrior, drawGravedigger, drawSwampLord, drawSummoner, drawWolf, drawBear, drawBird, drawSSRAura } from './sprites.js';
+import { appearance, appearanceKey } from './look.js';
 
 const TAU = Math.PI * 2;
 const VIS = 1.3; // hình vẽ quái to hơn vùng va chạm một chút cho dễ nhìn
@@ -591,11 +592,20 @@ export class Renderer {
     if (Math.abs(p.faceX) > 0.1) this.face = p.faceX > 0 ? 1 : -1;
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath(); ctx.ellipse(p.x, p.y + p.r * 1.45, p.r * 0.95, p.r * 0.3, 0, 0, TAU); ctx.fill();
+    // Ngoại hình theo đồ đang mặc: chỉ tính lại khi đồ thay đổi.
+    const key = appearanceKey(g.ch);
+    if (this.lookKey !== key || this.lookG !== g) { this.lookKey = key; this.lookG = g; this.look = appearance(g.ch, g.data); }
+    const look = this.look;
     const blink = p.invuln > 0 && Math.floor(g.time * 20) % 2 === 0;
+    const R = p.r * 1.3, face = this.face || 1;
+    if (look.ssr) drawSSRAura(ctx, look.ssr, p.x, p.y, R, g.time, face, true);
     ctx.globalAlpha = blink ? 0.45 : 1;
-    if (g.cls?.look === 'warrior') drawWarrior(ctx, p.x, p.y, p.r * 1.3, this.face || 1, this.walk, p.moving, { hurt: p.hurt > 0, swing: (p.swing || 0) / 0.22 });
-    else if (g.cls?.look === 'summoner') drawSummoner(ctx, p.x, p.y, p.r * 1.3, this.face || 1, this.walk, p.moving, { hurt: p.hurt > 0 });
-    else drawMage(ctx, p.x, p.y, p.r * 1.3, this.face || 1, this.walk, p.moving, { hurt: p.hurt > 0 });
+    if (g.cls?.look === 'warrior') drawWarrior(ctx, p.x, p.y, R, face, this.walk, p.moving, { hurt: p.hurt > 0, swing: (p.swing || 0) / 0.22, look });
+    else if (g.cls?.look === 'summoner') drawSummoner(ctx, p.x, p.y, R, face, this.walk, p.moving, { hurt: p.hurt > 0, look });
+    else drawMage(ctx, p.x, p.y, R, face, this.walk, p.moving, { hurt: p.hurt > 0, look });
+    ctx.globalAlpha = 1;
+    if (look.ssr) drawSSRAura(ctx, look.ssr, p.x, p.y, R, g.time, face, false);
+    ctx.globalAlpha = blink ? 0.45 : 1;
     // Buff đang có: vòng sáng dưới chân
     for (const b of g.buffs || []) {
       ctx.strokeStyle = b.color || '#ffd27a';
