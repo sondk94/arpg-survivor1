@@ -106,6 +106,24 @@ Chỉ số cấp 1 so với pháp sư:
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
 
+## Đồ Thần thoại (SSR) và tỉ lệ rơi đồ ×1,4 (bản 1.13)
+
+**Bậc Thần thoại (SSR)** (`items.json` → `rarities.ssr`, `drops.ssr`, các bộ có `"rarity": "ssr"`):
+- Mỗi lớp một bộ 5 món. **Yêu cầu cấp 60** (cố định, không tăng theo cấp đồ), 1 lỗ để ghép rune, không phân giải được, bán giá cao.
+- Chỉ số tăng theo cấp đồ như đồ bộ (+1,65% mỗi cấp trên 60, tối đa +165%).
+- Rơi trong **rương thưởng boss** ở **Ác mộng 1%**, **Địa ngục 3%**, khi nhân vật từ cấp 60. 70% là bộ của lớp đang chơi.
+- Ô đồ có viền cam sáng, trên đất có cột sáng lớn. Khung nổi ghi thưởng 2/3 món và hiệu ứng 4/5 món (sáng lên khi đã kích hoạt).
+
+| Bộ | Lớp | 2 món | 3 món | 4 món | 5 món |
+|---|---|---|---|---|---|
+| Thiên Mệnh Nguyên Tố | Pháp sư | +25% sát thương phép | +1 mọi kỹ năng, +15% kháng | **Cộng hưởng Nguyên tố:** mỗi nguyên tố đã đánh trúng trong 4 giây +12% sát thương (tối đa +36%) | **Thiên Tai:** mỗi 10 giây thiên thạch lửa-băng-sét rơi vào cụm quái, 300% sát thương kỹ năng mạnh nhất |
+| Chiến Thần Bất Diệt | Chiến Binh | +30% sát thương vật lý | +1 mọi kỹ năng, +20% tổng giáp | **Bất Diệt:** máu về 0 thì hồi 50% máu, bất tử 2 giây (hồi chiêu 90 giây) | **Thần Kiếm:** đòn chí mạng tạo sóng chém bán kính 120 px, 150% sát thương đòn đó |
+| Vua Muôn Thú | Triệu hồi sư | +30% sát thương thú | +1 mọi kỹ năng, +1 con mỗi loại thú | **Huyết Mạch Bầy Đàn:** thú hút 5% sát thương thành máu; thú chết thì thú khác +20% sát thương 8 giây | **Thú Linh Hồn:** mỗi 25 giây gọi Sói Linh Hồn khổng lồ 12 giây (khiêu khích, cắn lan rộng, 300% sói đầu đàn) |
+
+Món: Pháp sư (mũ, áo, gậy, nhẫn, dây chuyền); Chiến Binh (mũ, giáp, đại kiếm, găng, đai); Triệu hồi sư (mũ, áo, vật tổ, bùa tay phụ, ủng). Chỉ số mới: `hpRegenPct`, `armorPct`, `summonCritPct`, `summonExtra`.
+
+**Tỉ lệ rơi của quái thường ×1,4** (bù cho màn 5 phút ít quái hơn): đồ 0,4% → 0,56%, vàng 2% → 2,8%, rune 0,25% → 0,35%.
+
 ## Màn 5 phút, đồ theo cấp nhân vật, gọi boss sớm (bản 1.12)
 
 - **Mỗi màn 5 phút** (`run.duration` 300). Lịch trong `maps/1-1.json` nén ×5/7, mật độ quái giữ nguyên:

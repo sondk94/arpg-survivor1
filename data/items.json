@@ -114,13 +114,23 @@
       ],
       "weight": 0,
       "sellMult": 4
+    },
+    "ssr": {
+      "name": "Thần thoại (SSR)",
+      "color": "#ff5a36",
+      "affixes": [
+        0,
+        0
+      ],
+      "weight": 0,
+      "sellMult": 30
     }
   },
   "drops": {
     "normal": {
-      "itemChance": 0.004,
-      "goldChance": 0.02,
-      "runeChance": 0.0025
+      "itemChance": 0.0056,
+      "goldChance": 0.028,
+      "runeChance": 0.0035
     },
     "elite": {
       "items": 1,
@@ -176,6 +186,17 @@
         4,
         10
       ]
+    },
+    "ssr": {
+      "chance": {
+        "normal": 0,
+        "nightmare": 0.01,
+        "hell": 0.03
+      },
+      "minLevel": 60,
+      "ownClass": 0.7,
+      "req": 60,
+      "sockets": 1
     }
   },
   "stats": {
@@ -292,6 +313,18 @@
     },
     "leechPct": {
       "fmt": "Hút {v}% sát thương thành máu"
+    },
+    "hpRegenPct": {
+      "fmt": "+{v}% máu tối đa hồi mỗi giây"
+    },
+    "armorPct": {
+      "fmt": "+{v}% tổng giáp"
+    },
+    "summonCritPct": {
+      "fmt": "+{v}% chí mạng của vật triệu hồi"
+    },
+    "summonExtra": {
+      "fmt": "+{v} con cho mỗi loại thú"
     }
   },
   "bases": [
@@ -2346,7 +2379,8 @@
     "magic": 0.15,
     "rare": 0.1,
     "set": 0,
-    "unique": 0
+    "unique": 0,
+    "ssr": 0
   },
   "crafting": {
     "salvage": {
@@ -2355,7 +2389,8 @@
       "rare": 8,
       "set": 15,
       "unique": 20,
-      "rune": 0
+      "rune": 0,
+      "ssr": 0
     },
     "salvagePerIlvl": 0.1,
     "reroll": {
@@ -2814,6 +2849,268 @@
           }
         }
       ]
+    },
+    {
+      "id": "ssr_mage",
+      "name": "Thiên Mệnh Nguyên Tố",
+      "rarity": "ssr",
+      "class": "mage",
+      "tree": null,
+      "bonus": {
+        "2": {
+          "spellDmgPct": 25
+        },
+        "3": {
+          "allSkills": 1,
+          "resAll": 15
+        }
+      },
+      "special": {
+        "4": {
+          "id": "elementResonance",
+          "desc": "Cộng hưởng Nguyên tố: mỗi loại nguyên tố (lửa, băng, sét) đã đánh trúng quái trong 4 giây gần nhất cho +12% sát thương (tối đa +36%)",
+          "perElement": 0.12,
+          "window": 4
+        },
+        "5": {
+          "id": "cataclysm",
+          "desc": "Thiên Tai: mỗi 10 giây, một thiên thạch lửa-băng-sét rơi vào cụm quái đông nhất, gây 300% sát thương của kỹ năng mạnh nhất đang gắn",
+          "interval": 10,
+          "mult": 3,
+          "radius": 120,
+          "range": 550
+        }
+      },
+      "pieces": [
+        {
+          "id": "ssr_m_head",
+          "name": "Mão Thiên Mệnh",
+          "base": "diadem",
+          "req": 60,
+          "stats": {
+            "ene": 15,
+            "spellDmgPct": 12,
+            "maxMana": 20
+          }
+        },
+        {
+          "id": "ssr_m_body",
+          "name": "Áo Choàng Tinh Vân",
+          "base": "archon_robe",
+          "req": 60,
+          "stats": {
+            "armor": 40,
+            "maxHp": 40,
+            "resAll": 15
+          }
+        },
+        {
+          "id": "ssr_m_weapon",
+          "name": "Gậy Ba Ngôi",
+          "base": "void_staff",
+          "req": 60,
+          "stats": {
+            "spellDmgPct": 30,
+            "allSkills": 1
+          }
+        },
+        {
+          "id": "ssr_m_ring",
+          "name": "Nhẫn Lưu Ly",
+          "base": "ring",
+          "req": 60,
+          "stats": {
+            "fireDmgPct": 10,
+            "coldDmgPct": 10,
+            "lightningDmgPct": 10,
+            "critChance": 5
+          }
+        },
+        {
+          "id": "ssr_m_amulet",
+          "name": "Dây Chuyền Nhật Nguyệt",
+          "base": "amulet",
+          "req": 60,
+          "stats": {
+            "manaRegenPct": 20,
+            "cdSpeedPct": 8
+          }
+        }
+      ]
+    },
+    {
+      "id": "ssr_warrior",
+      "name": "Chiến Thần Bất Diệt",
+      "rarity": "ssr",
+      "class": "warrior",
+      "tree": null,
+      "bonus": {
+        "2": {
+          "physDmgPct": 30
+        },
+        "3": {
+          "allSkills": 1,
+          "armorPct": 20
+        }
+      },
+      "special": {
+        "4": {
+          "id": "undying",
+          "desc": "Bất Diệt: khi máu về 0, hồi ngay 50% máu và bất tử 2 giây (hồi chiêu 90 giây)",
+          "heal": 0.5,
+          "invuln": 2,
+          "cooldown": 90
+        },
+        "5": {
+          "id": "critWave",
+          "desc": "Thần Kiếm: mỗi đòn chí mạng tạo sóng chém vòng tròn bán kính 120 px quanh bạn, gây 150% sát thương đòn đó",
+          "radius": 120,
+          "mult": 1.5,
+          "icd": 0.25
+        }
+      },
+      "pieces": [
+        {
+          "id": "ssr_w_head",
+          "name": "Mũ Sừng Chiến Thần",
+          "base": "great_helm",
+          "req": 60,
+          "stats": {
+            "str": 15,
+            "armor": 30,
+            "maxHp": 30
+          }
+        },
+        {
+          "id": "ssr_w_body",
+          "name": "Giáp Thép Rồng",
+          "base": "plate",
+          "req": 60,
+          "stats": {
+            "armor": 80,
+            "maxHp": 60,
+            "resAll": 10
+          }
+        },
+        {
+          "id": "ssr_w_weapon",
+          "name": "Đại Kiếm Diệt Thế",
+          "base": "titan_blade",
+          "req": 60,
+          "stats": {
+            "physDmgPct": 40,
+            "allSkills": 1
+          }
+        },
+        {
+          "id": "ssr_w_gloves",
+          "name": "Găng Huyết Thệ",
+          "base": "leather_gloves",
+          "req": 60,
+          "stats": {
+            "leechPct": 3,
+            "critChance": 5
+          }
+        },
+        {
+          "id": "ssr_w_belt",
+          "name": "Đai Bất Khuất",
+          "base": "leather_belt",
+          "req": 60,
+          "stats": {
+            "vit": 20,
+            "hpRegenPct": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "ssr_summoner",
+      "name": "Vua Muôn Thú",
+      "rarity": "ssr",
+      "class": "summoner",
+      "tree": null,
+      "bonus": {
+        "2": {
+          "summonDmgPct": 30
+        },
+        "3": {
+          "allSkills": 1,
+          "summonExtra": 1
+        }
+      },
+      "special": {
+        "4": {
+          "id": "packBlood",
+          "desc": "Huyết Mạch Bầy Đàn: thú hút 5% sát thương gây ra thành máu cho chính chúng; thú chết thì các thú còn lại +20% sát thương trong 8 giây",
+          "leech": 0.05,
+          "rage": 0.2,
+          "rageDur": 8
+        },
+        "5": {
+          "id": "spiritWolf",
+          "desc": "Thú Linh Hồn: mỗi 25 giây gọi một Sói Linh Hồn khổng lồ trong 12 giây, khiêu khích quái, cắn lan vùng rộng, sát thương bằng 300% sói đầu đàn",
+          "interval": 25,
+          "duration": 12,
+          "dmgMult": 3,
+          "hpMult": 3,
+          "taunt": 220,
+          "cleave": 90
+        }
+      },
+      "pieces": [
+        {
+          "id": "ssr_s_head",
+          "name": "Mão Gạc Vương Giả",
+          "base": "diadem",
+          "req": 60,
+          "stats": {
+            "ene": 15,
+            "summonHpPct": 20
+          }
+        },
+        {
+          "id": "ssr_s_body",
+          "name": "Áo Lông Thần Thú",
+          "base": "leather",
+          "req": 60,
+          "stats": {
+            "armor": 50,
+            "maxHp": 50,
+            "resAll": 15
+          }
+        },
+        {
+          "id": "ssr_s_weapon",
+          "name": "Vật Tổ Cổ Thần",
+          "base": "primal_totem",
+          "req": 60,
+          "stats": {
+            "summonDmgPct": 40,
+            "allSkills": 1
+          }
+        },
+        {
+          "id": "ssr_s_offhand",
+          "name": "Bùa Linh Hồn Rừng",
+          "base": "spirit_charm",
+          "req": 60,
+          "stats": {
+            "summonHpPct": 25,
+            "summonCritPct": 5
+          }
+        },
+        {
+          "id": "ssr_s_boots",
+          "name": "Ủng Lãnh Địa",
+          "base": "leather_boots",
+          "req": 60,
+          "stats": {
+            "moveSpeedPct": 10,
+            "manaRegenPct": 20
+          }
+        }
+      ]
     }
   ],
   "ilvlScaling": {
@@ -2843,13 +3140,18 @@
       "freezeHits",
       "cdSpeedPct",
       "moveSpeedPct",
-      "leechPct"
+      "leechPct",
+      "summonExtra"
     ],
     "reqOffset": 10,
     "tierWeights": [
       3,
       2,
       1
-    ]
+    ],
+    "ssr": {
+      "perLevel": 0.0165,
+      "max": 1.65
+    }
   }
 }

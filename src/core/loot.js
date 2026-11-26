@@ -3,7 +3,7 @@ import * as P from './progression.js';
 import { itemScore, itemStats, sellValue, salvageValue, slotsForType, meetsReq, totalStr } from './items.js';
 
 export const BUYBACK_MAX = 10;
-const RARITY_ORDER = { set: 0, unique: 1, rare: 2, magic: 3, normal: 4, rune: 5 };
+const RARITY_ORDER = { ssr: -1, set: 0, unique: 1, rare: 2, magic: 3, normal: 4, rune: 5 };
 
 // Chỉ số chỉ có ích cho một lớp: dùng để nhận ra đồ "sai lớp".
 const CLASS_KEYS = {
@@ -70,7 +70,7 @@ export function itemVerdict(it, ch, data, tree = mainTree(ch, data)) {
   return 'same';
 }
 
-const isSpecial = (it) => it.rarity === 'unique' || it.rarity === 'set' || it.type === 'rune';
+const isSpecial = (it) => it.rarity === 'unique' || it.rarity === 'set' || it.rarity === 'ssr' || it.type === 'rune';
 
 // Chỉ số các ô kho đồ khớp bộ lọc bán / phân giải nhanh. Không bao giờ lấy đồ đã khoá.
 // filter: 'normal' | 'magic' | 'worse' | 'wrongClass' | 'junk'. includeSpecial: tính cả độc nhất, đồ bộ, rune.
@@ -123,7 +123,7 @@ export function salvageItems(ch, idxs, data) {
   let shards = 0, n = 0;
   for (const i of idxs) {
     const it = ch.inventory[i];
-    if (!it || it.locked) continue;
+    if (!it || it.locked || it.rarity === 'ssr') continue; // đồ Thần thoại không phân giải được
     shards += salvageValue(it, data); n++;
     ch.inventory[i] = null;
   }

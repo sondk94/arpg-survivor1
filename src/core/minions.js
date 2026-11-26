@@ -6,9 +6,9 @@ const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 // Số con mong muốn của một kỹ năng gọi thú theo cấp.
-export function minionCount(sk, lvl) {
+export function minionCount(sk, lvl, extra = 0) {
   const m = sk.minion;
-  return (m.countBase || 1) + (m.countAt || []).filter((l) => lvl >= l).length;
+  return (m.countBase || 1) + (m.countAt || []).filter((l) => lvl >= l).length + extra;
 }
 
 export const MinionMixin = {
@@ -28,9 +28,11 @@ export const MinionMixin = {
 
   // Gọi thú: gọi bù đủ số con theo cấp kỹ năng. Không thiếu con nào thì không tốn mana.
   castSummon(sk, lvl) {
-    const want = minionCount(sk, lvl);
-    const have = this.aliveMinions((m) => m.skillId === sk.id);
-    const cap = this.minionCfg().maxTotal;
+    const extra = this.stats.summonExtra || 0;
+    const want = minionCount(sk, lvl, extra);
+    const have = this.aliveMinions((m) => m.skillId === sk.id && !m.special);
+    // Bộ SSR Vua Muôn Thú: +1 con mỗi loại, giới hạn tổng nâng thêm 2.
+    const cap = this.minionCfg().maxTotal + (extra ? 2 : 0);
     let n = Math.min(want - have, cap - this.aliveMinions());
     if (n <= 0) return false;
     const p = this.player;
@@ -72,7 +74,11 @@ export const MinionMixin = {
   minionHit(m, e, sk, lvl, scale = 1) {
     let mult = this.skillMult(sk);
     if ((m.kind === 'wolf') && this.aliveMinions((o) => o.kind === 'alpha')) mult += this.data.skills.alpha_wolf.minion.packAura || 0;
-    this.damageEnemy(e, this.rollSkill(sk, lvl, mult) * scale, sk.element, { critBonus: this.stats.summonCrit || 0 });
+    const pb = this.stats.specials?.packBlood;
+    if (pb && this.packRageT > 0) mult += pb.rage;
+    const dealt = this.damageEnemy(e, this.rollSkill(sk, lvl, mult) * scale * (m.dmgScale || 1), sk.element, { critBonus: this.stats.summonCrit || 0 });
+    // Huyết Mạch Bầy Đàn: thú hút máu cho chính mình.
+    if (pb && dealt > 0) m.hp = Math.min(m.maxHp, m.hp + dealt * pb.leech);
     // Nanh Độc: sói và sói đầu đàn gây độc cộng dồn.
     if ((m.kind === 'wolf' || m.kind === 'alpha') && !e.dead) {
       const vl = this.lvl('venom_fangs');
@@ -119,7 +125,12 @@ export const MinionMixin = {
       const sk = this.data.skills[m.skillId];
       const lvl = Math.max(1, this.lvl(m.skillId));
       const d = sk.minion;
-      if (rescale) {
+      // Sói Linh Hồn (bộ SSR) tồn tại có hạn.
+      if (m.ttl !== undefined) {
+        m.ttl -= dt;
+        if (m.ttl <= 0) { m.dead = true; this.addFx({ kind: 'death', x: m.x, y: m.y, dur: 0.5, r: m.r, color: '#9fd8ff' }); continue; }
+      }
+      if (rescale && !m.special) {
         const mx = this.minionMaxHp(sk, lvl);
         if (Math.abs(mx - m.maxHp) > 0.5) { m.hp = Math.max(1, m.hp * (mx / m.maxHp)); m.maxHp = mx; }
       }
@@ -177,9 +188,10 @@ export const MinionMixin = {
         m.atkT = d.atkInterval;
         m.swing = 0.2;
         m.faceX = dx / dist; m.faceY = dy / dist;
-        if (d.aoe || d.cleave) {
+        const cleave = m.cleave ?? d.cleave;
+        if (d.aoe || cleave) {
           // Gấu vả vùng nhỏ trước mặt; sói đầu đàn cắn lan sang quái cạnh mục tiêu (60%).
-          const r = d.aoe || d.cleave;
+          const r = d.aoe || cleave;
           const cx = d.aoe ? m.x + m.faceX * m.r : t.x, cy = d.aoe ? m.y + m.faceY * m.r : t.y;
           const list = [];
           this.grid.query(cx, cy, r + 45, (e) => {
@@ -240,6 +252,8 @@ export const MinionMixin = {
       }
       m.dead = true;
       this.log.minionDeaths = (this.log.minionDeaths || 0) + 1;
+      const pb = this.stats.specials?.packBlood;
+      if (pb) this.packRageT = pb.rageDur;
       this.addFx({ kind: 'death', x: m.x, y: m.y, dur: 0.3, r: m.r, color: this.data.skills[m.skillId].color });
     }
   },
@@ -254,7 +268,7 @@ export const MinionMixin = {
       if (m.dead || m.flying) continue;
       const d = (m.x - e.x) ** 2 + (m.y - e.y) ** 2;
       if (d < bd) { bd = d; best = m; }
-      const tr = this.data.skills[m.skillId].minion.taunt;
+      const tr = m.taunt ?? this.data.skills[m.skillId].minion.taunt;
       if (tr && d < tr * tr && d < td) { td = d; taunt = m; }
     }
     return taunt || best;
@@ -363,6 +377,25 @@ export const MinionMixin = {
       const mult = this.skillMult(z.skill);
       this.areaDamage(z.x, z.y, z.r, () => z.dps * z.tick * mult, z.element, { critBonus: this.stats.summonCrit || 0 });
     }
+  },
+
+  // Bộ SSR Vua Muôn Thú (5 món): Sói Linh Hồn khổng lồ, có hạn, khiêu khích, cắn lan rộng.
+  spawnSpiritWolf(sp) {
+    const sk = this.data.skills.alpha_wolf;
+    const lvl = Math.max(1, this.lvl('alpha_wolf'));
+    const p = this.player;
+    const m = this.spawnMinion(sk, lvl, clamp(p.x + 40, 20, this.W - 20), clamp(p.y, 20, this.H - 20));
+    m.kind = 'spirit';
+    m.special = true;
+    m.r = sk.minion.radius * 1.6;
+    m.maxHp = m.hp = this.minionMaxHp(sk, lvl) * sp.hpMult;
+    m.dmgScale = sp.dmgMult;
+    m.taunt = sp.taunt;
+    m.cleave = sp.cleave;
+    m.ttl = sp.duration;
+    this.addFx({ kind: 'nova', x: m.x, y: m.y, dur: 0.6, r: 90, color: '#9fd8ff' });
+    this.showBanner('Sói Linh Hồn xuất hiện!', 1.5);
+    return m;
   },
 
   // Linh Hồn Thú: hồi mana và kháng theo số thú đang sống (tối đa 10).

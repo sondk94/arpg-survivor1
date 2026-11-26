@@ -154,7 +154,7 @@ export function describeSkill(sk, lvl, ch, data, stats) {
     case 'summon_crows': {
       const m = sk.minion;
       lines.push(['Sát thương mỗi đòn', range(P.hitRange(sk, lvl, stats), mult)], ['Đánh mỗi', `${num(m.atkInterval)} giây`],
-        ['Số con', minionCount(sk, lvl)], ['Máu mỗi con', num(P.lv(m.hp, lvl) * (stats.summonHpMult || 1))],
+        ['Số con', minionCount(sk, lvl, stats.summonExtra || 0)], ['Máu mỗi con', num(P.lv(m.hp, lvl) * (stats.summonHpMult || 1))],
         ['Giáp', num((m.armor || 0) + (stats.summonArmor || 0))]);
       if (m.taunt) lines.push(['Khiêu khích', `quái trong ${m.taunt} px`]);
       if (m.cleave) lines.push(['Cắn lan', `60% sát thương, bán kính ${m.cleave} px`]);

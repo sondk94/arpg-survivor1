@@ -631,12 +631,13 @@ export class Panel {
     if (it.set) {
       const set = data.items.setsById[it.set];
       const n = I.equippedSetCount(ch, it.set);
-      setl = `<div class="tset">Bộ ${esc(set.name)} ${n}/${set.pieces.length} · ${Object.entries(set.bonus).map(([need, bo]) => `<span class="${n >= Number(need) ? 'on' : ''}">đủ ${need}: ${esc(Object.entries(bo).map(([k, x]) => I.formatStat(k, x, data)).join(', '))}</span>`).join(' · ')}</div>`;
+      setl = `<div class="tset">Bộ ${esc(set.name)} ${n}/${set.pieces.length} · ${Object.entries(set.bonus).map(([need, bo]) => `<span class="${n >= Number(need) ? 'on' : ''}">đủ ${need}: ${esc(Object.entries(bo).map(([k, x]) => I.formatStat(k, x, data)).join(', '))}</span>`).join(' · ')}</div>` +
+        Object.entries(set.special || {}).map(([need, sp]) => `<div class="tset sp ${n >= Number(need) ? 'on' : ''}">đủ ${need}: ${esc(sp.desc)}</div>`).join('');
     }
     const pw = it.power > 1.0005 ? ` · sức mạnh +${Math.round((it.power - 1) * 100)}%` : '';
     return `<div class="tcard" style="--rc:${R.color}">
       <div class="tn">${esc(it.name)} ${vtxt}</div>
-      <div class="ts">${esc(it.baseName)} · ${esc(R.name)} · cấp đồ ${it.ilvl}${pw} · <span class="${lvlOk ? '' : 'bad'}">cần cấp ${it.req.level}</span>${it.req.str ? ` · <span class="${strOk ? '' : 'bad'}">${it.req.str} Sức mạnh</span>` : ''}</div>
+      <div class="ts">${it.rarity === 'ssr' ? `${esc(data.items.setsById[it.set]?.class ? data.classes[data.items.setsById[it.set].class].short : '')} · ` : ''}${esc(it.baseName)} · ${esc(R.name)} · cấp đồ ${it.ilvl}${pw} · <span class="${lvlOk ? '' : 'bad'}">cần cấp ${it.req.level}</span>${it.req.str ? ` · <span class="${strOk ? '' : 'bad'}">${it.req.str} Sức mạnh</span>` : ''}</div>
       ${lines}
       ${lost.length ? `<div class="tl lost">mất: ${esc(lost.join(', '))}</div>` : ''}
       ${cmp ? `<div class="ts">so với ${esc(cmp.name)}</div>` : where !== 'eq' && v !== 'cant' ? '<div class="ts">ô này đang trống</div>' : ''}
@@ -692,7 +693,7 @@ export class Panel {
     const vb = v === 'up' ? '<b class="vd up" title="Tốt hơn đồ đang mặc">↑</b>' : v === 'down' ? '<b class="vd down" title="Kém hơn đồ đang mặc">↓</b>' : v === 'cant' ? `<b class="vd cant" title="${L.wrongClass(it, ch) ? 'Đồ của lớp khác' : 'Chưa đủ yêu cầu'}">✕</b>` : '';
     const flags = `${it.locked ? '<b class="lk" title="Đã khoá">🔒</b>' : ''}${it.junk ? '<b class="jk" title="Rác: tự bán khi về làng">🗑</b>' : ''}`;
     const qty = I.runeQty(it) > 1 ? `<b class="qty">×${I.runeQty(it)}</b>` : '';
-    return `<div class="cell ${sel ? 'sel' : ''} ${ok ? '' : 'unmet'} ${it.junk ? 'junk' : ''}" data-cell="${where}:${key}" style="--rc:${col}">
+    return `<div class="cell ${sel ? 'sel' : ''} ${ok ? '' : 'unmet'} ${it.junk ? 'junk' : ''} ${it.rarity === 'ssr' ? 'ssr' : ''}" data-cell="${where}:${key}" style="--rc:${col}">
       <span class="ic">${esc(typeIcon(it.type))}</span><span class="nm">${esc(it.name)}</span>${dots}${vb}${flags}${qty}</div>`;
   }
 
