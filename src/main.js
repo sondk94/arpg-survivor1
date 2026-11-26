@@ -59,6 +59,7 @@ class App {
       onChanged: () => { this.refresh(); this.save(); },
     });
     $('#btn-plus').addEventListener('click', () => this.togglePanel());
+    $('#btn-boss').addEventListener('click', () => this.callBoss());
     setupDebug($('#debug'), this);
     $('#debug').classList.toggle('hidden', !this.ui.debugVisible);
     document.addEventListener('visibilitychange', () => {
@@ -148,6 +149,7 @@ class App {
     if (k === 'Tab' || k === 'c' || k === 'C') this.togglePanel('char');
     else if (k === 'i' || k === 'I') this.togglePanel('items');
     else if (k === 'Escape' && this.panel.isOpen) this.panel.close();
+    else if (k === 'b' || k === 'B') this.callBoss();
     else if (['1', '2', '3', '4'].includes(k) && !this.panel.isOpen && this.game && !this.game.over) {
       const attr = P.ATTRS[Number(k) - 1];
       if (this.game.quickAdd(attr)) this.game.addText(this.game.player.x, this.game.player.y - 40, `+1 ${ATTR_NAMES[attr]}`, '#ffe9a8', 13);
@@ -192,7 +194,16 @@ class App {
     }
   }
 
+  // Gọi boss sớm (đủ số quái đã giết): nút trên màn hình hoặc phím B.
+  callBoss() {
+    const g = this.game;
+    if (this.state !== 'run' || !g || this.panel.isOpen) return;
+    if (g.callBoss()) $('#btn-boss').classList.add('hidden');
+  }
+
   updatePlus() {
+    const g = this.game;
+    $('#btn-boss').classList.toggle('hidden', !(this.state === 'run' && g && g.canCallBoss() && !this.panel.isOpen));
     const btn = $('#btn-plus');
     const pts = this.ch.attrPoints + this.ch.skillPoints;
     btn.classList.toggle('blink', pts > 0);
@@ -341,6 +352,7 @@ class App {
     this.state = 'village';
     this.game = null;
     $('#btn-plus').classList.add('hidden');
+    $('#btn-boss').classList.add('hidden');
     this.canvas.classList.remove('dim');
     this.renderer.draw(null, this.ui);
     this.viewChap = null;
@@ -355,6 +367,7 @@ class App {
     const v = $('#village');
     v.classList.remove('hidden');
     $('#btn-plus').classList.add('hidden');
+    $('#btn-boss').classList.add('hidden');
     const data = this.data;
     const chars = this.roster.chars;
     if (!chars.length) creating = true;
@@ -501,7 +514,7 @@ class App {
           <b>${esc(m.id)}</b><span>${open ? esc(m.name) : 'Chưa mở'}</span><small>${cleared ? '✓ đã qua · ' : open ? '' : '🔒 '}${pct ? `máu +${pct}% · ST +${dpct}%` : 'gốc'}${rec ? ` · ⏱ ${fmtTime(rec)}` : ''}</small></button>`;
       }).join('')}</div></div>`;
     }
-    const dInfo = D.id === 'normal' ? '' : ` · ${esc(D.name)}: máu quái ×${D.hpMult}, sát thương ×${D.dmgMult}, quái kháng +${Math.round(D.monsterResist * 100)}%, bạn bị trừ ${Math.round(D.playerResistPenalty * 100)}% kháng, kinh nghiệm ×${D.xpMult}, cấp đồ +${D.ilvlBonus}`;
+    const dInfo = D.id === 'normal' ? '' : ` · ${esc(D.name)}: máu quái ×${D.hpMult}, sát thương ×${D.dmgMult}, quái kháng +${Math.round(D.monsterResist * 100)}%, bạn bị trừ ${Math.round(D.playerResistPenalty * 100)}% kháng, kinh nghiệm ×${D.xpMult}, đồ hiếm / độc nhất ×${D.rareMult}`;
     return `<section class="tests mappicker"><div class="dtabs">${dtabs}</div><h3>Chọn màn <small>${done}/${total} màn đã qua · mỗi màn: máu quái +${Math.round((data.campaign.hpStep ?? 0) * 100)}%, sát thương +${Math.round((data.campaign.dmgStep ?? 0) * 100)}% (cộng dồn), kinh nghiệm +${Math.round((data.campaign.rewardStep ?? 0) * 100)}%${dInfo} · bấm đúp để vào ngay</small></h3>${html}
       ${this.recordsHtml(diff)}</section>`;
   }
@@ -651,7 +664,7 @@ class App {
     const pct = Math.round((cur.hpMult - 1) * 100), dpct = Math.round((cur.dmgMult - 1) * 100);
     const rec = ch.records?.[`${diff}:${cur.id}`];
     const clears = ch.mapClears?.[P.clearKey(diff, cur.id)] || 0;
-    const dInfo = D.id === 'normal' ? '' : `<div class="mi-diff" style="color:${D.color}">${esc(D.name)}: máu quái ×${D.hpMult}, sát thương ×${D.dmgMult}, quái kháng +${Math.round(D.monsterResist * 100)}%, bạn bị trừ ${Math.round(D.playerResistPenalty * 100)}% kháng, kinh nghiệm ×${D.xpMult}, cấp đồ +${D.ilvlBonus}</div>`;
+    const dInfo = D.id === 'normal' ? '' : `<div class="mi-diff" style="color:${D.color}">${esc(D.name)}: máu quái ×${D.hpMult}, sát thương ×${D.dmgMult}, quái kháng +${Math.round(D.monsterResist * 100)}%, bạn bị trừ ${Math.round(D.playerResistPenalty * 100)}% kháng, kinh nghiệm ×${D.xpMult}, đồ hiếm / độc nhất ×${D.rareMult}</div>`;
     return `<div class="chap-tabs">${tabs}</div>
       <div class="path">${nodes}</div>
       <div class="mapinfo">

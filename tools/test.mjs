@@ -943,4 +943,54 @@ t('Chiến Binh bền hơn (bản 1.11): tổng giáp ×1,5, hút máu tối đa
   assert.equal(sm.armor, 200);
 });
 
+t('Màn 5 phút (bản 1.12): boss 4:28, cuồng nộ 5:00; kinh nghiệm quái ×1,4; đồ rơi theo cấp nhân vật', () => {
+  assert.equal(data.config.run.duration, 300);
+  const m = data.maps['1-1'];
+  const ev = (type) => m.events.find((e) => e.type === type).t;
+  assert.equal(ev('boss'), 268);
+  assert.equal(ev('enrage'), 300);
+  const c = P.createCharacter(data, 'mage');
+  c.level = 37;
+  const g = new Game(data, c, { seed: 1, headless: true, mapId: '2-3', difficulty: 'normal' });
+  const z = g.spawnEnemy('zombie', 100, 100);
+  assert.ok(Math.abs(z.xp - data.monsters.zombie.xp * g.map.rewardMult * 1.4) < 1e-9);
+  assert.equal(g.itemLevel(), 37);
+  assert.equal(g.itemLevel(5), 42);
+  g.time = 200; // không còn cộng theo phút chơi
+  assert.equal(g.itemLevel(), 37);
+  // đồ thường / xanh / vàng rơi từ quái thường luôn mặc được ngay (yêu cầu ≤ cấp nhân vật)
+  const r = new RNG(3);
+  for (let i = 0; i < 100; i++) {
+    const it = I.generateItem(r, data, g.itemLevel(), { rarity: ['normal', 'magic', 'rare'][i % 3] });
+    assert.ok(it.req.level <= c.level, `${it.name} cần ${it.req.level}`);
+  }
+});
+
+t('Gọi boss sớm: đủ 800 quái thì nhảy tới lúc quái rút lui, bỏ tinh anh / trùm nhỏ còn lại, boss ra sau ~14 giây', () => {
+  const c = P.createCharacter(data, 'mage');
+  const g = new Game(data, c, { seed: 2, headless: true });
+  g.updateSpawner = () => {};
+  g.god = true;
+  for (let i = 0; i < 60 * 70; i++) g.update(1 / 60); // tới 1:10 (sau tinh anh đầu)
+  assert.equal(g.canCallBoss(), false); // chưa đủ quái
+  g.kills = data.config.run.callBossKills;
+  assert.equal(g.canCallBoss(), true);
+  const t0 = g.time;
+  assert.equal(g.callBoss(), true);
+  assert.equal(g.retreating, true);
+  assert.ok(Math.abs(g.clock - m_ret()) < 1e-6);
+  assert.equal(g.canCallBoss(), false);
+  assert.equal(g.miniboss, null); // trùm nhỏ (2:30) bị bỏ qua
+  for (let i = 0; i < 60 * 15; i++) g.update(1 / 60);
+  assert.ok(g.bossSpawned && g.boss);
+  assert.ok(g.time - t0 < 16);
+  function m_ret() { return data.maps['1-1'].events.find((e) => e.type === 'retreat').t; }
+});
+
+// Nạp các file giao diện để bắt lỗi cú pháp (vd. khai báo trùng tên biến) mà các kiểm tra lõi không chạm tới.
+for (const f of ['render', 'panel', 'sprites', 'skilltext', 'tooltip', 'debug', 'input', 'telemetry']) {
+  try { await import(`../src/ui/${f}.js`); n++; console.log(`ok - nạp được src/ui/${f}.js`); }
+  catch (e) { console.error(`LỖI - src/ui/${f}.js: ${e.message}`); throw e; }
+}
+
 console.log(`\n${n} kiểm tra đều qua.`);

@@ -714,7 +714,7 @@ export class Renderer {
     const small = w < 700;
 
     // Đồng hồ & số quái đã giết (giữa trên)
-    const remain = g.duration - g.time;
+    const remain = g.duration - g.clock;
     ctx.textAlign = 'center';
     ctx.font = `800 ${small ? 26 : 34}px system-ui, sans-serif`;
     ctx.fillStyle = '#000';
@@ -724,7 +724,8 @@ export class Renderer {
     ctx.fillText(timeText, w / 2, 40);
     ctx.font = '600 14px system-ui, sans-serif';
     ctx.fillStyle = '#c8c2b0';
-    ctx.fillText(`Đã giết: ${g.kills}`, w / 2, 60);
+    const bossNeed = g.cfg.run.callBossKills;
+    ctx.fillText(bossNeed && !g.bossSpawned && !g.retreating && !g.bossCalled && g.kills < bossNeed ? `Đã giết: ${g.kills} / ${bossNeed}` : `Đã giết: ${g.kills}`, w / 2, 60);
     ctx.textAlign = 'right';
     ctx.font = '600 13px system-ui, sans-serif';
     ctx.fillStyle = '#bdb6a2';

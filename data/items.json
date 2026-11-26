@@ -158,7 +158,6 @@
       "max": 6,
       "perIlvl": 0.6
     },
-    "ilvlPerMinute": 1.4,
     "sellBase": 8,
     "sellPerIlvl": 2,
     "chest": {

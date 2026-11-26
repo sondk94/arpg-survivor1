@@ -1,6 +1,6 @@
 # ARPG Survivor – Giai đoạn 1 (Lõi ARPG)
 
-**20 màn chơi** (4 chương × 5 màn, mỗi màn 7 phút), **3 lớp nhân vật**: Pháp sư Nguyên tố (Lửa / Băng / Sét), Chiến Binh cận chiến (Vũ Khí / Tiếng Thét / Huyết Chiến) và Triệu hồi sư Hoang dã (Bầy Sói / Mãnh Thú / Bầy Chim & Côn Trùng), mỗi lớp 3 nhánh × 6 kỹ năng. Có đồ đạc 4 bậc, kho đồ, làng, rương chung, lưu game, xuất/nhập mã nhân vật. Chạy trên trình duyệt, HTML5 Canvas + JavaScript thuần, không cần build, không có thư viện ngoài. Đồ hoạ vẽ bằng hình khối: nhân vật có thân, tay, đầu và chân chạy theo nhịp bước.
+**20 màn chơi** (4 chương × 5 màn, mỗi màn 5 phút), **3 lớp nhân vật**: Pháp sư Nguyên tố (Lửa / Băng / Sét), Chiến Binh cận chiến (Vũ Khí / Tiếng Thét / Huyết Chiến) và Triệu hồi sư Hoang dã (Bầy Sói / Mãnh Thú / Bầy Chim & Côn Trùng), mỗi lớp 3 nhánh × 6 kỹ năng. Có đồ đạc 4 bậc, kho đồ, làng, rương chung, lưu game, xuất/nhập mã nhân vật. Chạy trên trình duyệt, HTML5 Canvas + JavaScript thuần, không cần build, không có thư viện ngoài. Đồ hoạ vẽ bằng hình khối: nhân vật có thân, tay, đầu và chân chạy theo nhịp bước.
 
 ## Chạy game
 
@@ -105,6 +105,22 @@ Chỉ số cấp 1 so với pháp sư:
 | 4 | 211 / 239 (−12%) | 75 / 50 (+50%) | 20 / 27 giây |
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
+
+## Màn 5 phút, đồ theo cấp nhân vật, gọi boss sớm (bản 1.12)
+
+- **Mỗi màn 5 phút** (`run.duration` 300). Lịch trong `maps/1-1.json` nén ×5/7, mật độ quái giữ nguyên:
+
+  | Sự kiện | Trước | Giờ |
+  |---|---|---|
+  | Tinh anh | 1:25, 2:25, 4:10, 4:55, 5:35 | 1:01, 1:44, 2:59, 3:31, 3:59 |
+  | Trùm nhỏ | 3:30 | 2:30 |
+  | Quái rút lui | 5:55 | 4:14 |
+  | Boss | 6:15 | 4:28 |
+  | Cuồng nộ | 7:00 | 5:00 |
+
+- Kinh nghiệm mỗi quái **×1,4** (`xp.killMult`) để tốc độ lên cấp theo thời gian chơi thật giữ như cũ. Một màn còn khoảng 1.500 quái (trước khoảng 2.100).
+- **Đồ rơi theo cấp nhân vật:** cấp đồ = cấp nhân vật (+2 tinh anh, +3 trùm nhỏ, +5 boss, +6 rương thưởng). Lên cấp giữa màn thì đồ rơi mạnh lên ngay. Cấp bản đồ, số phút đã chơi và cấp đồ cộng thêm của độ khó không còn ảnh hưởng tới cấp đồ. Độ khó cao vẫn tăng tỉ lệ ra đồ hiếm / độc nhất.
+- **Gọi boss sớm:** giết đủ **800 quái** (`run.callBossKills`) thì hiện nút "☠ Gọi boss" (phím **B**). Bấm vào, đồng hồ màn nhảy tới lúc quái rút lui, tinh anh / trùm nhỏ chưa xuất hiện bị bỏ qua, boss ra sau khoảng 14 giây. Trên HUD hiện "Đã giết: x / 800" cho tới khi đủ.
 
 ## Cân chỉnh sau khi tăng sức mạnh quái (bản 1.11)
 
@@ -270,7 +286,7 @@ Hình vẽ: Triệu hồi sư mặc áo choàng lông, mũ da sói có gạc hư
 
 ## Thời lượng màn và kinh nghiệm (bản 1.4)
 
-- **Mỗi màn 7 phút** (`config.json` → `run.duration`). Mọi mốc thời gian trong `maps/1-1.json` rút về khoảng 70%:
+- **Mỗi màn 7 phút** (`config.json` → `run.duration`; bản 1.12 rút xuống 5 phút, xem mục bản 1.12). Mọi mốc thời gian trong `maps/1-1.json` rút về khoảng 70%:
   - Tinh anh: 1:25, 2:25, 4:10, 4:55, 5:35.
   - Trùm nhỏ: 3:30.
   - Quái rút đi: 5:55.
@@ -372,7 +388,7 @@ node tools/sim.mjs --campaign --build cold --items
 - **Đồ đạc:** 4 bậc (Thường, Ma thuật 1–2 dòng, Hiếm 3–4 dòng, Độc nhất), 20 đồ gốc, 25 loại dòng chỉ số, 10 món độc nhất (6 chung/Lửa, 2 Băng, 2 Sét).
   - Có dòng +% sát thương băng/sét và +cấp kỹ năng Băng/Sét.
   - Đồ có yêu cầu cấp; một số đồ gốc cần thêm Sức mạnh.
-  - Cấp của đồ rơi = cấp bản đồ + số phút đã chơi (+2 với tinh anh, +3 với trùm nhỏ, +5 với boss).
+  - Cấp của đồ rơi = cấp nhân vật (+2 với tinh anh, +3 với trùm nhỏ, +5 với boss, +6 rương thưởng). Trước bản 1.12: cấp bản đồ + số phút đã chơi.
   - +cấp kỹ năng từ đồ chỉ cộng cho kỹ năng đã học. Synergy chỉ tính điểm cộng thật, giống Diablo 2.
 - **Kho đồ 30 ô, 10 ô trang bị:** khi chọn một món sẽ thấy so sánh với món đang mặc (chỉ số tăng/giảm). Món không đủ yêu cầu hiện nền đỏ và không mặc được.
 - **Làng:** bán đồ lấy vàng (có nút bán nhanh mọi món Thường), tẩy điểm (40 vàng × cấp), rương chung 50 ô.

@@ -1,9 +1,10 @@
 {
-  "version": "1.11",
+  "version": "1.12",
   "testMode": true,
   "run": {
-    "duration": 420,
-    "resumeDelay": 0.3
+    "duration": 300,
+    "resumeDelay": 0.3,
+    "callBossKills": 800
   },
   "player": {
     "className": "Pháp sư Nguyên tố",
@@ -85,7 +86,8 @@
   "xp": {
     "base": 20,
     "exp": 1.8,
-    "maxLevel": 99
+    "maxLevel": 99,
+    "killMult": 1.4
   },
   "monsterScaling": {
     "hpPerLevel": 0.15,

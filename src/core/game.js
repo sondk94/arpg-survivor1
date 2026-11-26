@@ -68,6 +68,7 @@ export class Game {
     this.H = this.map.size[1];
     this.duration = this.cfg.run.duration;
     this.time = 0;
+    this.timeShift = 0; // gọi boss sớm: đồng hồ màn nhảy tới lúc quái rút lui
     this.kills = 0;
 
     this.obstacles = buildObstacles(this.map, this.W, this.H, this.seed);
@@ -149,8 +150,11 @@ export class Game {
   // ---------- Tiện ích ----------
   emit(ev) { this.out.push(ev); }
   showBanner(text, dur = 3.5) { this.banner = { text, t: 0, dur }; this.emit({ type: 'banner', text }); }
+  // Đồng hồ của màn (lịch sinh quái, sự kiện, cuồng nộ). Bằng thời gian thật, trừ khi đã gọi boss sớm.
+  get clock() { return this.time + this.timeShift; }
+
   phase() {
-    const t = this.time;
+    const t = this.clock;
     for (const ph of this.map.phases) if (t >= ph.from && t < ph.to) return ph;
     return null;
   }
@@ -216,7 +220,7 @@ export class Game {
 
   // ---------- Sự kiện & sinh quái ----------
   processEvents() {
-    while (this.eventIdx < this.events.length && this.events[this.eventIdx].t <= this.time) {
+    while (this.eventIdx < this.events.length && this.events[this.eventIdx].t <= this.clock) {
       this.handleEvent(this.events[this.eventIdx++]);
     }
   }
@@ -352,7 +356,7 @@ export class Game {
       dmg: def.damage * dmgMult, dmgMult,
       contact: (def.contactDamage ?? def.damage) * dmgMult,
       dmgType: def.damageType || 'physical',
-      speed: def.speed, xp: def.xp * (this.map.rewardMult || 1) * D.xpMult, color: def.color,
+      speed: def.speed, xp: def.xp * (this.map.rewardMult || 1) * D.xpMult * (this.cfg.xp.killMult || 1), color: def.color,
       resist: this.diffResist(def.resist || {}), level: lvl,
       kx: 0, ky: 0, slowT: 0, slowPct: 0, hit: 0,
       t: this.rng.next() * 10, phase: this.rng.next() * TAU,
@@ -1148,6 +1152,27 @@ export class Game {
     if (!this.headless) this.addFx({ kind: 'death', x: e.x, y: e.y, dur: 0.3, r: e.r, color: e.color });
   }
 
+  // ---------- Gọi boss sớm ----------
+  // Giết đủ run.callBossKills quái (trước khi quái rút lui) thì được gọi boss ngay.
+  canCallBoss() {
+    if (this.over || this.victory || this.bossSpawned || this.retreating || this.bossCalled) return false;
+    return this.kills >= (this.cfg.run.callBossKills ?? Infinity);
+  }
+
+  // Nhảy đồng hồ màn tới lúc quái rút lui: bỏ các sự kiện còn lại trước đó (tinh anh, trùm nhỏ chưa ra), boss tới sau vài giây.
+  callBoss() {
+    if (!this.canCallBoss()) return false;
+    const ret = this.events.find((ev) => ev.type === 'retreat');
+    if (!ret) return false;
+    this.bossCalled = true;
+    this.timeShift = Math.max(0, ret.t - this.time);
+    while (this.eventIdx < this.events.length && this.events[this.eventIdx].t < ret.t) this.eventIdx++;
+    this.spawnTimer = 0;
+    this.log.bossCalledAt = Math.round(this.time);
+    this.processEvents();
+    return true;
+  }
+
   // ---------- Hạ boss: rương thưởng ----------
   bossDefeated(e) {
     const p = this.player;
@@ -1239,7 +1264,9 @@ export class Game {
 
   // Cấp đồ rơi: cấp bản đồ + số phút đã chơi + thưởng theo loại quái.
   itemLevel(bonus = 0) {
-    return this.map.level + (this.map.itemLevelBonus || 0) + (this.diff.ilvlBonus || 0) + Math.floor((this.time / 60) * this.data.items.drops.ilvlPerMinute) + bonus;
+    // Đồ rơi theo cấp nhân vật (lên cấp giữa màn thì đồ rơi mạnh lên ngay), cộng thưởng theo loại quái:
+    // tinh anh +2, trùm nhỏ +3, boss +5, rương +6. Yêu cầu cấp = cấp đồ − 10 nên luôn mặc được.
+    return this.ch.level + bonus;
   }
 
   dropLoot(e, kind) {

@@ -45,7 +45,7 @@
   "phases": [
     {
       "from": 0,
-      "to": 40,
+      "to": 29,
       "maxAlive": 40,
       "perTick": 2,
       "distance": "edge",
@@ -54,8 +54,8 @@
       }
     },
     {
-      "from": 40,
-      "to": 85,
+      "from": 29,
+      "to": 61,
       "maxAlive": 40,
       "perTick": 2,
       "distance": "edge",
@@ -65,8 +65,8 @@
       }
     },
     {
-      "from": 85,
-      "to": 125,
+      "from": 61,
+      "to": 89,
       "maxAlive": 120,
       "perTick": 3,
       "distance": "range",
@@ -76,8 +76,8 @@
       }
     },
     {
-      "from": 125,
-      "to": 210,
+      "from": 89,
+      "to": 150,
       "maxAlive": 120,
       "perTick": 3,
       "distance": "range",
@@ -88,8 +88,8 @@
       }
     },
     {
-      "from": 210,
-      "to": 230,
+      "from": 150,
+      "to": 164,
       "maxAlive": 60,
       "perTick": 1,
       "distance": "range",
@@ -99,8 +99,8 @@
       }
     },
     {
-      "from": 230,
-      "to": 355,
+      "from": 164,
+      "to": 254,
       "maxAlive": 300,
       "perTick": 6,
       "distance": "range",
@@ -111,15 +111,15 @@
       }
     },
     {
-      "from": 355,
-      "to": 375,
+      "from": 254,
+      "to": 268,
       "maxAlive": 0,
       "perTick": 0,
       "distance": "range",
       "weights": {}
     },
     {
-      "from": 375,
+      "from": 268,
       "to": 99999,
       "maxAlive": 40,
       "perTick": 0,
@@ -136,52 +136,52 @@
       "distance": "edge"
     },
     {
-      "t": 40,
+      "t": 29,
       "type": "banner",
       "text": "Dơi hang xuất hiện"
     },
     {
-      "t": 85,
+      "t": 61,
       "type": "elite"
     },
     {
-      "t": 125,
+      "t": 89,
       "type": "banner",
       "text": "Kẻ ném xương xuất hiện"
     },
     {
-      "t": 145,
+      "t": 104,
       "type": "elite"
     },
     {
-      "t": 210,
+      "t": 150,
       "type": "miniboss",
       "monster": "gravedigger"
     },
     {
-      "t": 250,
+      "t": 179,
       "type": "elite"
     },
     {
-      "t": 295,
+      "t": 211,
       "type": "elite"
     },
     {
-      "t": 335,
+      "t": 239,
       "type": "elite"
     },
     {
-      "t": 355,
+      "t": 254,
       "type": "retreat",
       "text": "Mặt đất rung chuyển... Chúa Đầm Lầy sắp xuất hiện!"
     },
     {
-      "t": 375,
+      "t": 268,
       "type": "boss",
       "monster": "swamp_lord"
     },
     {
-      "t": 420,
+      "t": 300,
       "type": "enrage",
       "text": "Chúa Đầm Lầy nổi điên! Sát thương ×2"
     }
