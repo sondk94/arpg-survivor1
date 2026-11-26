@@ -10,6 +10,8 @@ import { Game, fmtTime } from '../src/core/game.js';
 import * as P from '../src/core/progression.js';
 const { createCharacter } = P;
 import { botInput, botAllocate, botManageItems, BUILDS } from '../src/core/bot.js';
+import * as L from '../src/core/loot.js';
+import { addToInventory } from '../src/core/items.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -99,6 +101,14 @@ for (let r = 0; r < totalRuns; r++) {
     simMs: Math.round(ms),
   };
   results.push(res);
+  // Về làng như người chơi: đồ trong túi tạm (rương thưởng khi kho đầy) được xem để mặc, rồi bán hết đồ không mặc (giữ rune).
+  if (useItems) {
+    const sellAll = () => L.sellItems(ch, ch.inventory.map((it, i) => (it && it.type !== 'rune' ? i : -1)).filter((i) => i >= 0), data);
+    sellAll();
+    for (const it of g.result?.overflow || []) addToInventory(ch, it);
+    botManageItems(ch, data, build);
+    sellAll();
+  }
   if (campaign && !g.over && g.boss) {
     const b = g.boss, p = g.player;
     console.log(`   HẾT GIỜ: người chơi (${p.x | 0},${p.y | 0}) máu ${p.hp | 0}; boss (${b.x | 0},${b.y | 0}) trạng thái ${b.b.state}, cách ${Math.hypot(b.x - p.x, b.y - p.y) | 0}px; quái còn ${g.enemies.length}`);
