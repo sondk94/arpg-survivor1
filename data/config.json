@@ -1,5 +1,5 @@
 {
-  "version": "1.10",
+  "version": "1.11",
   "testMode": true,
   "run": {
     "duration": 420,
@@ -136,7 +136,7 @@
       "rareMult": 1,
       "uniqueMult": 1,
       "color": "#d9b35c",
-      "bossHpMult": 1.5
+      "bossHpMult": 2.5
     },
     {
       "id": "nightmare",

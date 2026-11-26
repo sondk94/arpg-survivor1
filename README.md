@@ -106,6 +106,15 @@ Chỉ số cấp 1 so với pháp sư:
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
 
+## Cân chỉnh sau khi tăng sức mạnh quái (bản 1.11)
+
+- **Bình thường:** máu boss và trùm nhỏ ×1,5 → **×2,5** (`difficulties[normal].bossHpMult`), để boss không chết sau vài giây. Quái thường giữ nguyên.
+- **Chiến Binh bền hơn** (`classes.json` → `warrior.player`):
+  - Tổng giáp **×1,5** (`armorMult`): giáp gốc, giáp từ đồ và từ bị động đều được nhân.
+  - Hút máu tối đa **30%** (`leechCap`). Các lớp khác vẫn tối đa 20%.
+- Lý do: sau bản 1.10, bot Chiến Binh kẹt ở Địa ngục 4-3 dù đã cấp 99, vì đánh cận chiến phải đứng sát boss nhiều máu.
+- Triệu hồi sư giữ nguyên.
+
 ## Quái mạnh hơn và dòng hút máu trên đồ (bản 1.10)
 
 Để hợp với việc đồ tăng sức mạnh theo cấp đồ (bản 1.9):

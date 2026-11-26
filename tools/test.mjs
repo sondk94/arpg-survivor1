@@ -316,7 +316,7 @@ t('Chiến Binh: chỉ số riêng của lớp, Sức mạnh tăng sát thương
   assert.deepEqual(w.attrs, data.classes.warrior.startAttributes);
   const st = P.computeStats(w, data);
   assert.equal(st.maxHp, 60 + 25 * 4 + 1 * 3);
-  assert.equal(st.armor, 15);
+  assert.equal(st.armor, Math.round(15 * 1.5)); // Chiến Binh: tổng giáp ×1,5
   assert.ok(Math.abs(P.damageMult(w, data.skills.cleave, st, data) - (1 + 30 * 0.01)) < 1e-9);
   assert.equal(P.learnSkill(w, 'fireball', data), 'Kỹ năng của lớp khác');
   assert.equal(P.learnSkill(w, 'cleave', data), 'ok');
@@ -895,7 +895,7 @@ t('Rune cùng loại gộp một ô: nhặt, ghép vào đồ, ghép 3→1, chuy
   assert.equal(I.runeQty(back.inventory[0]), 2);
 });
 
-t('Quái mạnh hơn (bản 1.10): +12% máu, +6% sát thương mỗi màn; Ác mộng ×7/×3,5, Địa ngục ×22/×7,5; boss thêm ×1,5/×2/×2,5', () => {
+t('Quái mạnh hơn (bản 1.10): +12% máu, +6% sát thương mỗi màn; Ác mộng ×7/×3,5, Địa ngục ×22/×7,5; boss thêm ×2,5/×2/×2,5', () => {
   assert.equal(data.campaign.hpStep, 0.12);
   assert.equal(data.campaign.dmgStep, 0.06);
   const last = data.maps[data.mapOrder[data.mapOrder.length - 1]];
@@ -903,7 +903,7 @@ t('Quái mạnh hơn (bản 1.10): +12% máu, +6% sát thương mỗi màn; Ác 
   const D = data.difficultiesById;
   assert.deepEqual([D.nightmare.hpMult, D.nightmare.dmgMult, D.hell.hpMult, D.hell.dmgMult], [7, 3.5, 22, 7.5]);
   const ch = P.createCharacter(data);
-  for (const [id, m] of [['normal', 1.5], ['nightmare', 2], ['hell', 2.5]]) {
+  for (const [id, m] of [['normal', 2.5], ['nightmare', 2], ['hell', 2.5]]) {
     const g = new Game(data, ch, { seed: 1, headless: true, mapId: '1-1', difficulty: id });
     const z = g.spawnEnemy('zombie', 100, 100);
     const b = g.spawnEnemy('swamp_lord', 300, 300);
@@ -929,6 +929,18 @@ t('Dòng đồ "Hút % sát thương thành máu": cộng với bị động, t�
   // có trong danh sách dòng chỉ số đồ, không tăng theo cấp đồ
   assert.ok(data.items.affixes.some((a) => a.stat === 'leechPct'));
   assert.ok(data.items.ilvlScaling.exclude.includes('leechPct'));
+});
+
+t('Chiến Binh bền hơn (bản 1.11): tổng giáp ×1,5, hút máu tối đa 30% (lớp khác 20%)', () => {
+  const ring = (v) => ({ uid: 'l' + v, base: 'ring', type: 'ring', rarity: 'magic', name: 'r', ilvl: 1, req: { level: 1, str: 0 }, stats: { leechPct: v, armor: 100 }, sockets: 0, runes: [] });
+  const w = P.createCharacter(data, 'warrior');
+  const m = P.createCharacter(data, 'mage');
+  for (const c of [w, m]) { c.equipment.ring1 = ring(25); c.equipment.ring2 = ring(25); }
+  const sw = P.computeStats(w, data), sm = P.computeStats(m, data);
+  assert.ok(Math.abs(sw.leech - 0.3) < 1e-9);
+  assert.ok(Math.abs(sm.leech - 0.2) < 1e-9);
+  assert.equal(sw.armor, Math.round((15 + 200) * 1.5));
+  assert.equal(sm.armor, 200);
 });
 
 console.log(`\n${n} kiểm tra đều qua.`);
