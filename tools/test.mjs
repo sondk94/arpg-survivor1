@@ -1113,6 +1113,15 @@ t('SSR rơi từ rương boss: Địa ngục 3%, Ác mộng 1%, Bình thường 
   assert.ok(h >= 4 && h <= 24, `Địa ngục ${h}/400`);
 });
 
+const { mouseDir } = await import('../src/ui/input.js');
+t('Giữ chuột trái: đi về phía con trỏ (tính từ tâm màn hình), con trỏ sát nhân vật thì đứng yên', () => {
+  const d = mouseDir(700, 300, 500, 300);
+  assert.deepEqual(d, { x: 1, y: 0 });
+  const c = mouseDir(600, 400, 500, 300);
+  assert.ok(Math.abs(c.x - Math.SQRT1_2) < 1e-9 && Math.abs(c.y - Math.SQRT1_2) < 1e-9);
+  assert.deepEqual(mouseDir(505, 304, 500, 300), { x: 0, y: 0 });
+});
+
 // Nạp các file giao diện để bắt lỗi cú pháp (vd. khai báo trùng tên biến) mà các kiểm tra lõi không chạm tới.
 for (const f of ['render', 'panel', 'sprites', 'skilltext', 'tooltip', 'debug', 'input', 'telemetry', 'look']) {
   try { await import(`../src/ui/${f}.js`); n++; console.log(`ok - nạp được src/ui/${f}.js`); }
