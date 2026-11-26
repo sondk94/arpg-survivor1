@@ -46,7 +46,8 @@ function applyPower(item, baseStats, baseReq, data) {
   const mult = powerFor(item.rarity, item.ilvl, baseReq, data);
   item.stats = scaleStats(baseStats, mult, data);
   item.power = Math.round(mult * 1000) / 1000;
-  if (mult > 1) item.req.level = Math.max(baseReq, item.ilvl - (data.items.ilvlScaling?.reqOffset ?? 10));
+  // Đồ Thần thoại (SSR): yêu cầu cấp cố định (cấp 60), không nâng theo cấp đồ.
+  if (mult > 1 && item.rarity !== 'ssr') item.req.level = Math.max(baseReq, item.ilvl - (data.items.ilvlScaling?.reqOffset ?? 10));
   return item;
 }
 
@@ -56,10 +57,29 @@ export function upgradeLegacyItem(it, data) {
   const I = data.items;
   let def = null;
   if (it.rarity === 'unique') def = I.uniquesById?.[it.unique];
-  else if (it.rarity === 'set') def = I.setsById?.[it.set]?.pieces.find((p) => p.id === it.piece);
+  else if (it.rarity === 'set' || it.rarity === 'ssr') def = I.setsById?.[it.set]?.pieces.find((p) => p.id === it.piece);
   if (!def) return;
   it.req = { ...it.req, level: def.req };
   applyPower(it, def.stats, def.req, data);
+}
+
+// Đồ Thần thoại (SSR): một món của bộ SSR; ownClass (70%) là bộ của lớp đang chơi.
+export function generateSSR(rng, data, ilvl, classId) {
+  const I = data.items;
+  const C = I.drops.ssr;
+  const sets = (I.sets || []).filter((s) => s.rarity === 'ssr');
+  if (!sets.length) return null;
+  const own = sets.filter((s) => s.class === classId);
+  const others = sets.filter((s) => s.class !== classId);
+  const set = own.length && (!others.length || rng.next() < C.ownClass) ? rng.pick(own) : rng.pick(others.length ? others : sets);
+  const pc = rng.pick(set.pieces);
+  const base = I.basesById[pc.base];
+  return applyPower({
+    uid: newUid(rng), base: base.id, type: base.type, rarity: 'ssr', set: set.id, piece: pc.id,
+    name: pc.name, baseName: base.name, ilvl: Math.max(1, Math.round(ilvl)),
+    req: { level: C.req ?? pc.req, str: 0 },
+    stats: {}, sockets: C.sockets ?? 1, runes: [],
+  }, pc.stats, C.req ?? pc.req, data);
 }
 
 export function generateItem(rng, data, ilvl, opts = {}) {
@@ -68,7 +88,7 @@ export function generateItem(rng, data, ilvl, opts = {}) {
   ilvl = Math.max(1, Math.round(ilvl));
   if (rarity === 'set') {
     const pool = [];
-    for (const set of I.sets || []) for (const pc of set.pieces) if (pc.req <= ilvl + 3 && (!opts.type || I.basesById[pc.base].type === opts.type)) pool.push([set, pc]);
+    for (const set of I.sets || []) if (set.rarity !== 'ssr') for (const pc of set.pieces) if (pc.req <= ilvl + 3 && (!opts.type || I.basesById[pc.base].type === opts.type)) pool.push([set, pc]);
     if (pool.length) {
       const [set, pc] = rng.pick(pool);
       const base = I.basesById[pc.base];
@@ -217,6 +237,7 @@ export function sumGear(ch, data) {
   const str = totalStr(ch);
   const setCount = {};
   const setPower = {};
+  const specials = {};
   for (const [slot, it] of Object.entries(ch.equipment || {})) {
     if (!it) continue;
     if (!meetsReq(it, ch.level, str)) { inactive.push(slot); continue; }
@@ -234,8 +255,10 @@ export function sumGear(ch, data) {
       if (n < Number(need)) continue;
       for (const [k, v] of Object.entries(data ? scaleStats(bonus, pw, data) : bonus)) acc[k] = (acc[k] || 0) + v;
     }
+    // Hiệu ứng đặc biệt của bộ SSR (đủ 4 / 5 món).
+    for (const [need, sp] of Object.entries(set.special || {})) if (n >= Number(need)) specials[sp.id] = sp;
   }
-  return { stats: acc, inactive, sets };
+  return { stats: acc, inactive, sets, specials };
 }
 
 // Số món của một bộ đang mặc (để hiện trên thẻ đồ).
@@ -263,7 +286,7 @@ export function craftCosts(item, data) {
     salvage: salvageValue(item, data),
     reroll: (item.rarity === 'magic' || item.rarity === 'rare') ? { shards: C.reroll.shards, gold: C.reroll.goldPerIlvl * item.ilvl } : null,
     upgrade: up ? { shards: up.shards, to: up.to } : null,
-    socket: item.type !== 'rune' && (item.sockets || 0) < (data.items.basesById[item.base].maxSockets || 0) && item.rarity !== 'unique' && item.rarity !== 'set' ? { shards: C.socket.shards } : null,
+    socket: item.type !== 'rune' && (item.sockets || 0) < (data.items.basesById[item.base].maxSockets || 0) && !['unique', 'set', 'ssr'].includes(item.rarity) ? { shards: C.socket.shards } : null,
     unsocket: item.runes?.length ? { gold: C.unsocket.gold } : null,
   };
 }
@@ -274,6 +297,7 @@ export function craft(ch, stash, ref, action, data, rng) {
   const it = loc && loc.arr[loc.key];
   if (!it) return 'Chưa chọn món đồ';
   const cost = craftCosts(it, data)[action];
+  if (action === 'salvage' && it.rarity === 'ssr') return 'Không phân giải được đồ Thần thoại';
   if (action === 'salvage') {
     ch.shards = (ch.shards || 0) + cost;
     loc.arr[loc.key] = null;

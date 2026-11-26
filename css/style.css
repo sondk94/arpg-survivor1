@@ -465,3 +465,14 @@ button.go small { font-size: 11px; font-weight: 400; color: #e8d3a0; }
 .dgroup > div { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; border-bottom: 1px solid #24211b; padding: 2px 0; white-space: nowrap; cursor: default; }
 .dgroup > div[data-tip] { cursor: help; }
 .dgroup span { color: var(--muted); }
+
+/* Gọi boss sớm */
+#btn-boss { position: fixed; left: 50%; top: 118px; transform: translateX(-50%); z-index: 5; padding: 8px 18px; font-size: 15px; font-weight: 800; color: #ffd0c0; background: #4a1a14; border: 2px solid #ff6a4a; border-radius: 20px; animation: bossPulse 1.2s ease-in-out infinite; }
+#btn-boss small { font-weight: 400; opacity: .7; margin-left: 4px; }
+@keyframes bossPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,90,60,.6); } 50% { box-shadow: 0 0 16px 4px rgba(255,90,60,.6); } }
+
+/* Đồ Thần thoại (SSR) */
+.cell.ssr { border-color: #ff5a36; box-shadow: 0 0 8px rgba(255,90,54,.7), inset 0 0 10px rgba(255,140,60,.35); animation: ssrGlow 1.6s ease-in-out infinite; }
+@keyframes ssrGlow { 0%,100% { box-shadow: 0 0 6px rgba(255,90,54,.6), inset 0 0 8px rgba(255,140,60,.3); } 50% { box-shadow: 0 0 14px rgba(255,170,60,.9), inset 0 0 12px rgba(255,200,90,.45); } }
+.tcard .tset.sp { color: var(--muted); }
+.tcard .tset.sp.on { color: #ffb070; }

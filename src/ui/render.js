@@ -259,7 +259,15 @@ export class Renderer {
         if (!this.vis(k.x, k.y, 60)) continue;
         if (k.skipped) ctx.globalAlpha = 0.4; // bộ lọc bỏ qua: vẽ mờ
         const col = k.item.type === 'rune' ? g.data.runes.byId[k.item.rune].color : g.data.items.rarities[k.item.rarity].color;
-        if (k.item.rarity === 'rare' || k.item.rarity === 'unique' || k.item.rarity === 'set' || k.item.type === 'rune') {
+        if (k.item.rarity === 'ssr') {
+          // Đồ Thần thoại: cột sáng to, nhấp nháy.
+          const a = 0.45 + 0.25 * Math.sin(g.time * 6);
+          const grd = ctx.createLinearGradient(0, k.y - 120, 0, k.y);
+          grd.addColorStop(0, 'rgba(255,90,54,0)');
+          grd.addColorStop(1, `rgba(255,140,60,${a})`);
+          ctx.fillStyle = grd;
+          ctx.fillRect(k.x - 7, k.y - 120, 14, 120);
+        } else if (k.item.rarity === 'rare' || k.item.rarity === 'unique' || k.item.rarity === 'set' || k.item.type === 'rune') {
           const grd = ctx.createLinearGradient(0, k.y - 70, 0, k.y);
           grd.addColorStop(0, 'rgba(0,0,0,0)');
           grd.addColorStop(1, col);
@@ -397,7 +405,17 @@ export class Renderer {
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.ellipse(m.x, m.y + m.r * 0.9, m.r * 1.15, m.r * 0.36, 0, 0, TAU); ctx.stroke();
       if (m.kind === 'bear') drawBear(ctx, m, face, ph);
-      else drawWolf(ctx, m, face, ph, m.kind === 'alpha');
+      else if (m.kind === 'spirit') {
+        // Sói Linh Hồn: sói đầu đàn khổng lồ, trong suốt, toả sáng xanh.
+        const glow = ctx.createRadialGradient(m.x, m.y, 4, m.x, m.y, m.r * 2.4);
+        glow.addColorStop(0, 'rgba(159,216,255,0.45)');
+        glow.addColorStop(1, 'rgba(159,216,255,0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath(); ctx.arc(m.x, m.y, m.r * 2.4, 0, TAU); ctx.fill();
+        ctx.globalAlpha = 0.8;
+        drawWolf(ctx, m, face, ph, true);
+        ctx.globalAlpha = 1;
+      } else drawWolf(ctx, m, face, ph, m.kind === 'alpha');
       if (m.hp < m.maxHp) {
         const bw = Math.max(22, m.r * 2), y = m.y - m.r * 1.6 - 6;
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -714,7 +732,7 @@ export class Renderer {
     const small = w < 700;
 
     // Đồng hồ & số quái đã giết (giữa trên)
-    const remain = g.duration - g.time;
+    const remain = g.duration - g.clock;
     ctx.textAlign = 'center';
     ctx.font = `800 ${small ? 26 : 34}px system-ui, sans-serif`;
     ctx.fillStyle = '#000';
@@ -724,7 +742,8 @@ export class Renderer {
     ctx.fillText(timeText, w / 2, 40);
     ctx.font = '600 14px system-ui, sans-serif';
     ctx.fillStyle = '#c8c2b0';
-    ctx.fillText(`Đã giết: ${g.kills}`, w / 2, 60);
+    const bossNeed = g.cfg.run.callBossKills;
+    ctx.fillText(bossNeed && !g.bossSpawned && !g.retreating && !g.bossCalled && g.kills < bossNeed ? `Đã giết: ${g.kills} / ${bossNeed}` : `Đã giết: ${g.kills}`, w / 2, 60);
     ctx.textAlign = 'right';
     ctx.font = '600 13px system-ui, sans-serif';
     ctx.fillStyle = '#bdb6a2';

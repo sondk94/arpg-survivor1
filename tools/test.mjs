@@ -943,4 +943,180 @@ t('Chiến Binh bền hơn (bản 1.11): tổng giáp ×1,5, hút máu tối đa
   assert.equal(sm.armor, 200);
 });
 
+t('Màn 5 phút (bản 1.12): boss 4:28, cuồng nộ 5:00; kinh nghiệm quái ×1,4; đồ rơi theo cấp nhân vật', () => {
+  assert.equal(data.config.run.duration, 300);
+  const m = data.maps['1-1'];
+  const ev = (type) => m.events.find((e) => e.type === type).t;
+  assert.equal(ev('boss'), 268);
+  assert.equal(ev('enrage'), 300);
+  const c = P.createCharacter(data, 'mage');
+  c.level = 37;
+  const g = new Game(data, c, { seed: 1, headless: true, mapId: '2-3', difficulty: 'normal' });
+  const z = g.spawnEnemy('zombie', 100, 100);
+  assert.ok(Math.abs(z.xp - data.monsters.zombie.xp * g.map.rewardMult * 1.4) < 1e-9);
+  assert.equal(g.itemLevel(), 37);
+  assert.equal(g.itemLevel(5), 42);
+  g.time = 200; // không còn cộng theo phút chơi
+  assert.equal(g.itemLevel(), 37);
+  // đồ thường / xanh / vàng rơi từ quái thường luôn mặc được ngay (yêu cầu ≤ cấp nhân vật)
+  const r = new RNG(3);
+  for (let i = 0; i < 100; i++) {
+    const it = I.generateItem(r, data, g.itemLevel(), { rarity: ['normal', 'magic', 'rare'][i % 3] });
+    assert.ok(it.req.level <= c.level, `${it.name} cần ${it.req.level}`);
+  }
+});
+
+t('Gọi boss sớm: đủ 800 quái thì nhảy tới lúc quái rút lui, bỏ tinh anh / trùm nhỏ còn lại, boss ra sau ~14 giây', () => {
+  const c = P.createCharacter(data, 'mage');
+  const g = new Game(data, c, { seed: 2, headless: true });
+  g.updateSpawner = () => {};
+  g.god = true;
+  for (let i = 0; i < 60 * 70; i++) g.update(1 / 60); // tới 1:10 (sau tinh anh đầu)
+  assert.equal(g.canCallBoss(), false); // chưa đủ quái
+  g.kills = data.config.run.callBossKills;
+  assert.equal(g.canCallBoss(), true);
+  const t0 = g.time;
+  assert.equal(g.callBoss(), true);
+  assert.equal(g.retreating, true);
+  assert.ok(Math.abs(g.clock - m_ret()) < 1e-6);
+  assert.equal(g.canCallBoss(), false);
+  assert.equal(g.miniboss, null); // trùm nhỏ (2:30) bị bỏ qua
+  for (let i = 0; i < 60 * 15; i++) g.update(1 / 60);
+  assert.ok(g.bossSpawned && g.boss);
+  assert.ok(g.time - t0 < 16);
+  function m_ret() { return data.maps['1-1'].events.find((e) => e.type === 'retreat').t; }
+});
+
+// ---------- Đồ Thần thoại (SSR) ----------
+function wearSSR(classId, setId, n = 5) {
+  const c = P.createCharacter(data, classId);
+  c.level = 80;
+  const r = new RNG(31);
+  const set = data.items.setsById[setId];
+  for (const pc of set.pieces.slice(0, n)) {
+    const base = data.items.basesById[pc.base];
+    const slot = I.slotsForType(base.type, data)[0];
+    c.equipment[slot] = { uid: pc.id, base: base.id, type: base.type, rarity: 'ssr', set: set.id, piece: pc.id, name: pc.name, baseName: base.name, ilvl: 60, req: { level: 60, str: 0 }, stats: { ...pc.stats }, sockets: 1, runes: [], power: 1 };
+  }
+  return c;
+}
+
+t('SSR: yêu cầu cấp 60 cố định, 1 lỗ, tăng theo cấp đồ, 70% đúng lớp; không lẫn vào đồ bộ thường; không phân giải', () => {
+  const r = new RNG(41);
+  let own = 0;
+  for (let i = 0; i < 400; i++) {
+    const it = I.generateSSR(r, data, 95, 'warrior');
+    assert.equal(it.rarity, 'ssr');
+    assert.equal(it.req.level, 60);
+    assert.equal(it.sockets, 1);
+    assert.ok(Math.abs(it.power - (1 + 0.0165 * 35)) < 0.001);
+    if (data.items.setsById[it.set].class === 'warrior') own++;
+  }
+  assert.ok(own / 400 > 0.62 && own / 400 < 0.78, `đúng lớp ${own}/400`);
+  for (let i = 0; i < 300; i++) assert.notEqual(data.items.setsById[I.generateItem(r, data, 90, { rarity: 'set' }).set]?.rarity, 'ssr');
+  const c = P.createCharacter(data, 'mage');
+  c.inventory[0] = I.generateSSR(r, data, 70, 'mage');
+  assert.equal(I.craft(c, newStash(data), { where: 'inv', key: '0' }, 'salvage', data, r), 'Không phân giải được đồ Thần thoại');
+  assert.deepEqual(L.bulkCandidates(c, data, 'normal', true).includes(0), false);
+  assert.equal(L.salvageItems(c, [0], data).n, 0);
+});
+
+t('SSR: thưởng 2/3 món và hiệu ứng 4/5 món theo số món đang mặc', () => {
+  const c3 = wearSSR('mage', 'ssr_mage', 3);
+  const s3 = P.computeStats(c3, data);
+  assert.equal(s3.skillBonus.all, 2); // gậy +1 và thưởng 3 món +1
+  assert.equal(Object.keys(s3.specials).length, 0);
+  const s5 = P.computeStats(wearSSR('mage', 'ssr_mage', 5), data);
+  assert.ok(s5.specials.elementResonance && s5.specials.cataclysm);
+  const w = P.computeStats(wearSSR('warrior', 'ssr_warrior', 4), data);
+  assert.ok(w.specials.undying && !w.specials.critWave);
+  const sm = P.computeStats(wearSSR('summoner', 'ssr_summoner', 3), data);
+  assert.equal(sm.summonExtra, 1);
+});
+
+t('SSR Chiến Binh: Bất Diệt cứu khỏi chết một lần mỗi 90 giây; Thần Kiếm tạo sóng chém khi chí mạng', () => {
+  const c = wearSSR('warrior', 'ssr_warrior', 5);
+  const g = new Game(data, c, { seed: 5, headless: true });
+  g.events = []; g.updateSpawner = () => {};
+  g.player.hp = 5;
+  g.hurtPlayer(9999, 'fire', 'thử');
+  assert.equal(g.over, false);
+  assert.ok(Math.abs(g.player.hp - g.stats.maxHp * 0.5) < 1e-6);
+  g.player.invuln = 0;
+  g.hurtPlayer(99999, 'fire', 'thử');
+  assert.equal(g.over, true); // đang hồi chiêu
+  const g2 = new Game(data, wearSSR('warrior', 'ssr_warrior', 5), { seed: 6, headless: true });
+  g2.stats.critChance = 1;
+  const p = g2.player;
+  const a = g2.spawnEnemy('zombie', p.x + 30, p.y), b = g2.spawnEnemy('zombie', p.x - 60, p.y);
+  a.hp = a.maxHp = b.hp = b.maxHp = 1e6;
+  g2.grid.rebuild(g2.enemies);
+  g2.damageEnemy(a, 100, 'physical');
+  assert.ok(b.hp < 1e6); // quái khác trong bán kính 120 px trúng sóng chém
+});
+
+t('SSR Pháp sư: Cộng hưởng Nguyên tố +12% mỗi nguyên tố trong 4 giây; Thiên Tai tự rơi', () => {
+  const c = wearSSR('mage', 'ssr_mage', 5);
+  c.skills.fireball = 5; c.slots[0] = 'fireball';
+  const g = new Game(data, c, { seed: 7, headless: true });
+  g.events = []; g.updateSpawner = () => {};
+  g.stats.critChance = 0;
+  const e = g.spawnEnemy('zombie', g.player.x + 200, g.player.y); e.hp = e.maxHp = 1e7; e.resist = {};
+  const d1 = g.damageEnemy(e, 100, 'fire');
+  g.damageEnemy(e, 100, 'cold');
+  const d3 = g.damageEnemy(e, 100, 'lightning');
+  assert.ok(Math.abs(d1 - 112) < 1e-6 && Math.abs(d3 - 136) < 1e-6);
+  g.time += 5;
+  assert.ok(Math.abs(g.damageEnemy(e, 100, 'fire') - 112) < 1e-6); // hết 4 giây: chỉ còn lửa
+  const hp0 = e.hp;
+  for (let i = 0; i < 60 * 10.5; i++) g.update(1 / 60);
+  assert.ok(e.hp < hp0);
+});
+
+t('SSR Triệu hồi sư: +1 con mỗi loại, Huyết Mạch Bầy Đàn, Sói Linh Hồn 12 giây', () => {
+  const c = wearSSR('summoner', 'ssr_summoner', 5);
+  c.skills.summon_wolf = 1; c.slots = ['summon_wolf', null, null, null];
+  const g = new Game(data, c, { seed: 8, headless: true });
+  g.events = []; g.updateSpawner = () => {}; g.god = true;
+  g.update(1 / 60);
+  assert.equal(g.minions.filter((m) => m.kind === 'wolf').length, 2); // 1 + 1 từ bộ
+  const e = g.spawnEnemy('zombie', g.player.x + 120, g.player.y); e.hp = e.maxHp = 1e7; e.speed = 0; e.contact = 0;
+  for (let i = 0; i < 60 * 26; i++) g.update(1 / 60);
+  const spirit = g.minions.find((m) => m.kind === 'spirit');
+  assert.ok(spirit, 'có Sói Linh Hồn');
+  assert.equal(spirit.dmgScale, 3);
+  for (let i = 0; i < 60 * 13; i++) g.update(1 / 60);
+  assert.ok(!g.minions.some((m) => m === spirit));
+  // thú chết → các thú khác nổi giận 8 giây
+  g.hurtMinion(g.minions[0], 1e9, 'physical', null);
+  assert.ok(g.packRageT > 7);
+});
+
+t('SSR rơi từ rương boss: Địa ngục 3%, Ác mộng 1%, Bình thường 0%, cần cấp 60; quái thường rơi đồ ×1,4', () => {
+  assert.deepEqual(data.items.drops.ssr.chance, { normal: 0, nightmare: 0.01, hell: 0.03 });
+  const n = data.items.drops.normal;
+  assert.deepEqual([n.itemChance, n.goldChance, n.runeChance], [0.0056, 0.028, 0.0035]);
+  const count = (diff, level) => {
+    let got = 0;
+    for (let s = 0; s < 400; s++) {
+      const c = P.createCharacter(data, 'mage'); c.level = level;
+      const g = new Game(data, c, { seed: 1000 + s, headless: true, difficulty: diff });
+      g.spawnBoss('swamp_lord'); g.killEnemy(g.boss, 'fire');
+      g.openChest(g.pickups.find((k) => k.kind === 'chest'));
+      if (g.pickups.some((k) => k.kind === 'item' && k.item.rarity === 'ssr')) got++;
+    }
+    return got;
+  };
+  assert.equal(count('normal', 80), 0);
+  assert.equal(count('hell', 59), 0);
+  const h = count('hell', 80);
+  assert.ok(h >= 4 && h <= 24, `Địa ngục ${h}/400`);
+});
+
+// Nạp các file giao diện để bắt lỗi cú pháp (vd. khai báo trùng tên biến) mà các kiểm tra lõi không chạm tới.
+for (const f of ['render', 'panel', 'sprites', 'skilltext', 'tooltip', 'debug', 'input', 'telemetry']) {
+  try { await import(`../src/ui/${f}.js`); n++; console.log(`ok - nạp được src/ui/${f}.js`); }
+  catch (e) { console.error(`LỖI - src/ui/${f}.js: ${e.message}`); throw e; }
+}
+
 console.log(`\n${n} kiểm tra đều qua.`);

@@ -2,7 +2,7 @@
 import { RNG } from './rng.js';
 import { Grid } from './grid.js';
 import * as P from './progression.js';
-import { generateItem, generateRune, addToInventory, canAdd } from './items.js';
+import { generateItem, generateRune, generateSSR, addToInventory, canAdd } from './items.js';
 import { MinionMixin } from './minions.js';
 import { lootDecision, makeRoomFor } from './loot.js';
 import { sellValue } from './items.js';
@@ -68,6 +68,7 @@ export class Game {
     this.H = this.map.size[1];
     this.duration = this.cfg.run.duration;
     this.time = 0;
+    this.timeShift = 0; // gọi boss sớm: đồng hồ màn nhảy tới lúc quái rút lui
     this.kills = 0;
 
     this.obstacles = buildObstacles(this.map, this.W, this.H, this.seed);
@@ -143,14 +144,23 @@ export class Game {
     };
     this.invFullT = 0;
     this.buffs = []; // { id, dmgPct, armorMult, t }
+    // Hiệu ứng bộ SSR.
+    this.specialT = { cataclysm: 0, spiritWolf: 0 };
+    this.undyingCd = 0;
+    this.elemHitT = {};
+    this.packRageT = 0;
+    this.waveIcd = 0;
     this.frenzy = { stacks: 0, t: 0 };
   }
 
   // ---------- Tiện ích ----------
   emit(ev) { this.out.push(ev); }
   showBanner(text, dur = 3.5) { this.banner = { text, t: 0, dur }; this.emit({ type: 'banner', text }); }
+  // Đồng hồ của màn (lịch sinh quái, sự kiện, cuồng nộ). Bằng thời gian thật, trừ khi đã gọi boss sớm.
+  get clock() { return this.time + this.timeShift; }
+
   phase() {
-    const t = this.time;
+    const t = this.clock;
     for (const ph of this.map.phases) if (t >= ph.from && t < ph.to) return ph;
     return null;
   }
@@ -185,6 +195,7 @@ export class Game {
     this.grid.rebuild(this.enemies);
     this.updateBuffs(dt);
     this.updateSkills(dt);
+    this.updateSpecials(dt);
     this.updateOrbs(dt);
     this.updateMinions(dt);
     this.updateProjectiles(dt);
@@ -216,7 +227,7 @@ export class Game {
 
   // ---------- Sự kiện & sinh quái ----------
   processEvents() {
-    while (this.eventIdx < this.events.length && this.events[this.eventIdx].t <= this.time) {
+    while (this.eventIdx < this.events.length && this.events[this.eventIdx].t <= this.clock) {
       this.handleEvent(this.events[this.eventIdx++]);
     }
   }
@@ -352,7 +363,7 @@ export class Game {
       dmg: def.damage * dmgMult, dmgMult,
       contact: (def.contactDamage ?? def.damage) * dmgMult,
       dmgType: def.damageType || 'physical',
-      speed: def.speed, xp: def.xp * (this.map.rewardMult || 1) * D.xpMult, color: def.color,
+      speed: def.speed, xp: def.xp * (this.map.rewardMult || 1) * D.xpMult * (this.cfg.xp.killMult || 1), color: def.color,
       resist: this.diffResist(def.resist || {}), level: lvl,
       kx: 0, ky: 0, slowT: 0, slowPct: 0, hit: 0,
       t: this.rng.next() * 10, phase: this.rng.next() * TAU,
@@ -473,6 +484,17 @@ export class Game {
     }
     this.addText(p.x, p.y - 22, `-${Math.round(dmg)}`, '#ff5a5a', 15);
     if (p.hp <= 0) {
+      // Bất Diệt (bộ SSR Chiến Binh): hồi 50% máu, bất tử 2 giây, hồi chiêu 90 giây.
+      const und = this.stats.specials?.undying;
+      if (und && this.undyingCd <= 0) {
+        this.undyingCd = und.cooldown;
+        p.hp = this.stats.maxHp * und.heal;
+        p.invuln = Math.max(p.invuln, und.invuln);
+        this.log.undying = (this.log.undying || 0) + 1;
+        this.addText(p.x, p.y - 40, 'Bất Diệt!', '#ffd27a', 18);
+        this.addFx({ kind: 'nova', x: p.x, y: p.y, dur: 0.6, r: 110, color: '#ffd27a' });
+        return true;
+      }
       p.hp = 0;
       this.die(source);
     }
@@ -1038,8 +1060,25 @@ export class Game {
     const caps = this.cfg.caps;
     const res = clamp(e.resist[element] || 0, caps.monsterResistMin, caps.monsterResistMax);
     let dmg = amount * (1 - res);
+    // Cộng hưởng Nguyên tố (bộ SSR Pháp sư): mỗi nguyên tố đã đánh trúng trong 4 giây gần nhất +12%.
+    const reso = this.stats.specials?.elementResonance;
+    if (reso && (element === 'fire' || element === 'cold' || element === 'lightning')) {
+      this.elemHitT[element] = this.time;
+      let k = 0;
+      for (const el of ['fire', 'cold', 'lightning']) if (this.elemHitT[el] !== undefined && this.time - this.elemHitT[el] <= reso.window) k++;
+      dmg *= 1 + k * reso.perElement;
+    }
     let crit = false;
     if (!opts.noCrit && this.rng.next() < this.stats.critChance + (opts.critBonus || 0)) { dmg *= this.stats.critMult; crit = true; }
+    // Thần Kiếm (bộ SSR Chiến Binh): đòn chí mạng tạo sóng chém quanh người chơi.
+    const wave = this.stats.specials?.critWave;
+    if (crit && wave && !opts.noWave && this.waveIcd <= 0) {
+      this.waveIcd = wave.icd;
+      const p = this.player;
+      const wd = dmg * wave.mult;
+      this.areaDamage(p.x, p.y, wave.radius, () => wd, element, { noCrit: true, noWave: true, quiet: true });
+      this.addFx({ kind: 'nova', x: p.x, y: p.y, dur: 0.25, r: wave.radius, color: '#ffd27a' });
+    }
     if (e.affixes.includes('stone_skin')) {
       const af = this.data.monsters.elite.affixes.stone_skin;
       if (e.hp > e.maxHp * af.untilHpPct) dmg *= af.damageTakenMult;
@@ -1148,6 +1187,70 @@ export class Game {
     if (!this.headless) this.addFx({ kind: 'death', x: e.x, y: e.y, dur: 0.3, r: e.r, color: e.color });
   }
 
+  // ---------- Hiệu ứng bộ SSR ----------
+  updateSpecials(dt) {
+    if (this.undyingCd > 0) this.undyingCd -= dt;
+    if (this.waveIcd > 0) this.waveIcd -= dt;
+    if (this.packRageT > 0) this.packRageT -= dt;
+    const sp = this.stats.specials;
+    if (!sp) return;
+    if (sp.cataclysm) {
+      this.specialT.cataclysm += dt;
+      if (this.specialT.cataclysm >= sp.cataclysm.interval && this.castCataclysm(sp.cataclysm)) this.specialT.cataclysm = 0;
+    }
+    if (sp.spiritWolf) {
+      this.specialT.spiritWolf += dt;
+      if (this.specialT.spiritWolf >= sp.spiritWolf.interval && this.nearestEnemy(500)) {
+        this.specialT.spiritWolf = 0;
+        this.spawnSpiritWolf(sp.spiritWolf);
+      }
+    }
+  }
+
+  // Thiên Tai (bộ SSR Pháp sư): thiên thạch ba nguyên tố, sát thương = mult × kỹ năng mạnh nhất đang gắn.
+  castCataclysm(c) {
+    const t = this.densestPoint(c.range, c.radius);
+    if (!t || !Number.isFinite(t.x)) return false;
+    let best = 0;
+    for (const id of this.ch.slots) {
+      const sk = id && this.data.skills[id];
+      if (!sk || !sk.damage) continue;
+      const l = this.lvl(id);
+      if (l <= 0) continue;
+      const [a, b] = P.hitRange(sk, l, this.stats);
+      best = Math.max(best, ((a + b) / 2) * this.skillMult(sk));
+    }
+    if (best <= 0) return false;
+    const part = (best * c.mult) / 3;
+    for (const el of ['fire', 'cold', 'lightning']) this.areaDamage(t.x, t.y, c.radius, () => part, el);
+    this.addFx({ kind: 'burst', x: t.x, y: t.y, dur: 0.5, r: c.radius, color: '#ff7a2a' });
+    this.addFx({ kind: 'nova', x: t.x, y: t.y, dur: 0.45, r: c.radius * 0.8, color: '#9fe3ff' });
+    this.addFx({ kind: 'strike', x: t.x, y: t.y, dur: 0.35, color: '#ffe14d' });
+    this.emit({ type: 'shake', amount: 4 });
+    return true;
+  }
+
+  // ---------- Gọi boss sớm ----------
+  // Giết đủ run.callBossKills quái (trước khi quái rút lui) thì được gọi boss ngay.
+  canCallBoss() {
+    if (this.over || this.victory || this.bossSpawned || this.retreating || this.bossCalled) return false;
+    return this.kills >= (this.cfg.run.callBossKills ?? Infinity);
+  }
+
+  // Nhảy đồng hồ màn tới lúc quái rút lui: bỏ các sự kiện còn lại trước đó (tinh anh, trùm nhỏ chưa ra), boss tới sau vài giây.
+  callBoss() {
+    if (!this.canCallBoss()) return false;
+    const ret = this.events.find((ev) => ev.type === 'retreat');
+    if (!ret) return false;
+    this.bossCalled = true;
+    this.timeShift = Math.max(0, ret.t - this.time);
+    while (this.eventIdx < this.events.length && this.events[this.eventIdx].t < ret.t) this.eventIdx++;
+    this.spawnTimer = 0;
+    this.log.bossCalledAt = Math.round(this.time);
+    this.processEvents();
+    return true;
+  }
+
   // ---------- Hạ boss: rương thưởng ----------
   bossDefeated(e) {
     const p = this.player;
@@ -1205,6 +1308,12 @@ export class Game {
     const first = this.ch.mapClears?.[P.clearKey(this.diff.id, this.map.id)] ? false : true;
     if (first) items.push(generateItem(this.rng, this.data, ilvl, { minRarity: 'rare', rareMult: C.rareMult * DF.rareMult, uniqueMult: C.uniqueMult * DF.uniqueMult, setMult: C.setMult }));
     if (this.rng.next() < C.runeChance) items.push(generateRune(this.rng, this.data, ilvl));
+    // Đồ Thần thoại (SSR): Ác mộng 1%, Địa ngục 3% mỗi boss, nhân vật từ cấp 60.
+    const S = this.data.items.drops.ssr;
+    if (S && this.ch.level >= S.minLevel && this.rng.next() < (S.chance[this.diff.id] || 0)) {
+      const ssr = generateSSR(this.rng, this.data, ilvl, this.ch.classId);
+      if (ssr) { items.push(ssr); this.showBanner(`Đồ Thần thoại: ${ssr.name}!`, 4); this.log.ssr = ssr.name; }
+    }
     items.forEach((it, i) => {
       const a = (i / items.length) * TAU + 0.3;
       this.dropItem(chest.x + Math.cos(a) * 45, chest.y + Math.sin(a) * 45, it);
@@ -1239,7 +1348,9 @@ export class Game {
 
   // Cấp đồ rơi: cấp bản đồ + số phút đã chơi + thưởng theo loại quái.
   itemLevel(bonus = 0) {
-    return this.map.level + (this.map.itemLevelBonus || 0) + (this.diff.ilvlBonus || 0) + Math.floor((this.time / 60) * this.data.items.drops.ilvlPerMinute) + bonus;
+    // Đồ rơi theo cấp nhân vật (lên cấp giữa màn thì đồ rơi mạnh lên ngay), cộng thưởng theo loại quái:
+    // tinh anh +2, trùm nhỏ +3, boss +5, rương +6. Yêu cầu cấp = cấp đồ − 10 nên luôn mặc được.
+    return this.ch.level + bonus;
   }
 
   dropLoot(e, kind) {

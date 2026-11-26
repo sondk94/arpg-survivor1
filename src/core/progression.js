@@ -150,7 +150,7 @@ export function computeStats(ch, data) {
     maxHp,
     maxMana,
     manaRegen: maxMana * p.manaRegenPct * (1 + pct('manaRegenPct')),
-    hpRegen: maxHp * (p.hpRegenPct + pb.hpRegen),
+    hpRegen: maxHp * (p.hpRegenPct + pb.hpRegen + pct('hpRegenPct')),
     cdSpeed: 1 + at.dex * a.dex.cdSpeedPct + pct('cdSpeedPct'),
     dodge: Math.min(c.caps.dodge, at.dex * a.dex.dodgePct),
     physDmgPct: at.str * a.str.physDmgPct + pct('physDmgPct'),
@@ -164,7 +164,9 @@ export function computeStats(ch, data) {
     summonHpMult: 1 + extraEne * (a.ene.summonHpPctPerPoint || 0) + pct('summonHpPct') + pb.summonHp,
     summonArmor: pb.summonArmor,
     summonResist: pb.summonRes,
-    summonCrit: pb.summonCrit,
+    summonCrit: pb.summonCrit + pct('summonCritPct'),
+    summonExtra: g.summonExtra || 0, // +1 con mỗi loại thú (bộ SSR Vua Muôn Thú)
+    specials: gear.specials || {}, // hiệu ứng bộ SSR đang kích hoạt, theo id
     flyingDmgPct: pb.flyingDmg,
     spellDmgPct: at.ene * a.ene.spellDmgPct + pct('spellDmgPct'),
     elemDmgPct: { fire: pct('fireDmgPct'), cold: pct('coldDmgPct'), lightning: pct('lightningDmgPct') },
@@ -176,7 +178,7 @@ export function computeStats(ch, data) {
     critChance: p.critChance + pct('critChance') + pb.crit,
     critMult: p.critMult + pb.critMult,
     // Chiến Binh: tổng giáp ×1,5 (classes.json → player.armorMult).
-    armor: Math.round(((p.baseArmor || 0) + (g.armor || 0) + pb.armor) * (p.armorMult || 1)),
+    armor: Math.round(((p.baseArmor || 0) + (g.armor || 0) + pb.armor) * (p.armorMult || 1) * (1 + pct('armorPct'))),
     // Hút máu: bị động (Chiến Binh) + dòng "Hút % sát thương thành máu" trên đồ, tối đa caps.leech (Chiến Binh 30%).
     leech: Math.min(p.leechCap ?? c.caps.leech ?? 1, pb.leech + pct('leechPct')),
     resist: {
