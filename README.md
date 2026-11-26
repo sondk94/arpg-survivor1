@@ -106,6 +106,20 @@ Chỉ số cấp 1 so với pháp sư:
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
 
+## Quái mạnh hơn và dòng hút máu trên đồ (bản 1.10)
+
+Để hợp với việc đồ tăng sức mạnh theo cấp đồ (bản 1.9):
+- **Theo màn** (`campaign.json`): máu quái **+12%** mỗi màn (trước +10%), sát thương **+6%** (trước +5%). Màn 20: máu ×8,6, sát thương ×3,0. Màn 1-1 không đổi.
+- **Theo độ khó** (`config.json` → `difficulties`): Ác mộng máu ×7, sát thương ×3,5 (trước ×5 / ×3); Địa ngục máu ×22, sát thương ×7,5 (trước ×14 / ×6).
+- **Boss và trùm nhỏ** thêm máu riêng: ×1,5 Bình thường, ×2 Ác mộng, ×2,5 Địa ngục (`bossHpMult`).
+- Tinh anh và mật độ quái giữ nguyên.
+
+**Dòng đồ "Hút % sát thương thành máu"** (`leechPct`, tên "của Ma Cà Rồng"):
+- Có trên vũ khí, nhẫn, dây chuyền, găng; mọi lớp đều dùng được.
+- Bậc: 1–2% (cấp đồ 4), 2–3% (12), 3–4% (25), 4–5% (40), 5–6% (60). Không tăng theo cấp đồ.
+- Cộng dồn với bị động Hút Máu của Chiến Binh, tối đa **20%** (`config.json` → `caps.leech`). Vật triệu hồi gây sát thương cũng hút máu cho người chơi.
+- Bảng chỉ số hiện dòng "Hút máu" khi có.
+
 ## Chỉ số đồ theo cấp đồ, rune gộp chồng, khung nổi (bản 1.9)
 
 **Chỉ số đồ tăng theo cấp đồ** (`items.json` → `ilvlScaling`):

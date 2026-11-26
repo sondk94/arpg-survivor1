@@ -176,7 +176,8 @@ export function computeStats(ch, data) {
     critChance: p.critChance + pct('critChance') + pb.crit,
     critMult: p.critMult + pb.critMult,
     armor: (p.baseArmor || 0) + (g.armor || 0) + pb.armor,
-    leech: pb.leech,
+    // Hút máu: bị động (Chiến Binh) + dòng "Hút % sát thương thành máu" trên đồ, tối đa caps.leech.
+    leech: Math.min(c.caps.leech ?? 1, pb.leech + pct('leechPct')),
     resist: {
       fire: pct('resFire') + resAll,
       cold: pct('resCold') + resAll,

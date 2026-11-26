@@ -194,7 +194,8 @@ t('Trường Tĩnh Điện: 15% máu hiện tại, boss 5%', () => {
   g.grid.rebuild(g.enemies);
   g.castStatic(data.skills.static_field, 1);
   assert.equal(z.hp, 850);
-  assert.equal(b.hp, 2500 * 0.95);
+  assert.equal(b.hp, b.maxHp * 0.95); // boss chỉ mất 5% (máu boss đã nhân hệ số boss của độ khó)
+  assert.equal(b.maxHp, 2500 * data.difficultiesById.normal.bossHpMult);
 });
 
 t('Đồ: sinh đủ 5 bậc (cả đồ bộ), yêu cầu cấp chặn mặc đồ, chỉ số đồ cộng vào nhân vật', () => {
@@ -256,15 +257,15 @@ t('Xuất mã rồi nhập lại vẫn đủ cấp, điểm, đồ và rương',
   assert.throws(() => importCode('xyz', data), /định dạng/);
 });
 
-t('20 màn: máu quái +10% mỗi màn, sát thương +5%, kinh nghiệm +5% (cộng dồn)', () => {
+t('20 màn: máu quái và sát thương tăng theo hpStep / dmgStep mỗi màn, kinh nghiệm +5% (cộng dồn)', () => {
   assert.equal(data.mapOrder.length, 20);
   data.mapOrder.forEach((id, i) => {
     const m = data.maps[id];
     assert.equal(m.index, i);
     if (i > 0) {
       const prev = data.maps[data.mapOrder[i - 1]];
-      assert.ok(Math.abs(m.hpMult / prev.hpMult - 1.10) < 1e-9, id);
-      assert.ok(Math.abs(m.dmgMult / prev.dmgMult - 1.05) < 1e-9, id);
+      assert.ok(Math.abs(m.hpMult / prev.hpMult - (1 + data.campaign.hpStep)) < 1e-9, id);
+      assert.ok(Math.abs(m.dmgMult / prev.dmgMult - (1 + data.campaign.dmgStep)) < 1e-9, id);
     }
   });
   const ch = P.createCharacter(data);
@@ -272,13 +273,13 @@ t('20 màn: máu quái +10% mỗi màn, sát thương +5%, kinh nghiệm +5% (c�
   const g2 = new Game(data, ch, { seed: 1, headless: true, mapId: '1-2' });
   const g20 = new Game(data, ch, { seed: 1, headless: true, mapId: '4-5' });
   const z1 = g1.spawnEnemy('zombie', 100, 100), z2 = g2.spawnEnemy('zombie', 100, 100), z20 = g20.spawnEnemy('zombie', 100, 100);
-  assert.ok(Math.abs(z2.maxHp / z1.maxHp - 1.10) < 1e-9);
-  assert.ok(Math.abs(z2.contact / z1.contact - 1.05) < 1e-9);
+  assert.ok(Math.abs(z2.maxHp / z1.maxHp - (1 + data.campaign.hpStep)) < 1e-9);
+  assert.ok(Math.abs(z2.contact / z1.contact - (1 + data.campaign.dmgStep)) < 1e-9);
   assert.ok(Math.abs(z2.xp / z1.xp - 1.05) < 1e-9);
-  assert.ok(Math.abs(z20.maxHp / z1.maxHp - Math.pow(1.10, 19)) < 1e-9);
-  assert.ok(Math.abs(z20.contact / z1.contact - Math.pow(1.05, 19)) < 1e-9);
+  assert.ok(Math.abs(z20.maxHp / z1.maxHp - Math.pow(1 + data.campaign.hpStep, 19)) < 1e-9);
+  assert.ok(Math.abs(z20.contact / z1.contact - Math.pow(1 + data.campaign.dmgStep, 19)) < 1e-9);
   const b1 = g1.spawnEnemy('swamp_lord', 100, 100), b2 = g2.spawnEnemy('swamp_lord', 100, 100);
-  assert.ok(Math.abs(b2.maxHp / b1.maxHp - 1.10) < 1e-9);
+  assert.ok(Math.abs(b2.maxHp / b1.maxHp - (1 + data.campaign.hpStep)) < 1e-9);
 });
 
 t('Qua màn thì mở màn sau; tiến độ được lưu trong mã nhân vật', () => {
@@ -892,6 +893,42 @@ t('Rune cùng loại gộp một ô: nhặt, ghép vào đồ, ghép 3→1, chuy
   const back = importCode(exportCode(old, newStash(data), data), data).ch;
   assert.equal(back.inventory.filter(Boolean).length, 1);
   assert.equal(I.runeQty(back.inventory[0]), 2);
+});
+
+t('Quái mạnh hơn (bản 1.10): +12% máu, +6% sát thương mỗi màn; Ác mộng ×7/×3,5, Địa ngục ×22/×7,5; boss thêm ×1,5/×2/×2,5', () => {
+  assert.equal(data.campaign.hpStep, 0.12);
+  assert.equal(data.campaign.dmgStep, 0.06);
+  const last = data.maps[data.mapOrder[data.mapOrder.length - 1]];
+  assert.ok(Math.abs(last.hpMult - Math.pow(1.12, 19)) < 1e-9);
+  const D = data.difficultiesById;
+  assert.deepEqual([D.nightmare.hpMult, D.nightmare.dmgMult, D.hell.hpMult, D.hell.dmgMult], [7, 3.5, 22, 7.5]);
+  const ch = P.createCharacter(data);
+  for (const [id, m] of [['normal', 1.5], ['nightmare', 2], ['hell', 2.5]]) {
+    const g = new Game(data, ch, { seed: 1, headless: true, mapId: '1-1', difficulty: id });
+    const z = g.spawnEnemy('zombie', 100, 100);
+    const b = g.spawnEnemy('swamp_lord', 300, 300);
+    const zb = data.monsters.zombie.hp, bb = data.monsters.swamp_lord.hp;
+    assert.ok(Math.abs(b.maxHp / z.maxHp - (bb / zb) * m) < 1e-6, id); // chỉ boss / trùm nhỏ được nhân thêm
+  }
+});
+
+t('Dòng đồ "Hút % sát thương thành máu": cộng với bị động, tối đa 20%, hồi máu khi đánh', () => {
+  const c = P.createCharacter(data, 'mage');
+  assert.equal(P.computeStats(c, data).leech, 0);
+  const ring = (v) => ({ uid: 'l' + v, base: 'ring', type: 'ring', rarity: 'magic', name: 'r', ilvl: 1, req: { level: 1, str: 0 }, stats: { leechPct: v }, sockets: 0, runes: [] });
+  c.equipment.ring1 = ring(5);
+  assert.ok(Math.abs(P.computeStats(c, data).leech - 0.05) < 1e-9);
+  c.equipment.ring2 = ring(30);
+  assert.ok(Math.abs(P.computeStats(c, data).leech - data.config.caps.leech) < 1e-9);
+  c.equipment.ring2 = null;
+  const g = new Game(data, c, { seed: 1, headless: true });
+  g.player.hp = 10;
+  const e = g.spawnEnemy('zombie', g.player.x + 50, g.player.y); e.hp = e.maxHp = 1000;
+  g.damageEnemy(e, 100, 'fire', { noCrit: true });
+  assert.ok(g.player.hp > 10 && g.player.hp <= 10 + 100 * 0.05 + 1e-9);
+  // có trong danh sách dòng chỉ số đồ, không tăng theo cấp đồ
+  assert.ok(data.items.affixes.some((a) => a.stat === 'leechPct'));
+  assert.ok(data.items.ilvlScaling.exclude.includes('leechPct'));
 });
 
 console.log(`\n${n} kiểm tra đều qua.`);

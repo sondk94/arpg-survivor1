@@ -222,6 +222,6 @@
       "name": "Tận Cùng Đầm Lầy"
     }
   ],
-  "hpStep": 0.1,
-  "dmgStep": 0.05
+  "hpStep": 0.12,
+  "dmgStep": 0.06
 }

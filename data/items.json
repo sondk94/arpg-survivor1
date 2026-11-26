@@ -290,6 +290,9 @@
     },
     "swarmSkills": {
       "fmt": "+{v} cấp kỹ năng Bầy Chim & Côn Trùng"
+    },
+    "leechPct": {
+      "fmt": "Hút {v}% sát thương thành máu"
     }
   },
   "bases": [
@@ -2100,6 +2103,48 @@
           3
         ]
       ]
+    },
+    {
+      "stat": "leechPct",
+      "name": "của Ma Cà Rồng",
+      "slots": [
+        "weapon",
+        "ring",
+        "amulet",
+        "gloves"
+      ],
+      "tiers": [
+        [
+          4,
+          4,
+          1,
+          2
+        ],
+        [
+          12,
+          12,
+          2,
+          3
+        ],
+        [
+          25,
+          25,
+          3,
+          4
+        ],
+        [
+          40,
+          40,
+          4,
+          5
+        ],
+        [
+          60,
+          60,
+          5,
+          6
+        ]
+      ]
     }
   ],
   "rareNames": {
@@ -2798,7 +2843,8 @@
       "allSkills",
       "freezeHits",
       "cdSpeedPct",
-      "moveSpeedPct"
+      "moveSpeedPct",
+      "leechPct"
     ],
     "reqOffset": 10,
     "tierWeights": [

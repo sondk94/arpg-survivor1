@@ -362,6 +362,8 @@ export class Game {
       big: def.ai === 'boss' || def.ai === 'miniboss',
       flee: false, fleeT: 0, dead: false,
     };
+    // Boss và trùm nhỏ có thêm máu riêng theo độ khó (×1,5 / ×2 / ×2,5).
+    if (e.big && D.bossHpMult) { e.hp *= D.bossHpMult; e.maxHp = e.hp; }
     if (def.ai === 'miniboss') e.summonT = def.summonInterval;
     if (def.ai === 'boss') e.b = { state: 'chase', atkT: def.attackInterval, next: 'slam', t: 0, phase2: false, batT: def.phase2.batInterval };
     this.enemies.push(e);
