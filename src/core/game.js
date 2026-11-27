@@ -650,6 +650,8 @@ export class Game {
   }
 
   rollSkill(skill, lvl, mult) {
+    // Đòn kỹ năng vật lý (không phải thú): đánh dấu để damageEnemy cộng thêm sát thương nguyên tố của vũ khí cận chiến.
+    this._addSk = !skill.summon && skill.element === 'physical' ? skill : null;
     const [a, b] = P.hitRange(skill, lvl, this.stats);
     return this.rng.range(a, b) * mult;
   }
@@ -809,6 +811,7 @@ export class Game {
         x: p.x, y: p.y, vx: Math.cos(a) * sk.projectileSpeed, vy: Math.sin(a) * sk.projectileSpeed,
         r: sk.projectileRadius, life: sk.range / sk.projectileSpeed, pierce, dmg, mult,
         element: sk.element, slow: sk.slow, color: sk.color, look: sk.id,
+        addSk: !sk.summon && sk.element === 'physical' ? sk : null,
       });
     }
     return true;
@@ -834,7 +837,7 @@ export class Game {
     this.zones.push({
       kind: 'firewall', x1: cx - hx, y1: cy - hy, x2: cx + hx, y2: cy + hy, cx, cy,
       half: sk.thickness / 2, t: 0, dur: sk.duration, tickT: 0, tick: sk.tickInterval,
-      dps: P.lv(sk.dps, lvl) + P.flatFor(sk, this.stats), slow: sk.slowPct, skill: sk, lvl,
+      dps: P.lv(sk.dps, lvl) + P.dpsFlat(sk, this.stats), slow: sk.slowPct, skill: sk, lvl,
     });
     return true;
   }
@@ -853,7 +856,7 @@ export class Game {
     if (!t) return false;
     this.zones.push({
       kind: 'area', look: 'blizzard', x: t.x, y: t.y, r: sk.radius, t: 0, dur: sk.duration, tick: sk.tick, tickT: 0.05,
-      dps: P.lv(sk.dps, lvl) + P.flatFor(sk, this.stats), skill: sk, element: sk.element, slow: sk.slow,
+      dps: P.lv(sk.dps, lvl) + P.dpsFlat(sk, this.stats), skill: sk, element: sk.element, slow: sk.slow,
     });
     return true;
   }
@@ -1056,6 +1059,9 @@ export class Game {
 
   // ---------- Sát thương lên quái ----------
   damageEnemy(e, amount, element, opts = {}) {
+    // Đọc rồi xoá ngay dấu đòn kỹ năng, để các đòn phụ lồng bên trong (sóng chém, phản gai…) không nhận thêm.
+    const addSk = element === 'physical' && !opts.noAdds ? this._addSk : null;
+    this._addSk = null;
     if (e.dead) return 0;
     const caps = this.cfg.caps;
     const res = clamp(e.resist[element] || 0, caps.monsterResistMin, caps.monsterResistMax);
@@ -1105,7 +1111,23 @@ export class Game {
       this.addText(e.x, e.y - e.r - 4, Math.round(dmg).toString(), crit ? '#ffe14d' : element === 'cold' ? '#bfeaff' : '#ffffff', crit ? 17 : 13);
     }
     if (e.hp <= 0) this.killEnemy(e, element);
+    else if (addSk) this.elementalAdds(e, addSk);
     return dmg;
+  }
+
+  // Sát thương lửa / băng / sét cộng thêm mỗi đòn từ vũ khí cận chiến: là đòn riêng theo nguyên tố
+  // (trừ kháng nguyên tố, băng tính vào đóng băng, sét +60% lên tinh anh), nhân hệ số kỹ năng và % nguyên tố trên đồ.
+  elementalAdds(e, sk) {
+    const ad = this.stats.adds;
+    if (!ad || !(ad.fire || ad.cold || ad.lightning)) return;
+    const fs = sk.flatScale ?? 1;
+    const base = this.skillMult(sk);
+    for (const el of ['fire', 'cold', 'lightning']) {
+      const v = ad[el];
+      if (!v || e.dead) continue;
+      const roll = el === 'lightning' ? this.rng.range(Math.max(1, v / 4), v) : v;
+      this.damageEnemy(e, roll * fs * (base + (this.stats.elemDmgPct[el] || 0)), el, { noCrit: true, noWave: true, noAdds: true, quiet: true });
+    }
   }
 
   applySlow(e, pct, dur) {
@@ -1422,6 +1444,7 @@ export class Game {
         const rr = e.r + pr.r;
         if (dx * dx + dy * dy >= rr * rr || pr.hitIds.includes(e.id)) return;
         pr.hitIds.push(e.id);
+        if (pr.addSk) this._addSk = pr.addSk; // rìu ném: nhận sát thương nguyên tố của vũ khí cận chiến
         this.damageEnemy(e, this.rng.range(pr.dmg[0], pr.dmg[1]) * pr.mult, pr.element, { slow: pr.slow, noCrit: pr.noCrit });
         if (pr.pierce-- <= 0) { pr.dead = true; return true; }
       });
@@ -1449,7 +1472,7 @@ export class Game {
         const sk = pd.skill;
         const mult = this.skillMult(sk);
         this.areaDamage(pd.x, pd.y, pd.r, () => this.rollSkill(sk, pd.lvl, mult), sk.element);
-        this.zones.push({ kind: 'area', look: 'burn', x: pd.x, y: pd.y, r: pd.r, t: 0, dur: sk.burnDuration, tickT: sk.burnTick, tick: sk.burnTick, dps: P.lv(sk.burnDps, pd.lvl) + P.flatFor(sk, this.stats, 'burnFlatScale'), skill: sk, element: sk.element });
+        this.zones.push({ kind: 'area', look: 'burn', x: pd.x, y: pd.y, r: pd.r, t: 0, dur: sk.burnDuration, tickT: sk.burnTick, tick: sk.burnTick, dps: P.lv(sk.burnDps, pd.lvl) + P.dpsFlat(sk, this.stats, 'burnFlatScale'), skill: sk, element: sk.element });
         this.addFx({ kind: 'burst', x: pd.x, y: pd.y, dur: 0.4, r: pd.r, color: '#ff7a2a' });
         this.emit({ type: 'shake', amount: 4 });
         break;

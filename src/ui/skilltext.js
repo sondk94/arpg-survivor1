@@ -32,12 +32,12 @@ export function describeSkill(sk, lvl, ch, data, stats) {
       lines.push([`Sát thương ${sk.element === 'fire' ? 'lửa' : sk.element === 'cold' ? 'băng' : 'sét'}`, `+${pct(sk.dmgPct * lvl)}`]);
       break;
     case 'meteor':
-      lines.push(['Sát thương', range(P.hitRange(sk, lvl, stats), mult)], ['Vết cháy', `${num((P.lv(sk.burnDps, lvl) + P.flatFor(sk, stats, 'burnFlatScale')) * mult)}/giây trong ${num(sk.burnDuration)} giây`],
+      lines.push(['Sát thương', range(P.hitRange(sk, lvl, stats), mult)], ['Vết cháy', `${num((P.lv(sk.burnDps, lvl) + P.dpsFlat(sk, stats, 'burnFlatScale')) * mult)}/giây trong ${num(sk.burnDuration)} giây`],
         ['Bán kính', `${sk.radius} px`], ['Rơi sau', `${num(sk.delay)} giây`]);
       cd(); mana();
       break;
     case 'firewall':
-      lines.push(['Sát thương', `${num((P.lv(sk.dps, lvl) + P.flatFor(sk, stats)) * mult)}/giây`], ['Dài', `${sk.length} px, tồn tại ${num(sk.duration)} giây`], ['Làm chậm', pct(sk.slowPct)]);
+      lines.push(['Sát thương', `${num((P.lv(sk.dps, lvl) + P.dpsFlat(sk, stats)) * mult)}/giây`], ['Dài', `${sk.length} px, tồn tại ${num(sk.duration)} giây`], ['Làm chậm', pct(sk.slowPct)]);
       cd(); mana();
       break;
     case 'inferno_burst':
@@ -52,7 +52,7 @@ export function describeSkill(sk, lvl, ch, data, stats) {
       slow(); cd(); mana();
       break;
     case 'blizzard':
-      lines.push(['Sát thương', `${num((P.lv(sk.dps, lvl) + P.flatFor(sk, stats)) * mult)}/giây trong ${num(sk.duration)} giây`], ['Bán kính', `${sk.radius} px`], ['Làm chậm', pct(sk.slow.pct)]);
+      lines.push(['Sát thương', `${num((P.lv(sk.dps, lvl) + P.dpsFlat(sk, stats)) * mult)}/giây trong ${num(sk.duration)} giây`], ['Bán kính', `${sk.radius} px`], ['Làm chậm', pct(sk.slow.pct)]);
       cd(); mana();
       break;
     case 'frozen_orb':
@@ -124,7 +124,7 @@ export function describeSkill(sk, lvl, ch, data, stats) {
       cd(); mana();
       break;
     case 'earthquake':
-      lines.push(['Sát thương', `${num((P.lv(sk.dps, lvl) + P.flatFor(sk, stats)) * mult)}/giây trong ${num(sk.duration)} giây`], ['Bán kính', `${sk.radius} px`], ['Làm chậm', pct(sk.slow.pct)]);
+      lines.push(['Sát thương', `${num((P.lv(sk.dps, lvl) + P.dpsFlat(sk, stats)) * mult)}/giây trong ${num(sk.duration)} giây`], ['Bán kính', `${sk.radius} px`], ['Làm chậm', pct(sk.slow.pct)]);
       cd(); mana();
       break;
     case 'unbroken':
@@ -195,7 +195,7 @@ export function describeSkill(sk, lvl, ch, data, stats) {
       lines.push(['Tỉ lệ sống lại', pct(P.lv(sk.reviveChance, lvl))], ['Máu khi sống lại', '50%']);
       break;
     case 'bee_swarm':
-      lines.push(['Sát thương', `${num((P.lv(sk.dps, lvl) + P.flatFor(sk, stats)) * mult)}/giây trong ${num(sk.duration)} giây`], ['Bán kính', `${sk.radius} px`]);
+      lines.push(['Sát thương', `${num((P.lv(sk.dps, lvl) + P.dpsFlat(sk, stats)) * mult)}/giây trong ${num(sk.duration)} giây`], ['Bán kính', `${sk.radius} px`]);
       cd(); mana();
       break;
     case 'wild_mastery':

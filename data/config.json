@@ -1,5 +1,5 @@
 {
-  "version": "1.14",
+  "version": "1.15",
   "testMode": true,
   "run": {
     "duration": 300,
@@ -138,13 +138,13 @@
       "rareMult": 1,
       "uniqueMult": 1,
       "color": "#d9b35c",
-      "bossHpMult": 2.5
+      "bossHpMult": 7
     },
     {
       "id": "nightmare",
       "name": "Ác mộng",
       "hpMult": 7,
-      "dmgMult": 3.5,
+      "dmgMult": 4.5,
       "xpMult": 2,
       "ilvlBonus": 18,
       "monsterResist": 0.2,
@@ -153,13 +153,13 @@
       "uniqueMult": 1.5,
       "color": "#c06cff",
       "unlockAfter": "normal",
-      "bossHpMult": 2
+      "bossHpMult": 3.5
     },
     {
       "id": "hell",
       "name": "Địa ngục",
       "hpMult": 22,
-      "dmgMult": 7.5,
+      "dmgMult": 9.5,
       "xpMult": 3.5,
       "ilvlBonus": 32,
       "monsterResist": 0.35,

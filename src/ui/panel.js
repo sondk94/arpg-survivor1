@@ -457,6 +457,10 @@ export class Panel {
       atk.push(row('Lửa/Băng/Sét', `${pctStr(st.elemDmgPct.fire)}/${pctStr(st.elemDmgPct.cold)}/${pctStr(st.elemDmgPct.lightning)}`, 'Cộng thêm theo nguyên tố, từ đồ.'));
       atk.push(row('Sét → tinh anh', `+${pctStr(st.eliteDmgPct.lightning)}`, 'Sát thương sét lên tinh anh và trùm nhỏ.'));
     }
+    if (st.weapon) atk.push(row('Vũ khí', `${Math.round(st.weapon.min)}–${Math.round(st.weapon.max)} ${WKIND[st.weapon.kind]}`, `Sát thương cơ bản của vũ khí, cộng vào mỗi đòn của kỹ năng ${WKIND[st.weapon.kind]} (nhân hệ số cộng thẳng của từng kỹ năng).`));
+    const ad = st.adds || {};
+    const adl = [ad.physical && `+${ad.physical} vật lý`, ad.fire && `+${ad.fire} lửa`, ad.cold && `+${ad.cold} băng`, ad.lightning && `+${Math.max(1, Math.round(ad.lightning / 4))}–${ad.lightning} sét`].filter(Boolean);
+    if (adl.length) atk.push(row('Mỗi đòn', adl.join(', '), 'Cộng thêm vào mỗi đòn kỹ năng vật lý. Lửa / băng / sét là đòn nguyên tố riêng: bị trừ kháng, băng tính vào đóng băng, sét +60% lên tinh anh.'));
     atk.push(row('Chí mạng', `${pctStr(st.critChance)} ×${st.critMult}`, 'Tỉ lệ chí mạng × hệ số sát thương chí mạng.'));
     atk.push(row('Hồi chiêu', `+${pctStr(st.cdSpeed - 1)}`, 'Nhanh nhẹn +0,4% mỗi điểm, cộng đồ.'));
     if (cls.trees.some((t) => st.skillBonus[t]) || st.skillBonus.all) atk.push(row('+Cấp từ đồ', cls.trees.map((t) => `+${(st.skillBonus[t] || 0) + st.skillBonus.all}`).join(' / '), cls.trees.map((t) => `${data.treesById[t].name} +${(st.skillBonus[t] || 0) + st.skillBonus.all}`).join(', ')));
@@ -596,7 +600,7 @@ export class Panel {
     const eqs = I.slotsForType(it.type, this.data).map((sl) => ch.equipment[sl]).filter(Boolean);
     if (!eqs.length) return null;
     const mode = L.scoreMode(ch);
-    return eqs.reduce((a, b) => (I.itemScore(b, this._tree, mode) < I.itemScore(a, this._tree, mode) ? b : a));
+    return eqs.reduce((a, b) => (I.itemScore(b, this._tree, mode, this.data) < I.itemScore(a, this._tree, mode, this.data) ? b : a));
   }
 
   // Thẻ vật phẩm gọn: so sánh với đồ đang mặc nằm ngay trên từng dòng (▲ / ▼), dòng "mất" cho chỉ số bị mất.
@@ -626,6 +630,15 @@ export class Panel {
       return `<div class="tl"><span>${esc(I.formatStat(k, val, data))}</span>${dlt}</div>`;
     }).join('');
     const lost = cmp ? Object.entries(b).filter(([k]) => !(k in a)).map(([k, val]) => I.formatStat(k, val, data)) : [];
+    // Sát thương cơ bản của vũ khí, so sánh theo trung bình mỗi đòn.
+    let wline = '';
+    const wd = P.weaponDamage(it, data);
+    if (wd) {
+      const cw = cmp && P.weaponDamage(cmp, data);
+      const dv = cw ? Math.round(((wd.min + wd.max) - (cw.min + cw.max)) / 2) : 0;
+      const dl = dv > 0 ? `<i class="up">▲ ${dv}</i>` : dv < 0 ? `<i class="down">▼ ${-dv}</i>` : '';
+      wline = `<div class="tl wdmg"><span>Sát thương vũ khí ${Math.round(wd.min)}–${Math.round(wd.max)} (${WKIND[wd.kind]})</span>${dl}</div>`;
+    }
     const sock = it.sockets ? `<div class="ts">Lỗ: ${Array.from({ length: it.sockets }, (_, i) => it.runes?.[i] ? `<span style="color:${data.runes.byId[it.runes[i].id].color}">[${esc(data.runes.byId[it.runes[i].id].name)}]</span>` : '[trống]').join(' ')}</div>` : '';
     let setl = '';
     if (it.set) {
@@ -638,7 +651,7 @@ export class Panel {
     return `<div class="tcard" style="--rc:${R.color}">
       <div class="tn">${esc(it.name)} ${vtxt}</div>
       <div class="ts">${it.rarity === 'ssr' ? `${esc(data.items.setsById[it.set]?.class ? data.classes[data.items.setsById[it.set].class].short : '')} · ` : ''}${esc(it.baseName)} · ${esc(R.name)} · cấp đồ ${it.ilvl}${pw} · <span class="${lvlOk ? '' : 'bad'}">cần cấp ${it.req.level}</span>${it.req.str ? ` · <span class="${strOk ? '' : 'bad'}">${it.req.str} Sức mạnh</span>` : ''}</div>
-      ${lines}
+      ${wline}${lines}
       ${lost.length ? `<div class="tl lost">mất: ${esc(lost.join(', '))}</div>` : ''}
       ${cmp ? `<div class="ts">so với ${esc(cmp.name)}</div>` : where !== 'eq' && v !== 'cant' ? '<div class="ts">ô này đang trống</div>' : ''}
       ${sock}${setl}
@@ -777,6 +790,7 @@ export class Panel {
   }
 }
 
+const WKIND = { melee: 'vật lý', caster: 'phép', totem: 'thú' };
 const BULK_LABELS = { normal: 'Đồ thường', magic: 'Đồ ma thuật', worse: 'Kém hơn đồ đang mặc', wrongClass: 'Đồ của lớp khác', junk: 'Đã đánh dấu rác' };
 
 function typeIcon(t) {

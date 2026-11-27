@@ -211,10 +211,10 @@ export function botManageItems(ch, data, buildName = 'fire') {
     let target = null, worst = Infinity;
     for (const s of slots) {
       const cur = ch.equipment[s];
-      const sc = cur ? itemScore(cur, tree, physical) : -1;
+      const sc = cur ? itemScore(cur, tree, physical, data) : -1;
       if (sc < worst) { worst = sc; target = s; }
     }
-    if (target && itemScore(it, tree, physical) > worst && equipFromInventory(ch, i, data, target) === 'ok') changed = true;
+    if (target && itemScore(it, tree, physical, data) > worst && equipFromInventory(ch, i, data, target) === 'ok') changed = true;
   }
   // Ghép rune vào đồ đang mặc còn lỗ trống (vũ khí trước).
   for (let i = 0; i < ch.inventory.length; i++) {

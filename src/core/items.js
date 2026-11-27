@@ -123,7 +123,8 @@ export function generateItem(rng, data, ilvl, opts = {}) {
   let reqLevel = base.req;
   const [amin, amax] = I.rarities[rarity].affixes;
   const count = amax ? rng.int(amin, amax) : 0;
-  const pool = I.affixes.filter((af) => (af.slots.includes('*') || af.slots.includes(base.type)) && af.tiers.some((t) => t[0] <= ilvl));
+  // Dòng có weaponKinds (vd. chỉ vũ khí cận chiến) chỉ ra trên đúng loại vũ khí.
+  const pool = I.affixes.filter((af) => (af.slots.includes('*') || af.slots.includes(base.type)) && (!af.weaponKinds || af.weaponKinds.includes(base.weaponKind)) && af.tiers.some((t) => t[0] <= ilvl));
   const names = [];
   for (let i = 0; i < count && pool.length; i++) {
     const idx = Math.floor(rng.next() * pool.length);
@@ -196,7 +197,8 @@ export function insertRune(ch, runeInvIndex, target, data) {
 
 export function formatStat(key, v, data) {
   const s = data.items.stats[key];
-  return s ? s.fmt.replace('{v}', v) : `${key}: ${v}`;
+  // Sét dao động lớn: mỗi đòn ngẫu nhiên từ 1/4 tới giá trị ghi trên đồ.
+  return s ? s.fmt.replace('{lo}', Math.max(1, Math.round(v / 4))).replace('{v}', v) : `${key}: ${v}`;
 }
 
 export function itemLines(item, data) {
@@ -446,14 +448,22 @@ export function transfer(from, i, to) {
 }
 
 // Điểm đánh giá đơn giản (bot dùng để tự mặc đồ).
-export function itemScore(item, tree, physical = false) {
+export function itemScore(item, tree, physical = false, data = null) {
   if (item.type === 'rune') return -1;
   const s = itemStats(item);
+  // Sát thương cơ bản của vũ khí (đúng loại với lớp) và các dòng cộng thẳng.
+  let wpn = 0;
+  const base = data?.items.basesById[item.base];
+  if (base?.damage) {
+    const want = physical === 'summon' ? 'totem' : physical ? 'melee' : 'caster';
+    if (base.weaponKind === want) wpn = ((base.damage[0] + base.damage[1]) / 2) * (item.power || 1) * (1 + (s.weaponDmgPct || 0) / 100) * 1.5;
+  }
+  wpn += (s.addPhys || 0) * 1.5 + (s.addFire || 0) + (s.addCold || 0) + (s.addLightning || 0) * 0.6;
   const elem = tree ? (s[`${tree}DmgPct`] || 0) * 1.2 + (s[`${tree}Skills`] || 0) * 25 : 0;
   // physical: true = Chiến binh, 'summon' = Triệu hồi sư, false = Pháp sư.
   const main = physical === 'summon' ? (s.summonDmgPct || 0) * 1.3 + (s.summonHpPct || 0) * 0.5 + (s.ene || 0) * 0.6
     : physical ? (s.physDmgPct || 0) * 1.3 + (s.str || 0) * 1.0 - (s.ene || 0) * 0.6 : (s.spellDmgPct || 0) * 1.2;
   return main + elem + (s.allSkills || 0) * 25 + (s.ene || 0) * 0.8 + (s.vit || 0) * 1.2 +
     (s.maxHp || 0) * 0.4 + (s.maxMana || 0) * 0.3 + (s.armor || 0) * 0.3 + (s.cdSpeedPct || 0) * 1.2 + (s.critChance || 0) * 2 +
-    (s.dex || 0) * 0.5 + (s.moveSpeedPct || 0) * 0.5 + (s.hpOnKill || 0) * 4 + (s.resAll || 0) * 0.3 + (s.leechPct || 0) * 4;
+    (s.dex || 0) * 0.5 + (s.moveSpeedPct || 0) * 0.5 + (s.hpOnKill || 0) * 4 + (s.resAll || 0) * 0.3 + (s.leechPct || 0) * 4 + wpn;
 }

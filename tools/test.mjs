@@ -316,7 +316,7 @@ t('Chiến Binh: chỉ số riêng của lớp, Sức mạnh tăng sát thương
   assert.deepEqual(w.attrs, data.classes.warrior.startAttributes);
   const st = P.computeStats(w, data);
   assert.equal(st.maxHp, 60 + 25 * 4 + 1 * 3);
-  assert.equal(st.armor, Math.round(15 * 1.5)); // Chiến Binh: tổng giáp ×1,5
+  assert.equal(st.armor, Math.round(15 * data.classes.warrior.player.armorMult)); // Chiến Binh: tổng giáp nhân armorMult
   assert.ok(Math.abs(P.damageMult(w, data.skills.cleave, st, data) - (1 + 30 * 0.01)) < 1e-9);
   assert.equal(P.learnSkill(w, 'fireball', data), 'Kỹ năng của lớp khác');
   assert.equal(P.learnSkill(w, 'cleave', data), 'ok');
@@ -897,13 +897,13 @@ t('Rune cùng loại gộp một ô: nhặt, ghép vào đồ, ghép 3→1, chuy
 
 t('Quái mạnh hơn (bản 1.10): +12% máu, +6% sát thương mỗi màn; Ác mộng ×7/×3,5, Địa ngục ×22/×7,5; boss thêm ×2,5/×2/×2,5', () => {
   assert.equal(data.campaign.hpStep, 0.12);
-  assert.equal(data.campaign.dmgStep, 0.06);
+  assert.equal(data.campaign.dmgStep, 0.07);
   const last = data.maps[data.mapOrder[data.mapOrder.length - 1]];
   assert.ok(Math.abs(last.hpMult - Math.pow(1.12, 19)) < 1e-9);
   const D = data.difficultiesById;
-  assert.deepEqual([D.nightmare.hpMult, D.nightmare.dmgMult, D.hell.hpMult, D.hell.dmgMult], [7, 3.5, 22, 7.5]);
+  assert.deepEqual([D.nightmare.hpMult, D.nightmare.dmgMult, D.hell.hpMult, D.hell.dmgMult], [7, 4.5, 22, 9.5]);
   const ch = P.createCharacter(data);
-  for (const [id, m] of [['normal', 2.5], ['nightmare', 2], ['hell', 2.5]]) {
+  for (const [id, m] of [['normal', 7], ['nightmare', 3.5], ['hell', 2.5]]) {
     const g = new Game(data, ch, { seed: 1, headless: true, mapId: '1-1', difficulty: id });
     const z = g.spawnEnemy('zombie', 100, 100);
     const b = g.spawnEnemy('swamp_lord', 300, 300);
@@ -931,15 +931,15 @@ t('Dòng đồ "Hút % sát thương thành máu": cộng với bị động, t�
   assert.ok(data.items.ilvlScaling.exclude.includes('leechPct'));
 });
 
-t('Chiến Binh bền hơn (bản 1.11): tổng giáp ×1,5, hút máu tối đa 30% (lớp khác 20%)', () => {
+t('Chiến Binh bền hơn: tổng giáp ×1,25, hút máu tối đa 25% (lớp khác 20%) — bản 1.15', () => {
   const ring = (v) => ({ uid: 'l' + v, base: 'ring', type: 'ring', rarity: 'magic', name: 'r', ilvl: 1, req: { level: 1, str: 0 }, stats: { leechPct: v, armor: 100 }, sockets: 0, runes: [] });
   const w = P.createCharacter(data, 'warrior');
   const m = P.createCharacter(data, 'mage');
   for (const c of [w, m]) { c.equipment.ring1 = ring(25); c.equipment.ring2 = ring(25); }
   const sw = P.computeStats(w, data), sm = P.computeStats(m, data);
-  assert.ok(Math.abs(sw.leech - 0.3) < 1e-9);
+  assert.ok(Math.abs(sw.leech - 0.25) < 1e-9);
   assert.ok(Math.abs(sm.leech - 0.2) < 1e-9);
-  assert.equal(sw.armor, Math.round((15 + 200) * 1.5));
+  assert.equal(sw.armor, Math.round((15 + 200) * 1.25));
   assert.equal(sm.armor, 200);
 });
 
@@ -1120,6 +1120,76 @@ t('Giữ chuột trái: đi về phía con trỏ (tính từ tâm màn hình), c
   const c = mouseDir(600, 400, 500, 300);
   assert.ok(Math.abs(c.x - Math.SQRT1_2) < 1e-9 && Math.abs(c.y - Math.SQRT1_2) < 1e-9);
   assert.deepEqual(mouseDir(505, 304, 500, 300), { x: 0, y: 0 });
+});
+
+// ---------- Sát thương vũ khí (bản 1.15) ----------
+function weaponOf(baseId, stats = {}, power = 1, rarity = 'rare') {
+  const b = data.items.basesById[baseId];
+  return { uid: 'w-' + baseId, base: baseId, type: 'weapon', rarity, name: b.name, baseName: b.name, ilvl: 50, req: { level: 1, str: 0 }, stats, sockets: 0, runes: [], power };
+}
+
+t('Vũ khí có sát thương cơ bản theo loại, nhân sức mạnh cấp đồ và % sát thương vũ khí; cộng đúng loại kỹ năng', () => {
+  const w = P.createCharacter(data, 'warrior');
+  w.equipment.weapon = weaponOf('titan_blade', { weaponDmgPct: 50 }, 1.2);
+  const st = P.computeStats(w, data);
+  assert.equal(st.weapon.kind, 'melee');
+  assert.ok(Math.abs(st.weapon.min - 18 * 1.2 * 1.5) < 0.05 && Math.abs(st.weapon.max - 32 * 1.2 * 1.5) < 0.05);
+  const [a, b] = P.damageRange(data.skills.cleave, 1);
+  const [ha, hb] = P.hitRange(data.skills.cleave, 1, st);
+  assert.ok(Math.abs(ha - (a + st.weapon.min * 0.6)) < 1e-6 && Math.abs(hb - (b + st.weapon.max * 0.6)) < 1e-6); // Chém Bổ nhận 60%
+  // vũ khí cận chiến không cộng vào phép, gậy không cộng vào kỹ năng vật lý
+  const m = P.createCharacter(data, 'mage');
+  m.equipment.weapon = weaponOf('titan_blade');
+  assert.deepEqual(P.hitRange(data.skills.fireball, 1, P.computeStats(m, data)), P.damageRange(data.skills.fireball, 1));
+  m.equipment.weapon = weaponOf('void_staff');
+  const sm = P.computeStats(m, data);
+  assert.ok(P.hitRange(data.skills.fireball, 1, sm)[0] > P.damageRange(data.skills.fireball, 1)[0]);
+  // vật tổ cộng vào đòn của thú
+  const s = P.createCharacter(data, 'summoner');
+  s.equipment.weapon = weaponOf('primal_totem');
+  const ss = P.computeStats(s, data);
+  assert.ok(Math.abs(P.hitRange(data.skills.summon_bear, 1, ss)[0] - (P.damageRange(data.skills.summon_bear, 1)[0] + 14)) < 1e-6);
+  // vùng theo giây (Động Đất) nhận trung bình vũ khí
+  assert.ok(Math.abs(P.dpsFlat(data.skills.earthquake, st) - (P.flatFor(data.skills.earthquake, st) + (st.weapon.min + st.weapon.max) / 2)) < 1e-6);
+  // chưa đủ yêu cầu thì không tính
+  w.equipment.weapon.req.level = 99;
+  assert.equal(P.computeStats(w, data).weapon, null);
+});
+
+t('Dòng +% sát thương vũ khí và cộng thẳng chỉ ra trên vũ khí cận chiến', () => {
+  const r = new RNG(51);
+  const melee = new Set(['weaponDmgPct', 'addPhys', 'addFire', 'addCold', 'addLightning']);
+  let seenMelee = 0;
+  for (let i = 0; i < 1500; i++) {
+    const it = I.generateItem(r, data, 70, { rarity: 'rare', type: 'weapon' });
+    const kind = data.items.basesById[it.base].weaponKind;
+    const has = Object.keys(it.stats).some((k) => melee.has(k));
+    if (kind !== 'melee') assert.equal(has, false, `${it.baseName} có dòng cận chiến`);
+    else if (has) seenMelee++;
+  }
+  assert.ok(seenMelee > 20);
+  assert.equal(I.formatStat('addLightning', 40, data), '+10–40 sát thương sét mỗi đòn');
+});
+
+t('Sát thương nguyên tố của vũ khí cận chiến: đòn riêng theo nguyên tố, băng gây đóng băng, không áp dụng cho phép', () => {
+  const w = P.createCharacter(data, 'warrior');
+  w.skills.cleave = 1;
+  w.equipment.weapon = weaponOf('great_sword', { addFire: 20, addCold: 10 });
+  const g = new Game(data, w, { seed: 3, headless: true });
+  g.stats.critChance = 0;
+  const e = g.spawnEnemy('zombie', g.player.x + 30, g.player.y);
+  e.hp = e.maxHp = 1e6; e.resist = {};
+  g.grid.rebuild(g.enemies);
+  const fire0 = g.dmgByElement.fire || 0, cold0 = g.dmgByElement.cold || 0;
+  for (let i = 0; i < 3; i++) { g.skillState.cleave.cd = 0; g.castMelee(data.skills.cleave, 1); }
+  const mult = g.skillMult(data.skills.cleave);
+  assert.ok(Math.abs((g.dmgByElement.fire - fire0) - 3 * 20 * 0.6 * mult) < 1e-6);
+  assert.ok(Math.abs((g.dmgByElement.cold - cold0) - 3 * 10 * 0.6 * mult) < 1e-6);
+  assert.ok(e.frozenT > 0); // 3 đòn có băng → đóng băng
+  // đòn phụ (phản gai / sóng chém…) không nhận thêm: gọi damageEnemy trực tiếp không qua kỹ năng
+  const f1 = g.dmgByElement.fire;
+  g.damageEnemy(e, 50, 'physical');
+  assert.equal(g.dmgByElement.fire, f1);
 });
 
 // Nạp các file giao diện để bắt lỗi cú pháp (vd. khai báo trùng tên biến) mà các kiểm tra lõi không chạm tới.

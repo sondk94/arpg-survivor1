@@ -109,6 +109,42 @@ Chỉ số cấp 1 so với pháp sư:
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
 
+## Sát thương vũ khí và cân bằng lại độ khó (bản 1.15)
+
+**Sát thương cơ bản của vũ khí** (`items.json` → `bases[].damage`, `weaponKind`):
+
+| Nhóm | Vũ khí | Sát thương cơ bản | Cộng vào |
+|---|---|---|---|
+| Cận chiến | Kiếm Ngắn / Rìu Chiến / Đại Kiếm / Dao Phay / Kiếm Titan | 2–5 / 4–9 / 7–14 / 12–22 / 18–32 | Kỹ năng vật lý |
+| Phép | Đũa / Gậy / Gậy Lớn / Gậy Bóng Tối / Gậy Hư Không | 1–3 / 2–5 / 4–8 / 7–13 / 11–19 | Kỹ năng phép |
+| Vật tổ | Trượng Thú / Cột Vật Tổ / Vật Tổ Nguyên Thuỷ | 2–6 / 6–12 / 14–26 | Đòn của thú |
+
+- Mỗi đòn ra một số ngẫu nhiên trong khoảng, cộng vào sát thương gốc của kỹ năng, nhân hệ số cộng thẳng của kỹ năng (`flatScale`), rồi mới nhân %. Vùng sát thương theo giây nhận trung bình.
+- Nhân theo sức mạnh cấp đồ của món vũ khí. Vũ khí chưa đủ yêu cầu thì không tính.
+
+**Dòng chỉ có trên vũ khí cận chiến** (affix có `weaponKinds: ["melee"]`):
+- **+% sát thương vũ khí** (10–20% đến 81–110%): chỉ tăng sát thương cơ bản của chính cây vũ khí. Dòng này không tăng theo cấp đồ.
+- **+sát thương vật lý mỗi đòn** (+1–3 đến +20–28): cộng chung với sát thương vũ khí.
+- **+sát thương lửa / băng mỗi đòn** và **+sát thương sét** (sét dao động mạnh, ngẫu nhiên từ 1/4 tới giá trị ghi trên đồ). Đây là đòn nguyên tố riêng đi kèm mỗi đòn kỹ năng vật lý (kể cả Rìu Ném):
+  - bị trừ kháng nguyên tố của quái;
+  - đòn băng tính vào đóng băng;
+  - đòn sét được +60% sát thương lên tinh anh;
+  - nhân hệ số kỹ năng cộng % nguyên tố trên đồ.
+  
+  Phản gai, độc, sóng chém, vùng theo giây không nhận phần này.
+- Khung nổi của vũ khí ghi "Sát thương vũ khí x–y (vật lý / phép / thú)" có so sánh ▲ / ▼; bảng chỉ số nhóm Tấn công có dòng "Vũ khí" và "Mỗi đòn".
+
+**Cân bằng lại độ khó** (dựa trên công cụ mô phỏng đã sửa ở bản 1.13; trước đó bot không bán đồ nên yếu hơn người chơi thật):
+
+| | Trước | Bản 1.15 |
+|---|---|---|
+| Máu boss / trùm nhỏ: Bình thường / Ác mộng / Địa ngục | ×2,5 / ×2 / ×2,5 | **×7 / ×3,5 / ×2,5** |
+| Sát thương quái tăng mỗi màn | +6% | **+7%** |
+| Sát thương quái Ác mộng / Địa ngục | ×3,5 / ×7,5 | **×4,5 / ×9,5** |
+| Chiến Binh: tổng giáp / hút máu tối đa | ×1,5 / 30% | **×1,25 / 25%** |
+
+Mục tiêu: boss chết sau khoảng 15–30 giây (Bình thường), 30–45 giây (Ác mộng), 45–60 giây (Địa ngục); ở Địa ngục mỗi lớp chết khoảng 8–15 lần.
+
 ## Ngoại hình theo đồ đang mặc (bản 1.14, bản rút gọn)
 
 Mã nguồn: `src/ui/look.js` (chọn kiểu), `drawWeapon` / `drawSSRAura` trong `src/ui/sprites.js` (vẽ).
