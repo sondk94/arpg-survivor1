@@ -51,8 +51,8 @@
         "moveSpeed": 165,
         "radius": 15,
         "baseArmor": 15,
-        "armorMult": 1.5,
-        "leechCap": 0.3
+        "armorMult": 1.25,
+        "leechCap": 0.25
       }
     },
     {

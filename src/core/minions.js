@@ -327,7 +327,7 @@ export const MinionMixin = {
     const t = this.densestPoint(sk.searchRange, sk.radius);
     if (!t || !Number.isFinite(t.x)) return false;
     const p = this.player;
-    const dps = P.lv(sk.dps, lvl) + P.flatFor(sk, this.stats);
+    const dps = P.lv(sk.dps, lvl) + P.dpsFlat(sk, this.stats);
     this.zones.push({ kind: 'swarm', x: p.x, y: p.y, tx: t.x, ty: t.y, r: sk.radius, t: 0, dur: sk.duration, tickT: sk.tick, tick: sk.tick, dps, skill: sk, element: sk.element, speed: sk.speed });
     return true;
   },

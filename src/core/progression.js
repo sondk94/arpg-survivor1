@@ -19,10 +19,40 @@ export function flatFor(skill, stats, scaleKey = 'flatScale') {
   return base * (skill[scaleKey] ?? 1);
 }
 
+// Loại vũ khí cộng sát thương cơ bản cho kỹ năng: cận chiến → kỹ năng vật lý, phép → kỹ năng phép, vật tổ → thú.
+export function weaponKindFor(skill) {
+  return skill.summon ? 'totem' : skill.element === 'physical' ? 'melee' : 'caster';
+}
+
+// Sát thương cơ bản của vũ khí đang cầm cộng vào một đòn của kỹ năng (đã nhân flatScale). [min, max]
+export function weaponFlat(skill, stats, scaleKey = 'flatScale') {
+  const w = stats?.weapon;
+  if (!w || w.kind !== weaponKindFor(skill)) return [0, 0];
+  const fs = skill[scaleKey] ?? 1;
+  // Dòng "+sát thương vật lý mỗi đòn" của vũ khí cận chiến cộng chung vào phần vật lý.
+  const add = w.kind === 'melee' ? stats.adds?.physical || 0 : 0;
+  return [(w.min + add) * fs, (w.max + add) * fs];
+}
+
+// Phần cộng thẳng theo giây cho vùng sát thương (Bão Tuyết, Tường Lửa, Động Đất, Bầy Ong…): thuộc tính + trung bình vũ khí.
+export function dpsFlat(skill, stats, scaleKey = 'flatScale') {
+  const [a, b] = weaponFlat(skill, stats, scaleKey);
+  return flatFor(skill, stats, scaleKey) + (a + b) / 2;
+}
+
 export function hitRange(skill, level, stats) {
   const [a, b] = damageRange(skill, level);
   const f = flatFor(skill, stats);
-  return [a + f, b + f];
+  const [wa, wb] = weaponFlat(skill, stats);
+  return [a + f + wa, b + f + wb];
+}
+
+// Sát thương cơ bản của một vũ khí: theo loại vũ khí × sức mạnh theo cấp đồ × (1 + % sát thương vũ khí).
+export function weaponDamage(item, data) {
+  const base = item && data.items.basesById[item.base];
+  if (!base || !base.damage) return null;
+  const m = (item.power || 1) * (1 + (item.stats?.weaponDmgPct || 0) / 100);
+  return { kind: base.weaponKind, min: Math.round(base.damage[0] * m * 10) / 10, max: Math.round(base.damage[1] * m * 10) / 10 };
 }
 
 export function damageRange(skill, level) {
@@ -167,6 +197,9 @@ export function computeStats(ch, data) {
     summonCrit: pb.summonCrit + pct('summonCritPct'),
     summonExtra: g.summonExtra || 0, // +1 con mỗi loại thú (bộ SSR Vua Muôn Thú)
     specials: gear.specials || {}, // hiệu ứng bộ SSR đang kích hoạt, theo id
+    // Vũ khí đang cầm (đủ yêu cầu): sát thương cơ bản; các dòng cộng thẳng mỗi đòn của vũ khí cận chiến.
+    weapon: ch.equipment?.weapon && !gear.inactive.includes('weapon') ? weaponDamage(ch.equipment.weapon, data) : null,
+    adds: { physical: g.addPhys || 0, fire: g.addFire || 0, cold: g.addCold || 0, lightning: g.addLightning || 0 },
     flyingDmgPct: pb.flyingDmg,
     spellDmgPct: at.ene * a.ene.spellDmgPct + pct('spellDmgPct'),
     elemDmgPct: { fire: pct('fireDmgPct'), cold: pct('coldDmgPct'), lightning: pct('lightningDmgPct') },

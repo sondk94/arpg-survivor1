@@ -325,6 +325,21 @@
     },
     "summonExtra": {
       "fmt": "+{v} con cho mỗi loại thú"
+    },
+    "weaponDmgPct": {
+      "fmt": "+{v}% sát thương vũ khí"
+    },
+    "addPhys": {
+      "fmt": "+{v} sát thương vật lý mỗi đòn"
+    },
+    "addFire": {
+      "fmt": "+{v} sát thương lửa mỗi đòn"
+    },
+    "addCold": {
+      "fmt": "+{v} sát thương băng mỗi đòn"
+    },
+    "addLightning": {
+      "fmt": "+{lo}–{v} sát thương sét mỗi đòn"
     }
   },
   "bases": [
@@ -339,7 +354,12 @@
           10
         ]
       },
-      "maxSockets": 3
+      "maxSockets": 3,
+      "weaponKind": "caster",
+      "damage": [
+        1,
+        3
+      ]
     },
     {
       "id": "staff",
@@ -356,7 +376,12 @@
           10
         ]
       },
-      "maxSockets": 3
+      "maxSockets": 3,
+      "weaponKind": "caster",
+      "damage": [
+        2,
+        5
+      ]
     },
     {
       "id": "grand_staff",
@@ -373,7 +398,12 @@
           20
         ]
       },
-      "maxSockets": 3
+      "maxSockets": 3,
+      "weaponKind": "caster",
+      "damage": [
+        4,
+        8
+      ]
     },
     {
       "id": "stone_orb",
@@ -614,7 +644,12 @@
           14
         ]
       },
-      "maxSockets": 3
+      "maxSockets": 3,
+      "weaponKind": "melee",
+      "damage": [
+        2,
+        5
+      ]
     },
     {
       "id": "war_axe",
@@ -628,7 +663,12 @@
           22
         ]
       },
-      "maxSockets": 3
+      "maxSockets": 3,
+      "weaponKind": "melee",
+      "damage": [
+        4,
+        9
+      ]
     },
     {
       "id": "great_sword",
@@ -642,7 +682,12 @@
           34
         ]
       },
-      "maxSockets": 3
+      "maxSockets": 3,
+      "weaponKind": "melee",
+      "damage": [
+        7,
+        14
+      ]
     },
     {
       "id": "rune",
@@ -667,7 +712,12 @@
           35
         ]
       },
-      "maxSockets": 3
+      "maxSockets": 3,
+      "weaponKind": "caster",
+      "damage": [
+        7,
+        13
+      ]
     },
     {
       "id": "void_staff",
@@ -684,7 +734,12 @@
           50
         ]
       },
-      "maxSockets": 3
+      "maxSockets": 3,
+      "weaponKind": "caster",
+      "damage": [
+        11,
+        19
+      ]
     },
     {
       "id": "war_cleaver",
@@ -698,7 +753,12 @@
           50
         ]
       },
-      "maxSockets": 3
+      "maxSockets": 3,
+      "weaponKind": "melee",
+      "damage": [
+        12,
+        22
+      ]
     },
     {
       "id": "titan_blade",
@@ -712,7 +772,12 @@
           72
         ]
       },
-      "maxSockets": 3
+      "maxSockets": 3,
+      "weaponKind": "melee",
+      "damage": [
+        18,
+        32
+      ]
     },
     {
       "id": "plate",
@@ -818,7 +883,12 @@
           14
         ]
       },
-      "maxSockets": 3
+      "maxSockets": 3,
+      "weaponKind": "totem",
+      "damage": [
+        2,
+        6
+      ]
     },
     {
       "id": "elder_totem",
@@ -835,7 +905,12 @@
           20
         ]
       },
-      "maxSockets": 3
+      "maxSockets": 3,
+      "weaponKind": "totem",
+      "damage": [
+        6,
+        12
+      ]
     },
     {
       "id": "primal_totem",
@@ -852,7 +927,12 @@
           35
         ]
       },
-      "maxSockets": 3
+      "maxSockets": 3,
+      "weaponKind": "totem",
+      "damage": [
+        14,
+        26
+      ]
     },
     {
       "id": "bone_charm",
@@ -2177,6 +2257,216 @@
           6
         ]
       ]
+    },
+    {
+      "stat": "weaponDmgPct",
+      "name": "Sắc Bén",
+      "slots": [
+        "weapon"
+      ],
+      "weaponKinds": [
+        "melee"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          10,
+          20
+        ],
+        [
+          12,
+          12,
+          21,
+          35
+        ],
+        [
+          25,
+          25,
+          36,
+          55
+        ],
+        [
+          40,
+          40,
+          56,
+          80
+        ],
+        [
+          60,
+          60,
+          81,
+          110
+        ]
+      ]
+    },
+    {
+      "stat": "addPhys",
+      "name": "của Thợ Rèn",
+      "slots": [
+        "weapon"
+      ],
+      "weaponKinds": [
+        "melee"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          1,
+          3
+        ],
+        [
+          12,
+          12,
+          4,
+          6
+        ],
+        [
+          25,
+          25,
+          7,
+          11
+        ],
+        [
+          40,
+          40,
+          12,
+          18
+        ],
+        [
+          60,
+          60,
+          20,
+          28
+        ]
+      ]
+    },
+    {
+      "stat": "addFire",
+      "name": "của Lò Rèn Lửa",
+      "slots": [
+        "weapon"
+      ],
+      "weaponKinds": [
+        "melee"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          1,
+          3
+        ],
+        [
+          12,
+          12,
+          5,
+          7
+        ],
+        [
+          25,
+          25,
+          9,
+          13
+        ],
+        [
+          40,
+          40,
+          15,
+          21
+        ],
+        [
+          60,
+          60,
+          24,
+          32
+        ]
+      ]
+    },
+    {
+      "stat": "addCold",
+      "name": "của Băng Giá",
+      "slots": [
+        "weapon"
+      ],
+      "weaponKinds": [
+        "melee"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          1,
+          3
+        ],
+        [
+          12,
+          12,
+          4,
+          6
+        ],
+        [
+          25,
+          25,
+          8,
+          12
+        ],
+        [
+          40,
+          40,
+          13,
+          19
+        ],
+        [
+          60,
+          60,
+          21,
+          29
+        ]
+      ]
+    },
+    {
+      "stat": "addLightning",
+      "name": "của Sấm Sét",
+      "slots": [
+        "weapon"
+      ],
+      "weaponKinds": [
+        "melee"
+      ],
+      "tiers": [
+        [
+          1,
+          1,
+          3,
+          5
+        ],
+        [
+          12,
+          12,
+          8,
+          12
+        ],
+        [
+          25,
+          25,
+          16,
+          22
+        ],
+        [
+          40,
+          40,
+          25,
+          33
+        ],
+        [
+          60,
+          60,
+          34,
+          46
+        ]
+      ]
     }
   ],
   "rareNames": {
@@ -3141,7 +3431,8 @@
       "cdSpeedPct",
       "moveSpeedPct",
       "leechPct",
-      "summonExtra"
+      "summonExtra",
+      "weaponDmgPct"
     ],
     "reqOffset": 10,
     "tierWeights": [

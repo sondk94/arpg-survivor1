@@ -57,11 +57,11 @@ export function itemVerdict(it, ch, data, tree = mainTree(ch, data)) {
   if (!it || it.type === 'rune') return null;
   if (wrongClass(it, ch) || !meetsReq(it, ch.level, totalStr(ch))) return 'cant';
   const mode = scoreMode(ch);
-  const sc = itemScore(it, tree, mode);
+  const sc = itemScore(it, tree, mode, data);
   let worst = Infinity;
   for (const sl of slotsForType(it.type, data)) {
     const cur = ch.equipment[sl];
-    const v = cur ? itemScore(cur, tree, mode) : -1;
+    const v = cur ? itemScore(cur, tree, mode, data) : -1;
     if (v < worst) worst = v;
   }
   if (worst === Infinity) return 'cant';
