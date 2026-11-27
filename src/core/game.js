@@ -156,6 +156,14 @@ export class Game {
   // ---------- Tiện ích ----------
   emit(ev) { this.out.push(ev); }
   showBanner(text, dur = 3.5) { this.banner = { text, t: 0, dur }; this.emit({ type: 'banner', text }); }
+  // Hệ số máu / kinh nghiệm của quái mới sinh theo thời gian trong màn (run.ramp).
+  rampMult() {
+    const R = this.cfg.run.ramp;
+    if (!R) return { hp: 1, xp: 1, steps: 0 };
+    const steps = Math.floor(this.clock / R.interval);
+    return { hp: 1 + R.hpPct * steps, xp: 1 + R.xpPct * steps, steps };
+  }
+
   // Đồng hồ của màn (lịch sinh quái, sự kiện, cuồng nộ). Bằng thời gian thật, trừ khi đã gọi boss sớm.
   get clock() { return this.time + this.timeShift; }
 
@@ -373,8 +381,14 @@ export class Game {
       big: def.ai === 'boss' || def.ai === 'miniboss',
       flee: false, fleeT: 0, dead: false,
     };
-    // Boss và trùm nhỏ có thêm máu riêng theo độ khó (×1,5 / ×2 / ×2,5).
+    // Boss và trùm nhỏ có thêm máu riêng theo độ khó.
     if (e.big && D.bossHpMult) { e.hp *= D.bossHpMult; e.maxHp = e.hp; }
+    // Quái thường (kể cả tinh anh) mạnh dần trong màn: mỗi 5 giây +1% máu và +2% kinh nghiệm cho quái mới sinh.
+    if (!e.big) {
+      const rp = this.rampMult();
+      e.hp *= rp.hp; e.maxHp = e.hp;
+      e.xp *= rp.xp;
+    }
     if (def.ai === 'miniboss') e.summonT = def.summonInterval;
     if (def.ai === 'boss') e.b = { state: 'chase', atkT: def.attackInterval, next: 'slam', t: 0, phase2: false, batT: def.phase2.batInterval };
     this.enemies.push(e);

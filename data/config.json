@@ -1,10 +1,15 @@
 {
-  "version": "1.15",
+  "version": "1.16",
   "testMode": true,
   "run": {
     "duration": 300,
     "resumeDelay": 0.3,
-    "callBossKills": 800
+    "callBossKills": 800,
+    "ramp": {
+      "interval": 5,
+      "hpPct": 0.01,
+      "xpPct": 0.02
+    }
   },
   "player": {
     "className": "Pháp sư Nguyên tố",
