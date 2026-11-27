@@ -137,6 +137,17 @@ Gọi xác vẫn giữ: 5 xác sống mỗi 6 giây. Dưới 50% máu: gọi m�
 
 Bot mô phỏng né thêm bia mộ và chỗ trồi lên.
 
+**Máu thú triệu hồi (Triệu hồi sư):** máu gốc gấp đôi ở mọi cấp kỹ năng; **đủ cấp 20** thì gấp 4 so với bản cũ (`skills.json` → `minion.hp` và `minion.hpMaxLevelMult: 2`). Áp dụng cho Sói, Sói đầu đàn, Gấu, Quạ; Sói Linh Hồn (×3 sói đầu đàn) tăng theo.
+
+| Thú | Cấp 1 | Cấp 10 | Cấp 19 | Cấp 20 |
+|---|---|---|---|---|
+| Sói | 60 → **120** | 195 → **390** | 330 → **660** | 345 → **1.380** |
+| Sói đầu đàn | 130 → **260** | 355 → **710** | 580 → **1.160** | 605 → **2.420** |
+| Gấu | 220 → **440** | 625 → **1.250** | 1.030 → **2.060** | 1.075 → **4.300** |
+| Quạ | 25 → **50** | 79 → **158** | 133 → **266** | 139 → **556** |
+
+Mô phỏng Bầy Sói (hạt giống 2): bản cũ kẹt ở Địa ngục 4-5 (47 lần chết, hết 120 lượt, 19/20 màn); bản mới qua đủ 60 màn trong 60 lượt, không chết lần nào.
+
 ## Quái mạnh dần trong màn (bản 1.16)
 
 - Quái thường và tinh anh **mới sinh ra** được **+1% máu sau mỗi 5 giây** trong màn (cộng dồn tuyến tính): phút 1 ×1,12, phút 3 ×1,36, phút 5 ×1,6. Quái đã có trên màn không đổi.

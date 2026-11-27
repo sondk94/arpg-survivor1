@@ -1297,6 +1297,21 @@ t('Chiến Binh Kiên Cường: nhận 70% sát thương từ boss / trùm nhỏ
   assert.ok(Math.abs(b.dmgMult / z.dmgMult - 7.5 / 9.5) < 1e-9);
 });
 
+t('Máu thú: cấp 1 và 10 gấp đôi bản cũ, đủ cấp 20 gấp 4', () => {
+  const g = new Game(data, summoner({ summon_wolf: 1 }), { seed: 1, headless: true });
+  g.stats.summonHpMult = 1;
+  const cases = [['summon_wolf', 60, 15], ['alpha_wolf', 130, 25], ['summon_bear', 220, 45], ['summon_crows', 25, 6]];
+  for (const [id, b, pl] of cases) {
+    const sk = data.skills[id];
+    if (!sk?.minion) continue;
+    const old = (l) => b + pl * (l - 1);
+    assert.equal(g.minionMaxHp(sk, 1), old(1) * 2);
+    assert.equal(g.minionMaxHp(sk, 10), old(10) * 2);
+    assert.equal(g.minionMaxHp(sk, 19), old(19) * 2);
+    assert.equal(g.minionMaxHp(sk, 20), old(20) * 4);
+  }
+});
+
 // Nạp các file giao diện để bắt lỗi cú pháp (vd. khai báo trùng tên biến) mà các kiểm tra lõi không chạm tới.
 for (const f of ['render', 'panel', 'sprites', 'skilltext', 'tooltip', 'debug', 'input', 'telemetry', 'look']) {
   try { await import(`../src/ui/${f}.js`); n++; console.log(`ok - nạp được src/ui/${f}.js`); }
