@@ -52,7 +52,8 @@
         "radius": 15,
         "baseArmor": 15,
         "armorMult": 1.25,
-        "leechCap": 0.25
+        "leechCap": 0.25,
+        "bossDmgTaken": 0.7
       }
     },
     {

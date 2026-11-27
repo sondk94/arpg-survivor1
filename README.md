@@ -109,6 +109,34 @@ Chỉ số cấp 1 so với pháp sư:
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
 
+## Trùm nhỏ và boss ra chiêu nhiều hơn (bản 1.17)
+
+Số dưới đây là số gốc (Bình thường, màn 1-1); trong game nhân theo màn và độ khó.
+
+**Kẻ Đào Mộ (trùm nhỏ):** chạm người 10 → **20**. Cứ 4 giây ra một chiêu, xoay vòng:
+
+| Chiêu | Báo trước | Tác dụng |
+|---|---|---|
+| Vung xẻng | 0,6 giây, quạt đỏ trước mặt | Nửa vòng bán kính 120 px, **25** sát thương, đẩy lùi. Người chơi ở xa thì dùng Ném bia mộ thay |
+| Ném bia mộ | 0,8 giây, 3 vòng xám dưới đất | 3 bia rơi quanh người chơi, mỗi bia **18** |
+| Độn thổ | Chui xuống 1,2 giây (không trúng đòn), rồi vòng nứt đất 0,8 giây | Trồi lên dưới chân người chơi, bán kính 90 px, **30** |
+
+Gọi xác vẫn giữ: 5 xác sống mỗi 6 giây. Dưới 50% máu: gọi mỗi 4 giây, trộn thêm kẻ ném xương, ra chiêu nhanh hơn 20%.
+
+**Chúa Đầm Lầy (boss):**
+- Chạm 8 → **15**. Vồ 20 → **35**. Vũng độc 3 × 4/giây → **5 × 7/giây** (trước đây vũng độc không nhân theo màn / độ khó; giờ đã nhân).
+- Thời gian giữa 2 chiêu 3,5 → **2,6 giây** (giai đoạn 2: 2,1).
+- Xoay vòng 4 chiêu: Vồ → Vũng độc → **Phun độc** (ngửa đầu 0,5 giây, 3 loạt × 5 viên đạn độc hình quạt, mỗi viên **12**) → **Sóng bùn** (đất rung 0,8 giây, vòng sóng loang tới 380 px, có 1 khe hở để né; trúng **25** và chậm 40% trong 2 giây).
+- Dưới 50% máu: **Vồ đôi** (lao 2 lần, lần sau báo trước 0,5 giây), gọi dơi như cũ.
+- Dưới 25% máu: **Bão đầm lầy**, cứ 4 giây 3 vũng độc rơi ngẫu nhiên quanh boss.
+- Nổi điên lúc 5:00: sát thương ×2 (giữ nguyên).
+
+**Giữ cân bằng cho Chiến Binh:**
+- **Kiên Cường:** Chiến Binh nhận **70%** sát thương từ boss và trùm nhỏ (`classes.json` → `warrior.player.bossDmgTaken`).
+- Boss và trùm nhỏ ở **Địa ngục** dùng hệ số sát thương **×7,5** thay vì ×9,5 của quái thường (`difficulties[hell].bossDmgMult`).
+
+Bot mô phỏng né thêm bia mộ và chỗ trồi lên.
+
 ## Quái mạnh dần trong màn (bản 1.16)
 
 - Quái thường và tinh anh **mới sinh ra** được **+1% máu sau mỗi 5 giây** trong màn (cộng dồn tuyến tính): phút 1 ×1,12, phút 3 ×1,36, phút 5 ×1,6. Quái đã có trên màn không đổi.

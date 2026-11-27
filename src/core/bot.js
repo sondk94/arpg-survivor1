@@ -154,7 +154,7 @@ export function botInput(game, opts = {}) {
       if (d < z.r + 40) { fx += (dx / d) * 3; fy += (dy / d) * 3; danger += 3; }
     }
     for (const pd of game.pending) {
-      if (pd.kind !== 'pool' && pd.kind !== 'eliteBlast') continue;
+      if (pd.kind !== 'pool' && pd.kind !== 'eliteBlast' && pd.kind !== 'tomb' && pd.kind !== 'erupt') continue;
       const dx = p.x - pd.x, dy = p.y - pd.y;
       const d = Math.hypot(dx, dy) || 1;
       if (d < pd.r + 40) { fx += (dx / d) * 3; fy += (dy / d) * 3; danger += 3; }

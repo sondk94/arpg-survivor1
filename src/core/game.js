@@ -75,6 +75,7 @@ export class Game {
     this.obGrid = buildObstacleGrid(this.obstacles, this.W, this.H, 128);
 
     const pc = P.playerCfg(ch, data);
+    this.pcfg = pc;
     this.cls = P.getClass(ch, data);
     this.player = { x: this.W / 2, y: this.H / 2, r: pc.radius, hp: 0, mana: 0, invuln: 0, faceX: 1, faceY: 0, glow: 0, hurt: 0, moving: false };
     this.stats = P.computeStats(ch, data);
@@ -364,7 +365,9 @@ export class Game {
     // Độ khó của màn (×1,05 mỗi màn) nhân vào máu và sát thương của mọi quái.
     const D = this.diff;
     const hp = def.hp * (1 + sc.hpPerLevel * (lvl - 1)) * (this.map.hpMult ?? this.map.difficulty ?? 1) * D.hpMult;
-    const dmgMult = (1 + sc.dmgPerLevel * (lvl - 1)) * (this.map.dmgMult ?? this.map.difficulty ?? 1) * D.dmgMult;
+    // Boss / trùm nhỏ có thể có hệ số sát thương riêng theo độ khó (Địa ngục ×7,5 thay vì ×9,5).
+    const isBig = def.ai === 'boss' || def.ai === 'miniboss';
+    const dmgMult = (1 + sc.dmgPerLevel * (lvl - 1)) * (this.map.dmgMult ?? this.map.difficulty ?? 1) * (isBig ? D.bossDmgMult ?? D.dmgMult : D.dmgMult);
     const e = {
       id: this.nextId++, type: typeId, def, name: def.name, ai: def.ai,
       x, y, r: def.radius, hp, maxHp: hp,
@@ -435,8 +438,11 @@ export class Game {
     if (len > 1) { ix /= len; iy /= len; }
     p.moving = len > 0.05;
     if (p.moving) { p.faceX = ix; p.faceY = iy; }
-    p.x += ix * this.stats.moveSpeed * dt;
-    p.y += iy * this.stats.moveSpeed * dt;
+    // Bị làm chậm (Sóng bùn của boss).
+    if (p.slowT > 0) p.slowT -= dt;
+    const ms = this.stats.moveSpeed * (p.slowT > 0 ? 1 - (p.slowPct || 0) : 1);
+    p.x += ix * ms * dt;
+    p.y += iy * ms * dt;
     const o = this.pushOutObstacles(p.x, p.y, p.r);
     p.x = clamp(o.x, p.r, this.W - p.r);
     p.y = clamp(o.y, p.r, this.H - p.r);
@@ -478,6 +484,8 @@ export class Game {
       }
     }
     let dmg = amount;
+    // Kiên Cường (Chiến Binh): nhận ít sát thương hơn từ boss và trùm nhỏ.
+    if (opts.boss) dmg *= this.pcfg.bossDmgTaken ?? 1;
     if (type === 'physical') {
       const lvl = opts.level || this.map.level;
       const a = this.stats.armor * this.armorMult();
@@ -1076,7 +1084,7 @@ export class Game {
     // Đọc rồi xoá ngay dấu đòn kỹ năng, để các đòn phụ lồng bên trong (sóng chém, phản gai…) không nhận thêm.
     const addSk = element === 'physical' && !opts.noAdds ? this._addSk : null;
     this._addSk = null;
-    if (e.dead) return 0;
+    if (e.dead || e.burrowed) return 0; // trùm nhỏ đang độn thổ: không trúng
     const caps = this.cfg.caps;
     const res = clamp(e.resist[element] || 0, caps.monsterResistMin, caps.monsterResistMax);
     let dmg = amount * (1 - res);
@@ -1505,6 +1513,31 @@ export class Game {
       case 'pool':
         this.zones.push({ kind: 'poison', x: pd.x, y: pd.y, r: pd.r, t: 0, dur: pd.duration, tickT: pd.tick, tick: pd.tick, dps: pd.dps });
         break;
+      case 'tomb': // bia mộ của trùm nhỏ rơi xuống
+        if (Math.hypot(p.x - pd.x, p.y - pd.y) < pd.r + p.r) this.hurtPlayer(pd.dmg, 'physical', `${pd.name} (Bia mộ)`, { boss: true });
+        this.addFx({ kind: 'burst', x: pd.x, y: pd.y, dur: 0.3, r: pd.r, color: '#9a9a9a' });
+        this.emit({ type: 'shake', amount: 2 });
+        break;
+      case 'erupt': { // trùm nhỏ trồi lên dưới chân người chơi
+        const e = pd.src;
+        if (e && !e.dead) { e.x = pd.x; e.y = pd.y; e.burrowed = false; }
+        if (Math.hypot(p.x - pd.x, p.y - pd.y) < pd.r + p.r) this.hurtPlayer(pd.dmg, 'physical', `${pd.name} (Độn thổ)`, { boss: true });
+        this.addFx({ kind: 'burst', x: pd.x, y: pd.y, dur: 0.45, r: pd.r, color: '#8a6a45' });
+        this.emit({ type: 'shake', amount: 5 });
+        break;
+      }
+      case 'volley': { // một loạt đạn độc hình quạt của boss
+        const e = pd.src;
+        if (!e || e.dead) break;
+        const sp = pd.def;
+        const a0 = Math.atan2(p.y - e.y, p.x - e.x);
+        const spread = (sp.spreadDeg * Math.PI) / 180;
+        for (let i = 0; i < sp.count; i++) {
+          const a = a0 + (sp.count > 1 ? (i / (sp.count - 1) - 0.5) * spread : 0);
+          this.shots.push({ x: e.x, y: e.y, vx: Math.cos(a) * sp.speed, vy: Math.sin(a) * sp.speed, r: sp.radius, dmg: pd.dmg, life: sp.range / sp.speed, name: `${e.name} (Phun độc)`, type: 'poison', boss: true, look: 'venom', dead: false });
+        }
+        break;
+      }
     }
   }
 
@@ -1548,6 +1581,20 @@ export class Game {
           const mult = this.skillMult(z.skill);
           this.areaDamage(z.x, z.y, z.r, () => z.dps * z.tick * mult, z.element, { slow: z.slow });
         }
+      } else if (z.kind === 'mudwave') {
+        // Sóng bùn loang ra từ boss, có một khe hở; trúng thì mất máu và bị chậm (mỗi sóng trúng tối đa 1 lần).
+        z.r = z.r0 + (z.maxR - z.r0) * Math.min(1, z.t / z.dur);
+        const dx = p.x - z.x, dy = p.y - z.y;
+        const dist = Math.hypot(dx, dy);
+        if (!z.hit && Math.abs(dist - z.r) < z.width / 2 + p.r) {
+          let da = Math.atan2(dy, dx) - z.gapA;
+          while (da > Math.PI) da -= TAU;
+          while (da < -Math.PI) da += TAU;
+          if (Math.abs(da) > z.gapHalf) {
+            z.hit = true;
+            if (this.hurtPlayer(z.dmg, 'physical', z.name, { boss: true })) { p.slowT = z.slowDur; p.slowPct = z.slowPct; }
+          }
+        }
       } else if (z.kind === 'swarm') {
         this.updateSwarmZone(z, dt);
       } else if (z.kind === 'poison') {
@@ -1555,7 +1602,7 @@ export class Game {
         if (z.tickT <= 0) {
           z.tickT += z.tick;
           if (Math.hypot(p.x - z.x, p.y - z.y) < z.r + p.r * 0.5) {
-            this.hurtPlayer(z.dps * z.tick * (this.enraged ? this.data.monsters.swamp_lord.enrageDmgMult : 1), 'poison', 'Vũng độc', { dot: true });
+            this.hurtPlayer(z.dps * z.tick * (this.enraged ? this.data.monsters.swamp_lord.enrageDmgMult : 1), 'poison', 'Vũng độc', { dot: true, boss: true });
           }
         }
       }
@@ -1631,19 +1678,11 @@ export class Game {
             }
             break;
           }
-          case 'miniboss':
-            vx = ux * spd; vy = uy * spd;
-            e.summonT -= dt;
-            if (e.summonT <= 0) {
-              e.summonT = e.def.summonInterval;
-              for (let i = 0; i < e.def.summonCount; i++) {
-                const a = (i / e.def.summonCount) * TAU;
-                const pt = this.pushOutObstacles(clamp(e.x + Math.cos(a) * 60, 20, this.W - 20), clamp(e.y + Math.sin(a) * 60, 20, this.H - 20), 13);
-                this.spawnEnemy(e.def.summonType, pt.x, pt.y);
-              }
-              this.addFx({ kind: 'burst', x: e.x, y: e.y, dur: 0.5, r: 70, color: '#a58a5a' });
-            }
+          case 'miniboss': {
+            const v = this.updateMiniboss(e, dt, ux, uy, d, spd);
+            vx = v[0]; vy = v[1];
             break;
+          }
           case 'boss': {
             const v = this.updateBoss(e, dt, ux, uy, d, spd);
             vx = v[0]; vy = v[1];
@@ -1690,12 +1729,12 @@ export class Game {
         }
       }
       // Chạm người chơi.
-      if (!e.flee && !(e.fearT > 0)) {
+      if (!e.flee && !(e.fearT > 0) && !e.burrowed) {
         const cx = p.x - e.x, cy = p.y - e.y;
         const rr = e.r + p.r;
         if (cx * cx + cy * cy < rr * rr) {
           const mult = e === this.boss && this.enraged ? e.def.enrageDmgMult : 1;
-          if (this.hurtPlayer(e.contact * mult, e.dmgType, e.name)) this.onEnemyHitPlayer(e);
+          if (this.hurtPlayer(e.contact * mult, e.dmgType, e.name, { boss: e.big })) this.onEnemyHitPlayer(e);
         }
       }
     }
@@ -1707,6 +1746,95 @@ export class Game {
       this.player.mana = Math.max(0, this.player.mana - n);
       this.addText(this.player.x, this.player.y - 36, `-${n} mana`, '#6fa8ff', 12);
     }
+  }
+
+  // ---------- Trùm nhỏ: Kẻ Đào Mộ ----------
+  // Đuổi theo người chơi, gọi xác sống theo nhịp riêng, cứ attackInterval giây ra một chiêu: Vung xẻng → Ném bia mộ → Độn thổ.
+  updateMiniboss(e, dt, ux, uy, d, spd) {
+    const def = e.def;
+    const p = this.player;
+    const mb = e.mb || (e.mb = { state: 'chase', atkT: def.attackInterval * 0.6, next: 0, t: 0, phase2: false });
+    if (!mb.phase2 && def.phase2 && e.hp < e.maxHp * def.phase2.hpPct) {
+      mb.phase2 = true;
+      this.showBanner(`${e.name} nổi giận!`, 2);
+    }
+    // Gọi xác (dưới 50% máu: nhanh hơn, trộn kẻ ném xương).
+    if (!e.burrowed) {
+      e.summonT -= dt;
+      if (e.summonT <= 0) {
+        e.summonT = mb.phase2 ? def.phase2.summonInterval : def.summonInterval;
+        const types = mb.phase2 ? def.phase2.summonTypes : [def.summonType];
+        for (let i = 0; i < def.summonCount; i++) {
+          const a = (i / def.summonCount) * TAU;
+          const pt = this.pushOutObstacles(clamp(e.x + Math.cos(a) * 60, 20, this.W - 20), clamp(e.y + Math.sin(a) * 60, 20, this.H - 20), 13);
+          this.spawnEnemy(types[i % types.length], pt.x, pt.y);
+        }
+        this.addFx({ kind: 'burst', x: e.x, y: e.y, dur: 0.5, r: 70, color: '#a58a5a' });
+      }
+    }
+    const nextAtk = () => { mb.state = 'chase'; mb.atkT = def.attackInterval * (mb.phase2 ? def.phase2.atkMult : 1); };
+    switch (mb.state) {
+      case 'chase': {
+        mb.atkT -= dt;
+        if (mb.atkT > 0 || !def.sweep) return [ux * spd, uy * spd];
+        const order = ['sweep', 'tombs', 'burrow'];
+        let skill = order[mb.next % 3];
+        mb.next++;
+        // Vung xẻng chỉ dùng khi người chơi ở gần; ở xa thì chuyển sang ném bia mộ.
+        if (skill === 'sweep' && d > def.sweep.trigger) skill = 'tombs';
+        if (skill === 'sweep') {
+          mb.state = 'sweepTele'; mb.t = def.sweep.telegraph; mb.ang = Math.atan2(p.y - e.y, p.x - e.x);
+        } else if (skill === 'tombs') {
+          const T = def.tombs;
+          for (let i = 0; i < T.count; i++) {
+            const ox = i === 0 ? 0 : this.rng.range(-T.spread, T.spread), oy = i === 0 ? 0 : this.rng.range(-T.spread, T.spread);
+            this.pending.push({ kind: 'tomb', t: T.delay + i * 0.1, dur: T.delay + i * 0.1, x: clamp(p.x + ox, 20, this.W - 20), y: clamp(p.y + oy, 20, this.H - 20), r: T.radius, dmg: T.damage * e.dmgMult, name: e.name });
+          }
+          mb.state = 'cast'; mb.t = 0.5;
+        } else {
+          mb.state = 'burrow'; mb.t = def.burrow.hide;
+          e.burrowed = true;
+          this.addFx({ kind: 'burst', x: e.x, y: e.y, dur: 0.4, r: 60, color: '#8a6a45' });
+        }
+        return [0, 0];
+      }
+      case 'sweepTele':
+        mb.t -= dt;
+        if (mb.t <= 0) {
+          const S = def.sweep;
+          const dx = p.x - e.x, dy = p.y - e.y;
+          let da = Math.atan2(dy, dx) - mb.ang;
+          while (da > Math.PI) da -= TAU;
+          while (da < -Math.PI) da += TAU;
+          if (Math.hypot(dx, dy) < S.range + e.r + p.r && Math.abs(da) <= Math.PI / 2) {
+            if (this.hurtPlayer(S.damage * e.dmgMult, 'physical', `${e.name} (Vung xẻng)`, { boss: true })) {
+              const dd = Math.hypot(dx, dy) || 1;
+              const o = this.pushOutObstacles(clamp(p.x + (dx / dd) * S.knockback * 0.25, p.r, this.W - p.r), clamp(p.y + (dy / dd) * S.knockback * 0.25, p.r, this.H - p.r), p.r);
+              p.x = o.x; p.y = o.y;
+            }
+          }
+          this.addFx({ kind: 'slash', x: e.x, y: e.y, a: mb.ang, half: Math.PI / 2, r: S.range + e.r, dur: 0.25, color: '#c8a070' });
+          mb.state = 'cast'; mb.t = 0.3;
+        }
+        return [0, 0];
+      case 'burrow':
+        mb.t -= dt;
+        if (mb.t <= 0) {
+          const B = def.burrow;
+          this.pending.push({ kind: 'erupt', t: B.telegraph, dur: B.telegraph, x: p.x, y: p.y, r: B.radius, dmg: B.damage * e.dmgMult, name: e.name, src: e });
+          mb.state = 'emerge'; mb.t = B.telegraph + 0.1;
+        }
+        return [0, 0];
+      case 'emerge':
+        mb.t -= dt;
+        if (mb.t <= 0) { e.burrowed = false; nextAtk(); }
+        return [0, 0];
+      case 'cast':
+        mb.t -= dt;
+        if (mb.t <= 0) nextAtk();
+        return [0, 0];
+    }
+    return [0, 0];
   }
 
   updateBoss(e, dt, ux, uy, d, spd) {
@@ -1727,27 +1855,59 @@ export class Game {
         if (room >= 6) this.spawnFlock(e.x, e.y, room);
       }
     }
+    // Dưới 25% máu: Bão đầm lầy, vũng độc rơi ngẫu nhiên quanh boss.
+    if (def.phase3 && e.hp < e.maxHp * def.phase3.hpPct) {
+      if (!b.phase3) { b.phase3 = true; b.stormT = 0; this.showBanner(`${e.name}: Bão đầm lầy!`, 2.5); }
+      b.stormT -= dt;
+      if (b.stormT <= 0) {
+        b.stormT = def.phase3.stormInterval;
+        const pl = def.pools, S = def.phase3;
+        for (let i = 0; i < S.stormCount; i++) {
+          const x = clamp(e.x + this.rng.range(-S.stormSpread, S.stormSpread), 20, this.W - 20), y = clamp(e.y + this.rng.range(-S.stormSpread, S.stormSpread), 20, this.H - 20);
+          this.pending.push({ kind: 'pool', t: pl.landDelay + i * 0.15, dur: pl.landDelay + i * 0.15, x, y, r: pl.radius, duration: pl.duration, tick: pl.tick, dps: pl.dps * e.dmgMult });
+        }
+      }
+    }
     switch (b.state) {
       case 'chase':
         b.atkT -= dt;
         if (b.atkT <= 0) {
-          if (b.next === 'slam') {
-            b.state = 'tele'; b.t = def.slam.telegraph;
+          // Vồ → Vũng độc → Phun độc → Sóng bùn (chiêu chưa có số liệu thì bỏ qua).
+          const order = ['slam', 'pools', 'spit', 'wave'].filter((k) => def[k]);
+          const k = order.includes(b.next) ? b.next : 'slam';
+          b.next = order[(order.indexOf(k) + 1) % order.length];
+          if (k === 'slam') {
+            b.state = 'tele'; b.t = b.teleDur = def.slam.telegraph;
             b.sx = e.x; b.sy = e.y; b.tx = p.x; b.ty = p.y;
-            b.next = 'pools';
-          } else {
+            b.second = false;
+          } else if (k === 'pools') {
             b.state = 'cast'; b.t = def.pools.castTime;
             const pl = def.pools;
             for (let i = 0; i < pl.count; i++) {
               const ox = i === 0 ? 0 : this.rng.range(-pl.spread, pl.spread);
               const oy = i === 0 ? 0 : this.rng.range(-pl.spread, pl.spread);
-              this.pending.push({ kind: 'pool', t: pl.landDelay + i * 0.12, dur: pl.landDelay + i * 0.12, x: clamp(p.x + ox, 20, this.W - 20), y: clamp(p.y + oy, 20, this.H - 20), r: pl.radius, duration: pl.duration, tick: pl.tick, dps: pl.dps });
+              this.pending.push({ kind: 'pool', t: pl.landDelay + i * 0.12, dur: pl.landDelay + i * 0.12, x: clamp(p.x + ox, 20, this.W - 20), y: clamp(p.y + oy, 20, this.H - 20), r: pl.radius, duration: pl.duration, tick: pl.tick, dps: pl.dps * e.dmgMult });
             }
-            b.next = 'slam';
+          } else if (k === 'spit') {
+            const sp = def.spit;
+            b.state = 'cast'; b.t = sp.castTime + sp.volleys * sp.volleyGap;
+            b.spitT = sp.castTime; // ngửa đầu báo trước
+            for (let i = 0; i < sp.volleys; i++) this.pending.push({ kind: 'volley', t: sp.castTime + i * sp.volleyGap, dur: sp.castTime, x: e.x, y: e.y, r: 0, src: e, def: sp, dmg: sp.damage * e.dmgMult * enr });
+          } else {
+            b.state = 'waveTele'; b.t = def.wave.telegraph;
           }
           return [0, 0];
         }
         return [ux * spd, uy * spd];
+      case 'waveTele':
+        b.t -= dt;
+        if (b.t <= 0) {
+          const W = def.wave;
+          this.zones.push({ kind: 'mudwave', x: e.x, y: e.y, r0: e.r, r: e.r, maxR: W.maxRadius, t: 0, dur: W.duration, width: W.width, gapA: this.rng.next() * TAU, gapHalf: ((W.gapDeg * Math.PI) / 180) / 2, dmg: W.damage * e.dmgMult * enr, slowPct: W.slowPct, slowDur: W.slowDur, name: `${e.name} (Sóng bùn)`, hit: false });
+          this.emit({ type: 'shake', amount: 4 });
+          b.state = 'recover'; b.t = 0.4;
+        }
+        return [0, 0];
       case 'tele':
         b.t -= dt;
         if (b.t <= 0) {
@@ -1763,9 +1923,17 @@ export class Game {
         b.dist -= step;
         if (!b.hitDone && Math.hypot(p.x - e.x, p.y - e.y) < e.r + p.r + 6) {
           b.hitDone = true;
-          this.hurtPlayer(def.slam.damage * e.dmgMult * enr, 'physical', `${e.name} (Vồ)`);
+          this.hurtPlayer(def.slam.damage * e.dmgMult * enr, 'physical', `${e.name} (Vồ)`, { boss: true });
         }
         if (b.dist <= 0) {
+          // Giai đoạn 2: Vồ đôi, lao thêm lần nữa vào vị trí mới của người chơi.
+          if (b.phase2 && def.phase2.doubleSlam && !b.second) {
+            b.second = true;
+            b.state = 'tele'; b.t = b.teleDur = def.phase2.doubleTelegraph;
+            b.sx = e.x; b.sy = e.y; b.tx = p.x; b.ty = p.y;
+            this.addFx({ kind: 'burst', x: e.x, y: e.y, dur: 0.3, r: 70, color: '#c23b3b' });
+            return [0, 0];
+          }
           b.state = 'recover'; b.t = def.slam.recover;
           this.emit({ type: 'shake', amount: 6 });
           this.addFx({ kind: 'burst', x: e.x, y: e.y, dur: 0.4, r: 90, color: '#c23b3b' });
@@ -1775,6 +1943,7 @@ export class Game {
       case 'cast':
       case 'recover':
         b.t -= dt;
+        if (b.spitT > 0) b.spitT -= dt;
         if (b.t <= 0) { b.state = 'chase'; b.atkT = def.attackInterval * (b.phase2 ? 0.8 : 1); }
         return [0, 0];
     }
@@ -1793,7 +1962,7 @@ export class Game {
       const rr = s.r + p.r;
       if (dx * dx + dy * dy < rr * rr) {
         s.dead = true;
-        if (this.hurtPlayer(s.dmg, 'physical', s.name) && s.src) this.onEnemyHitPlayer(s.src);
+        if (this.hurtPlayer(s.dmg, s.type || 'physical', s.name, { boss: !!s.boss }) && s.src) this.onEnemyHitPlayer(s.src);
       }
     }
   }

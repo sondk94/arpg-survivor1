@@ -1,5 +1,5 @@
 {
-  "version": "1.16",
+  "version": "1.17",
   "testMode": true,
   "run": {
     "duration": 300,
@@ -173,7 +173,8 @@
       "uniqueMult": 2,
       "color": "#ff4040",
       "unlockAfter": "nightmare",
-      "bossHpMult": 2.5
+      "bossHpMult": 2.5,
+      "bossDmgMult": 7.5
     }
   ],
   "summons": {
