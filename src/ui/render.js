@@ -753,7 +753,9 @@ export class Renderer {
     ctx.font = '600 14px system-ui, sans-serif';
     ctx.fillStyle = '#c8c2b0';
     const bossNeed = g.cfg.run.callBossKills;
-    ctx.fillText(bossNeed && !g.bossSpawned && !g.retreating && !g.bossCalled && g.kills < bossNeed ? `Đã giết: ${g.kills} / ${bossNeed}` : `Đã giết: ${g.kills}`, w / 2, 60);
+    const rp = g.rampMult();
+    const rampTxt = rp.steps > 0 && !g.victory ? ` · quái +${Math.round((rp.hp - 1) * 100)}% máu` : '';
+    ctx.fillText((bossNeed && !g.bossSpawned && !g.retreating && !g.bossCalled && g.kills < bossNeed ? `Đã giết: ${g.kills} / ${bossNeed}` : `Đã giết: ${g.kills}`) + rampTxt, w / 2, 60);
     ctx.textAlign = 'right';
     ctx.font = '600 13px system-ui, sans-serif';
     ctx.fillStyle = '#bdb6a2';

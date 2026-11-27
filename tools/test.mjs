@@ -1192,6 +1192,26 @@ t('Sát thương nguyên tố của vũ khí cận chiến: đòn riêng theo ng
   assert.equal(g.dmgByElement.fire, f1);
 });
 
+t('Quái mạnh dần trong màn (bản 1.16): mỗi 5 giây +1% máu, +2% kinh nghiệm; boss / trùm nhỏ không tính', () => {
+  const c = P.createCharacter(data, 'mage');
+  const g = new Game(data, c, { seed: 1, headless: true });
+  const z0 = g.spawnEnemy('zombie', 100, 100);
+  const b0 = g.spawnEnemy('swamp_lord', 300, 300);
+  g.time = 300; // phút 5: 60 lần
+  const z5 = g.spawnEnemy('zombie', 100, 100);
+  const b5 = g.spawnEnemy('swamp_lord', 300, 300);
+  assert.ok(Math.abs(z5.maxHp / z0.maxHp - 1.6) < 1e-9);
+  assert.ok(Math.abs(z5.xp / z0.xp - 2.2) < 1e-9);
+  assert.equal(b5.maxHp, b0.maxHp);
+  g.time = 12; // 2 lần
+  const z2 = g.spawnEnemy('zombie', 100, 100);
+  g.makeElite(z2);
+  assert.ok(Math.abs(g.spawnEnemy('zombie', 1, 1).maxHp / z0.maxHp - 1.02) < 1e-9);
+  // gọi boss sớm nhảy đồng hồ → quái sinh sau đó theo đồng hồ màn
+  g.timeShift = 100;
+  assert.equal(g.rampMult().steps, Math.floor(112 / 5));
+});
+
 // Nạp các file giao diện để bắt lỗi cú pháp (vd. khai báo trùng tên biến) mà các kiểm tra lõi không chạm tới.
 for (const f of ['render', 'panel', 'sprites', 'skilltext', 'tooltip', 'debug', 'input', 'telemetry', 'look']) {
   try { await import(`../src/ui/${f}.js`); n++; console.log(`ok - nạp được src/ui/${f}.js`); }

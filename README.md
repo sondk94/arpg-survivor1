@@ -109,6 +109,15 @@ Chỉ số cấp 1 so với pháp sư:
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
 
+## Quái mạnh dần trong màn (bản 1.16)
+
+- Quái thường và tinh anh **mới sinh ra** được **+1% máu sau mỗi 5 giây** trong màn (cộng dồn tuyến tính): phút 1 ×1,12, phút 3 ×1,36, phút 5 ×1,6. Quái đã có trên màn không đổi.
+- Kinh nghiệm tăng gấp đôi tốc độ đó: **+2% sau mỗi 5 giây** (phút 5 ×2,2), để đánh lâu hơn vẫn có lợi.
+- **Boss và trùm nhỏ không tính**, vì máu của chúng đã được chỉnh riêng ở bản 1.15.
+- Tính theo đồng hồ của màn: gọi boss sớm làm đồng hồ nhảy tới lúc quái rút lui, nên quái sinh sau đó theo mức của thời điểm đó.
+- HUD hiện "Đã giết: … · quái +x% máu".
+- Số liệu: `config.json` → `run.ramp` (`interval` 5 giây, `hpPct` 0,01, `xpPct` 0,02).
+
 ## Sát thương vũ khí và cân bằng lại độ khó (bản 1.15)
 
 **Sát thương cơ bản của vũ khí** (`items.json` → `bases[].damage`, `weaponKind`):
