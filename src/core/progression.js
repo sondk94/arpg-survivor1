@@ -141,7 +141,7 @@ function passiveBonuses(ch, data, skillBonus) {
   for (const [id, base] of Object.entries(ch.skills)) {
     const sk = data.skills[id];
     if (!sk || sk.type !== 'passive' || !base) continue;
-    const l = Math.min(sk.maxLevel + 10, base + (skillBonus[sk.tree] || 0) + (skillBonus.all || 0));
+    const l = Math.min(skillCap(sk, data), base + (skillBonus[sk.tree] || 0) + (skillBonus.all || 0));
     if (sk.critPerLevel) o.crit += sk.critPerLevel * l;
     if (sk.critMultPerLevel) o.critMult += sk.critMultPerLevel * l;
     if (sk.armor) o.armor += lv(sk.armor, l);
@@ -233,7 +233,19 @@ export function skillLevel(ch, id, data, stats) {
   if (!base) return 0;
   const sk = data.skills[id];
   const b = stats ? stats.skillBonus : { all: 0 };
-  return Math.min(sk.maxLevel + 10, base + (b[sk.tree] || 0) + (b.all || 0));
+  return Math.min(skillCap(sk, data), base + (b[sk.tree] || 0) + (b.all || 0));
+}
+
+// Trần cấp hiệu lực: cấp tối đa + capAboveMax (mặc định 15 → cấp 35).
+export function skillCap(sk, data) {
+  return sk.maxLevel + (data.config.skillLevels?.capAboveMax ?? 10);
+}
+
+// Thưởng vượt cấp: mỗi cấp hiệu lực trên cấp tối đa cộng thêm overMaxDmgPct sát thương cho chính kỹ năng đó.
+export function overLevelPct(ch, skill, data, stats) {
+  const per = data.config.skillLevels?.overMaxDmgPct || 0;
+  if (!per || !skill.maxLevel) return 0;
+  return Math.max(0, skillLevel(ch, skill.id, data, stats) - skill.maxLevel) * per;
 }
 
 // %Synergy: chỉ tính điểm đã cộng thật (không tính cấp từ đồ).
@@ -259,10 +271,10 @@ export function damageMult(ch, skill, stats, data) {
   // Kỹ năng triệu hồi dùng %sát thương vật triệu hồi (Năng lượng, đồ, bị động); thú bay cộng thêm Thông Thạo Hoang Dã.
   if (skill.summon) {
     const fly = skill.flying || skill.minion?.flying ? stats.flyingDmgPct || 0 : 0;
-    return 1 + (stats.summonDmgPct || 0) + fly + synergyPct(ch, skill);
+    return 1 + (stats.summonDmgPct || 0) + fly + synergyPct(ch, skill) + overLevelPct(ch, skill, data, stats);
   }
   const base = skill.element === 'physical' ? stats.physDmgPct : stats.spellDmgPct;
-  return 1 + base + synergyPct(ch, skill) + passivePct(ch, skill.element, data, stats) + (stats.elemDmgPct[skill.element] || 0);
+  return 1 + base + synergyPct(ch, skill) + passivePct(ch, skill.element, data, stats) + (stats.elemDmgPct[skill.element] || 0) + overLevelPct(ch, skill, data, stats);
 }
 
 export function addAttr(ch, key, n = 1) {

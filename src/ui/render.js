@@ -155,6 +155,11 @@ export class Renderer {
         ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill();
         ctx.strokeStyle = `rgba(255,160,60,${0.5 * fade})`;
         ctx.lineWidth = 2; ctx.stroke();
+      } else if (z.kind === 'mudwave') {
+        // Sóng bùn loang ra, chừa một khe để né.
+        ctx.strokeStyle = `rgba(130,95,55,${0.85 * fade})`;
+        ctx.lineWidth = z.width;
+        ctx.beginPath(); ctx.arc(z.x, z.y, z.r, z.gapA + z.gapHalf, z.gapA - z.gapHalf + TAU); ctx.stroke();
       } else if (z.kind === 'swarm') {
         // Đám ong: nhiều chấm vàng bay lượn trong vùng.
         ctx.fillStyle = `rgba(255,210,60,${0.1 * fade})`;
@@ -214,6 +219,22 @@ export class Renderer {
         ctx.beginPath(); ctx.arc(tx, ty, pd.r * (1.4 - 0.4 * k), 0, TAU); ctx.stroke();
         const bx = pd.sx + (tx - pd.sx) * k * k, by = pd.sy + (ty - pd.sy) * k * k;
         drawBird(ctx, bx, by, 22, tx >= pd.sx ? 1 : -1, g.time, '#8a5a2a', '#f0c040');
+      } else if (pd.kind === 'tomb') {
+        // Bia mộ rơi: vòng xám + bóng bia to dần.
+        ctx.strokeStyle = 'rgba(200,200,200,0.85)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(pd.x, pd.y, pd.r, 0, TAU); ctx.stroke();
+        ctx.fillStyle = `rgba(160,160,160,${0.15 + 0.35 * k})`;
+        ctx.beginPath(); ctx.arc(pd.x, pd.y, pd.r * k, 0, TAU); ctx.fill();
+        const fy = pd.y - 160 * (1 - k);
+        ctx.fillStyle = '#8f8f96'; ctx.fillRect(pd.x - 10, fy - 26, 20, 26);
+        ctx.beginPath(); ctx.arc(pd.x, fy - 26, 10, Math.PI, TAU); ctx.fill();
+      } else if (pd.kind === 'erupt') {
+        // Nứt đất: Kẻ Đào Mộ sắp trồi lên.
+        ctx.strokeStyle = `rgba(160,110,50,${0.5 + 0.5 * k})`; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(pd.x, pd.y, pd.r, 0, TAU); ctx.stroke();
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) { const a = (i / 6) * TAU; ctx.moveTo(pd.x, pd.y); ctx.lineTo(pd.x + Math.cos(a) * pd.r * k, pd.y + Math.sin(a) * pd.r * k); }
+        ctx.stroke();
       } else if (pd.kind === 'eliteBlast') {
         ctx.strokeStyle = 'rgba(255,60,30,0.9)';
         ctx.lineWidth = 3;
@@ -463,7 +484,7 @@ export class Renderer {
     if (e.ai === 'boss') {
       const b = e.b;
       if (b.state === 'tele') {
-        const k = 1 - b.t / e.def.slam.telegraph;
+        const k = 1 - b.t / (b.teleDur || e.def.slam.telegraph);
         const ang = Math.atan2(b.ty - b.sy, b.tx - b.sx);
         const len = Math.hypot(b.tx - b.sx, b.ty - b.sy) + e.r;
         ctx.save();
@@ -476,8 +497,33 @@ export class Renderer {
         ctx.strokeRect(0, -e.r, len, e.r * 2);
         ctx.restore();
       }
+      if (b.state === 'waveTele') {
+        // Sóng bùn sắp loang: vòng đất rung quanh boss.
+        const k = 1 - b.t / e.def.wave.telegraph;
+        ctx.strokeStyle = `rgba(150,110,60,${0.3 + 0.5 * k})`;
+        ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 20 + 30 * k, 0, TAU); ctx.stroke();
+      }
+      if (b.spitT > 0 && b.state === 'cast') {
+        ctx.fillStyle = 'rgba(120,220,90,0.35)';
+        ctx.beginPath(); ctx.arc(e.x, e.y - e.r, e.r * 0.7, 0, TAU); ctx.fill();
+      }
       const bf = b.state === 'tele' || b.state === 'dash' ? (b.tx >= e.x ? 1 : -1) : face;
       drawSwampLord(ctx, e, bf, phase, { enraged: g.enraged, tint: e.hit > 0 ? '#e8f5e0' : null });
+      return;
+    }
+    const mb = e.mb;
+    if (mb && mb.state === 'sweepTele') {
+      // Vung xẻng: hình quạt đỏ trước mặt.
+      const k = 1 - mb.t / e.def.sweep.telegraph;
+      ctx.fillStyle = `rgba(230,40,40,${0.15 + 0.25 * k})`;
+      ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.arc(e.x, e.y, e.def.sweep.range + e.r, mb.ang - Math.PI / 2, mb.ang + Math.PI / 2); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,60,60,0.9)'; ctx.lineWidth = 2; ctx.stroke();
+    }
+    if (e.burrowed) {
+      // Đang độn thổ: chỉ còn ụ đất.
+      ctx.fillStyle = '#5a4630';
+      ctx.beginPath(); ctx.ellipse(e.x, e.y + e.r * 0.6, e.r * 0.9, e.r * 0.35, 0, 0, TAU); ctx.fill();
       return;
     }
     const tint = e.hit > 0 ? '#f2eadc' : e.frozenT > 0 ? '#bfe9ff' : null;
@@ -562,6 +608,16 @@ export class Renderer {
     ctx.strokeStyle = '#8a7f60';
     ctx.lineWidth = 1.5;
     for (const s of g.shots) {
+      if (s.look === 'venom') {
+        // Đạn độc của boss.
+        ctx.save();
+        ctx.fillStyle = '#7fe05a';
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, TAU); ctx.fill();
+        ctx.fillStyle = 'rgba(127,224,90,0.3)';
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 2, 0, TAU); ctx.fill();
+        ctx.restore();
+        continue;
+      }
       ctx.save();
       ctx.translate(s.x, s.y);
       ctx.rotate(g.time * 12);

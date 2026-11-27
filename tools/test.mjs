@@ -1212,6 +1212,188 @@ t('Quái mạnh dần trong màn (bản 1.16): mỗi 5 giây +1% máu, +2% kinh 
   assert.equal(g.rampMult().steps, Math.floor(112 / 5));
 });
 
+// ---------- Trùm nhỏ / boss ra chiêu nhiều hơn (bản 1.17) ----------
+function bossArena(classId = 'mage', diff = 'normal') {
+  const c = P.createCharacter(data, classId);
+  const g = new Game(data, c, { seed: 11, headless: true, difficulty: diff });
+  g.events = []; g.updateSpawner = () => {};
+  g.player.hp = g.stats.maxHp = 1e9;
+  return g;
+}
+
+t('Kẻ Đào Mộ: chạm 20, xoay vòng Vung xẻng / Ném bia mộ / Độn thổ; độn thổ thì không trúng đòn', () => {
+  assert.equal(data.monsters.gravedigger.damage, 20);
+  const g = bossArena();
+  const p = g.player;
+  const m = g.spawnEnemy('gravedigger', p.x + 60, p.y);
+  m.speed = 0; g.miniboss = m;
+  const seen = new Set();
+  let burrowHit = null;
+  for (let i = 0; i < 60 * 20; i++) {
+    g.update(1 / 60);
+    if (m.mb) seen.add(m.mb.state);
+    if (m.burrowed && burrowHit === null) burrowHit = g.damageEnemy(m, 100, 'fire');
+    for (const pd of g.pending) seen.add(pd.kind);
+  }
+  for (const k of ['sweepTele', 'tomb', 'burrow', 'erupt']) assert.ok(seen.has(k), `thiếu ${k}`);
+  assert.equal(burrowHit, 0);
+  assert.ok(g.log.damageTaken['Kẻ Đào Mộ (Vung xẻng)'] > 0);
+});
+
+t('Chúa Đầm Lầy: chạm 15, Vồ 35, 5 vũng độc nhân hệ số, thêm Phun độc và Sóng bùn; giai đoạn 2 Vồ đôi', () => {
+  const S = data.monsters.swamp_lord;
+  assert.deepEqual([S.damage, S.slam.damage, S.pools.count, S.pools.dps, S.attackInterval], [15, 35, 5, 7, 2.6]);
+  const g = bossArena('mage', 'nightmare');
+  const p = g.player;
+  g.spawnBoss('swamp_lord');
+  const b = g.boss;
+  b.x = p.x + 200; b.y = p.y;
+  const seen = new Set();
+  let poolDps = 0, venom = 0;
+  for (let i = 0; i < 60 * 25; i++) {
+    g.update(1 / 60);
+    seen.add(b.b.state);
+    for (const z of g.zones) { if (z.kind === 'poison') poolDps = z.dps; if (z.kind === 'mudwave') seen.add('mudwave'); }
+    for (const pd of g.pending) if (pd.kind === 'volley') venom++;
+  }
+  for (const k of ['tele', 'dash', 'waveTele', 'mudwave']) assert.ok(seen.has(k), `thiếu ${k}`);
+  assert.ok(venom > 0, 'có loạt Phun độc');
+  const n0 = g.shots.length;
+  g.resolvePending({ kind: 'volley', src: b, def: S.spit, dmg: 1 });
+  assert.equal(g.shots.length - n0, S.spit.count); // mỗi loạt 5 viên
+  assert.ok(Math.abs(poolDps - 7 * b.dmgMult) < 1e-6, 'vũng độc nhân hệ số sát thương');
+  // giai đoạn 2: Vồ đôi
+  b.hp = b.maxHp * 0.4;
+  let teles = 0, prev = null;
+  for (let i = 0; i < 60 * 12; i++) { g.update(1 / 60); if (b.b.state === 'tele' && prev !== 'tele') teles++; prev = b.b.state; if (b.b.second) break; }
+  assert.ok(b.b.second, 'có lần Vồ thứ hai');
+});
+
+t('Sóng bùn: trúng thì mất máu và chậm 40%; đứng ở khe hở thì không trúng', () => {
+  const g = bossArena();
+  const p = g.player;
+  const mk = (gapA) => g.zones.push({ kind: 'mudwave', x: p.x - 100, y: p.y, r0: 40, r: 40, maxR: 380, t: 0, dur: 1.2, width: 40, gapA, gapHalf: 0.44, dmg: 25, slowPct: 0.4, slowDur: 2, name: 'Sóng bùn', hit: false });
+  mk(Math.PI); // khe ở phía đối diện
+  const hp0 = p.hp;
+  for (let i = 0; i < 40; i++) { g.updateZones(1 / 60); p.invuln = 0; }
+  assert.ok(p.hp < hp0 && p.slowT > 0);
+  g.zones = []; p.slowT = 0;
+  mk(0); // khe đúng hướng người chơi
+  const hp1 = p.hp;
+  for (let i = 0; i < 40; i++) { g.updateZones(1 / 60); p.invuln = 0; }
+  assert.equal(p.hp, hp1);
+});
+
+t('Chiến Binh Kiên Cường: nhận 70% sát thương từ boss / trùm nhỏ; boss Địa ngục dùng hệ số sát thương ×7,5', () => {
+  const w = bossArena('warrior'), m = bossArena('mage');
+  for (const g of [w, m]) { g.stats.dodge = 0; g.stats.armor = 0; g.player.hp = 1e6; }
+  w.hurtPlayer(100, 'poison', 'x', { boss: true }); m.hurtPlayer(100, 'poison', 'x', { boss: true });
+  assert.ok(Math.abs((1e6 - w.player.hp) - 70) < 1e-6 && Math.abs((1e6 - m.player.hp) - 100) < 1e-6);
+  w.player.invuln = 0; w.player.hp = 1e6;
+  w.hurtPlayer(100, 'poison', 'x');
+  assert.ok(Math.abs((1e6 - w.player.hp) - 100) < 1e-6); // quái thường không giảm
+  const h = bossArena('mage', 'hell');
+  const z = h.spawnEnemy('zombie', 1, 1), b = h.spawnEnemy('swamp_lord', 1, 1);
+  assert.ok(Math.abs(b.dmgMult / z.dmgMult - 7.5 / 9.5) < 1e-9);
+});
+
+t('Máu thú: cấp 1 và 10 gấp đôi bản cũ, đủ cấp 20 gấp 4', () => {
+  const g = new Game(data, summoner({ summon_wolf: 1 }), { seed: 1, headless: true });
+  g.stats.summonHpMult = 1;
+  const cases = [['summon_wolf', 60, 15], ['alpha_wolf', 130, 25], ['summon_bear', 220, 45], ['summon_crows', 25, 6]];
+  for (const [id, b, pl] of cases) {
+    const sk = data.skills[id];
+    if (!sk?.minion) continue;
+    const old = (l) => b + pl * (l - 1);
+    assert.equal(g.minionMaxHp(sk, 1), old(1) * 2);
+    assert.equal(g.minionMaxHp(sk, 10), old(10) * 2);
+    assert.equal(g.minionMaxHp(sk, 19), old(19) * 2);
+    assert.equal(g.minionMaxHp(sk, 20), old(20) * 4);
+  }
+});
+
+t('+cấp kỹ năng: bậc mới cấp đồ 50 / 75, dòng +cấp mọi kỹ năng chỉ trên dây chuyền / vũ khí', () => {
+  const r = new RNG(11);
+  let max75 = 0, all = 0, allBad = 0, max40 = 0;
+  for (let i = 0; i < 3000; i++) {
+    const it = I.generateItem(r, data, 80, { rarity: 'rare', type: ['weapon', 'amulet', 'head', 'offhand', 'ring'][i % 5], classId: 'summoner' });
+    for (const [k, v] of Object.entries(it.stats)) if (/^(fire|cold|lightning|weapon|shout|blood|pack|beast|swarm)Skills$/.test(k)) max75 = Math.max(max75, v);
+    if (it.stats.allSkills) { all++; if (!['weapon', 'amulet'].includes(it.type)) allBad++; max40 = Math.max(max40, it.stats.allSkills); }
+  }
+  assert.equal(max75, 5);
+  assert.ok(all > 0 && allBad === 0 && max40 === 2);
+  const lo = new RNG(2);
+  for (let i = 0; i < 500; i++) {
+    const it = I.generateItem(lo, data, 39, { rarity: 'rare', type: 'amulet' });
+    assert.ok(!it.stats.allSkills);
+    for (const [k, v] of Object.entries(it.stats)) if (/Skills$/.test(k)) assert.ok(v <= 3);
+  }
+});
+
+t('+cấp kỹ năng: dòng +cấp nhánh đúng lớp ra nhiều hơn lớp khác', () => {
+  const r = new RNG(5);
+  let own = 0, other = 0;
+  for (let i = 0; i < 4000; i++) {
+    const it = I.generateItem(r, data, 40, { rarity: 'rare', type: 'amulet', classId: 'summoner' });
+    for (const k of Object.keys(it.stats)) {
+      if (/^(pack|beast|swarm)Skills$/.test(k)) own++;
+      else if (/^(fire|cold|lightning|weapon|shout|blood)Skills$/.test(k)) other++;
+    }
+  }
+  // 3 nhánh đúng lớp tỉ trọng 1, 6 nhánh lớp khác tỉ trọng 0,3 → đúng lớp nhiều hơn khoảng 1,7 lần.
+  assert.ok(own > other * 1.3, `${own} / ${other}`);
+});
+
+t('Đồ bộ: 5–6 dòng, ít nhất +3 cấp nhánh của bộ; đúng lớp rơi nhiều hơn', () => {
+  const r = new RNG(8);
+  let six = 0, own = 0;
+  for (let i = 0; i < 400; i++) {
+    const it = I.generateItem(r, data, 30, { rarity: 'set', classId: 'warrior' });
+    const set = data.items.setsById[it.set];
+    const n = Object.keys(it.stats).length;
+    assert.ok(n >= 5 && n <= 6, `${it.name}: ${n} dòng`);
+    assert.ok(it.stats[`${set.tree}Skills`] >= 3);
+    if (n === 6) six++;
+    if (['weapon', 'shout', 'blood'].includes(set.tree)) own++;
+  }
+  assert.ok(six > 80 && six < 200, `6 dòng: ${six}`);
+  assert.ok(own > 230, `đúng lớp: ${own}`);
+  // Cấp đồ 60: +1, 90: +2 vào dòng +cấp.
+  const hi = I.generateItem(new RNG(3), data, 95, { rarity: 'set' });
+  assert.equal(hi.stats[`${data.items.setsById[hi.set].tree}Skills`], 5);
+});
+
+t('Đồ bộ SSR: +3 (+1 cấp đồ 60) nhánh chính của nhân vật, 5–6 dòng; đồ bộ cũ được nâng cấp ổn định', () => {
+  const r = new RNG(4);
+  for (let i = 0; i < 60; i++) {
+    const it = I.generateSSR(r, data, 70, 'summoner', 'beast');
+    const set = data.items.setsById[it.set];
+    const n = Object.keys(it.stats).length;
+    assert.ok(n >= 5 && n <= 6);
+    const trees = data.classes[set.class].trees;
+    const k = Object.keys(it.stats).find((x) => /^[a-z]+Skills$/.test(x) && x !== 'allSkills');
+    assert.ok(trees.includes(it.skillTree) && it.stats[k] >= 4);
+    if (set.class === 'summoner') assert.equal(it.skillTree, 'beast');
+  }
+  const mk = () => ({ uid: 'abc123', base: 'cap', type: 'head', rarity: 'set', set: 'set_pack', piece: 'sp_head', name: 'x', ilvl: 20, req: { level: 12 }, stats: { armor: 10, summonDmgPct: 12, ene: 8 }, power: 1, sockets: 0, runes: [] });
+  const a = mk(), b = mk();
+  I.upgradeLegacyItem(a, data); I.upgradeLegacyItem(b, data);
+  assert.deepEqual(a.stats, b.stats);
+  assert.ok(a.setV2 && a.stats.packSkills === 3 && Object.keys(a.stats).length >= 5);
+  const before = JSON.stringify(a.stats);
+  I.upgradeLegacyItem(a, data);
+  assert.equal(JSON.stringify(a.stats), before); // không nâng lần 2
+});
+
+t('Cấp kỹ năng: trần cấp tối đa +15; mỗi cấp trên 20 thêm 3% sát thương', () => {
+  const sk = data.skills.summon_wolf;
+  assert.equal(P.skillCap(sk, data), 35);
+  const ch = { skills: { summon_wolf: 20 } };
+  assert.equal(P.skillLevel(ch, 'summon_wolf', data, { skillBonus: { all: 30, pack: 0 } }), 35);
+  assert.ok(Math.abs(P.overLevelPct(ch, sk, data, { skillBonus: { all: 8 } }) - 0.24) < 1e-9);
+  assert.equal(P.overLevelPct({ skills: { summon_wolf: 15 } }, sk, data, { skillBonus: { all: 4 } }), 0);
+});
+
 // Nạp các file giao diện để bắt lỗi cú pháp (vd. khai báo trùng tên biến) mà các kiểm tra lõi không chạm tới.
 for (const f of ['render', 'panel', 'sprites', 'skilltext', 'tooltip', 'debug', 'input', 'telemetry', 'look']) {
   try { await import(`../src/ui/${f}.js`); n++; console.log(`ok - nạp được src/ui/${f}.js`); }

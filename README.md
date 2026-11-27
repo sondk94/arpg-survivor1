@@ -109,6 +109,76 @@ Chỉ số cấp 1 so với pháp sư:
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
 
+## Cấp kỹ năng từ đồ cho cuối game, đồ bộ mạnh hơn (bản 1.18)
+
+**Dòng +cấp nhánh** (Lửa, Vũ Khí, Bầy Sói…; vũ khí, dây chuyền, tay phụ, mũ):
+
+| Cấp đồ | 6 | 14 | 30 | **50** | **75** |
+|---|---|---|---|---|---|
+| Giá trị | +1 | +2 | +3 | **+3–4** | **+4–5** |
+
+- **Ưu tiên đúng lớp:** khi rơi đồ, dòng +cấp nhánh của lớp khác chỉ còn 30% tỉ trọng (`ilvlScaling.otherClassSkillWeight`).
+- **Dòng mới "+cấp mọi kỹ năng"** (của Thiên Tài): chỉ trên dây chuyền và vũ khí, tỉ trọng ½. Cấp đồ 40 cho +1, cấp đồ 70 cho +2.
+- **Độc nhất / đồ bộ / SSR cấp cao:** mọi dòng +cấp kỹ năng trên món được +1 khi cấp đồ từ 60, +2 khi từ 90 (`ilvlScaling.skillBonus`).
+- **Trần cấp hiệu lực:** cấp tối đa +15, tức cấp 35 (`config.skillLevels.capAboveMax`).
+- **Vượt cấp:** mỗi cấp hiệu lực trên cấp tối đa (20) cho kỹ năng đó thêm **+3% sát thương** (`overMaxDmgPct`). Mô tả kỹ năng có dòng "Vượt cấp".
+
+**Đồ bộ** (cả đồ bộ thường và SSR; `items.setLines`):
+- Mỗi món có **ít nhất +3 cấp kỹ năng** hợp với nhân vật.
+  - Đồ bộ thường: +3 vào nhánh của bộ.
+  - SSR: +3 vào nhánh chính của nhân vật khi bộ đúng lớp; không thì vào một nhánh ngẫu nhiên của lớp đó.
+  - Cộng thêm +1 / +2 theo cấp đồ như trên.
+- Mỗi món có **5 dòng**, 35% có **6 dòng**. Các dòng thêm được tung như đồ hiếm, không trùng dòng sẵn có và không phải dòng +cấp kỹ năng.
+- Đồ bộ hợp lớp nhân vật rơi nhiều hơn (70%).
+- Đồ bộ đã lưu từ trước được nâng cấp khi tải game. Kết quả cố định theo mã món đồ.
+
+Mô phỏng 60 màn sau thay đổi:
+
+| Lớp | Số lượt | Ghi chú |
+|---|---|---|
+| Pháp sư Lửa | 60 | Không chết lần nào |
+| Chiến Binh Vũ Khí | 60 | Không chết lần nào |
+| Triệu hồi sư Bầy Sói | 70 | Hạt giống 1 và 2 đều vậy |
+
+## Trùm nhỏ và boss ra chiêu nhiều hơn (bản 1.17)
+
+Số dưới đây là số gốc (Bình thường, màn 1-1); trong game nhân theo màn và độ khó.
+
+**Kẻ Đào Mộ (trùm nhỏ):** chạm người 10 → **20**. Cứ 4 giây ra một chiêu, xoay vòng:
+
+| Chiêu | Báo trước | Tác dụng |
+|---|---|---|
+| Vung xẻng | 0,6 giây, quạt đỏ trước mặt | Nửa vòng bán kính 120 px, **25** sát thương, đẩy lùi. Người chơi ở xa thì dùng Ném bia mộ thay |
+| Ném bia mộ | 0,8 giây, 3 vòng xám dưới đất | 3 bia rơi quanh người chơi, mỗi bia **18** |
+| Độn thổ | Chui xuống 1,2 giây (không trúng đòn), rồi vòng nứt đất 0,8 giây | Trồi lên dưới chân người chơi, bán kính 90 px, **30** |
+
+Gọi xác vẫn giữ: 5 xác sống mỗi 6 giây. Dưới 50% máu: gọi mỗi 4 giây, trộn thêm kẻ ném xương, ra chiêu nhanh hơn 20%.
+
+**Chúa Đầm Lầy (boss):**
+- Chạm 8 → **15**. Vồ 20 → **35**. Vũng độc 3 × 4/giây → **5 × 7/giây** (trước đây vũng độc không nhân theo màn / độ khó; giờ đã nhân).
+- Thời gian giữa 2 chiêu 3,5 → **2,6 giây** (giai đoạn 2: 2,1).
+- Xoay vòng 4 chiêu: Vồ → Vũng độc → **Phun độc** (ngửa đầu 0,5 giây, 3 loạt × 5 viên đạn độc hình quạt, mỗi viên **12**) → **Sóng bùn** (đất rung 0,8 giây, vòng sóng loang tới 380 px, có 1 khe hở để né; trúng **25** và chậm 40% trong 2 giây).
+- Dưới 50% máu: **Vồ đôi** (lao 2 lần, lần sau báo trước 0,5 giây), gọi dơi như cũ.
+- Dưới 25% máu: **Bão đầm lầy**, cứ 4 giây 3 vũng độc rơi ngẫu nhiên quanh boss.
+- Nổi điên lúc 5:00: sát thương ×2 (giữ nguyên).
+
+**Giữ cân bằng cho Chiến Binh:**
+- **Kiên Cường:** Chiến Binh nhận **70%** sát thương từ boss và trùm nhỏ (`classes.json` → `warrior.player.bossDmgTaken`).
+- Boss và trùm nhỏ ở **Địa ngục** dùng hệ số sát thương **×7,5** thay vì ×9,5 của quái thường (`difficulties[hell].bossDmgMult`).
+
+Bot mô phỏng né thêm bia mộ và chỗ trồi lên.
+
+**Máu thú triệu hồi (Triệu hồi sư):** máu gốc gấp đôi ở mọi cấp kỹ năng; **đủ cấp 20** thì gấp 4 so với bản cũ (`skills.json` → `minion.hp` và `minion.hpMaxLevelMult: 2`). Áp dụng cho Sói, Sói đầu đàn, Gấu, Quạ; Sói Linh Hồn (×3 sói đầu đàn) tăng theo.
+
+| Thú | Cấp 1 | Cấp 10 | Cấp 19 | Cấp 20 |
+|---|---|---|---|---|
+| Sói | 60 → **120** | 195 → **390** | 330 → **660** | 345 → **1.380** |
+| Sói đầu đàn | 130 → **260** | 355 → **710** | 580 → **1.160** | 605 → **2.420** |
+| Gấu | 220 → **440** | 625 → **1.250** | 1.030 → **2.060** | 1.075 → **4.300** |
+| Quạ | 25 → **50** | 79 → **158** | 133 → **266** | 139 → **556** |
+
+Mô phỏng Bầy Sói (hạt giống 2): bản cũ kẹt ở Địa ngục 4-5 (47 lần chết, hết 120 lượt, 19/20 màn); bản mới qua đủ 60 màn trong 60 lượt, không chết lần nào.
+
 ## Quái mạnh dần trong màn (bản 1.16)
 
 - Quái thường và tinh anh **mới sinh ra** được **+1% máu sau mỗi 5 giây** trong màn (cộng dồn tuyến tính): phút 1 ×1,12, phút 3 ×1,36, phút 5 ×1,6. Quái đã có trên màn không đổi.

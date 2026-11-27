@@ -23,7 +23,9 @@ export const MinionMixin = {
   },
 
   minionMaxHp(sk, lvl) {
-    return P.lv(sk.minion.hp, lvl) * (this.stats.summonHpMult || 1);
+    // Đạt cấp tối đa của kỹ năng (cấp 20) thì máu gốc nhân thêm hpMaxLevelMult.
+    const top = sk.minion.hpMaxLevelMult && lvl >= (sk.maxLevel || 20) ? sk.minion.hpMaxLevelMult : 1;
+    return P.lv(sk.minion.hp, lvl) * top * (this.stats.summonHpMult || 1);
   },
 
   // Gọi thú: gọi bù đủ số con theo cấp kỹ năng. Không thiếu con nào thì không tốn mana.

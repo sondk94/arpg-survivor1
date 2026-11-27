@@ -1227,9 +1227,10 @@
       "minion": {
         "kind": "wolf",
         "hp": {
-          "base": 60,
-          "perLevel": 15
+          "base": 120,
+          "perLevel": 30
         },
+        "hpMaxLevelMult": 2,
         "armor": 5,
         "speed": 210,
         "atkInterval": 0.6,
@@ -1327,9 +1328,10 @@
       "minion": {
         "kind": "alpha",
         "hp": {
-          "base": 130,
-          "perLevel": 25
+          "base": 260,
+          "perLevel": 50
         },
+        "hpMaxLevelMult": 2,
         "armor": 10,
         "speed": 200,
         "atkInterval": 0.8,
@@ -1436,9 +1438,10 @@
       "minion": {
         "kind": "bear",
         "hp": {
-          "base": 220,
-          "perLevel": 45
+          "base": 440,
+          "perLevel": 90
         },
+        "hpMaxLevelMult": 2,
         "armor": 25,
         "speed": 150,
         "atkInterval": 1.1,
@@ -1621,9 +1624,10 @@
       "minion": {
         "kind": "crow",
         "hp": {
-          "base": 25,
-          "perLevel": 6
+          "base": 50,
+          "perLevel": 12
         },
+        "hpMaxLevelMult": 2,
         "armor": 0,
         "speed": 260,
         "atkInterval": 0.6,
