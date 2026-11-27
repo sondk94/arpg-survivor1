@@ -4,7 +4,7 @@ import { Grid } from './grid.js';
 import * as P from './progression.js';
 import { generateItem, generateRune, generateSSR, addToInventory, canAdd } from './items.js';
 import { MinionMixin } from './minions.js';
-import { lootDecision, makeRoomFor } from './loot.js';
+import { lootDecision, makeRoomFor, mainTree } from './loot.js';
 import { sellValue } from './items.js';
 
 const TAU = Math.PI * 2;
@@ -1344,18 +1344,18 @@ export class Game {
     const DF = this.diff;
     const mult = (this.map.rewardMult || 1) * (DF.xpMult ? Math.sqrt(DF.xpMult) : 1);
     const ilvl = this.itemLevel(C.ilvlBonus);
-    const items = [generateItem(this.rng, this.data, ilvl, { minRarity: C.minRarity, rareMult: C.rareMult * DF.rareMult, uniqueMult: C.uniqueMult * DF.uniqueMult, setMult: C.setMult })];
+    const items = [generateItem(this.rng, this.data, ilvl, this.dropOpts({ minRarity: C.minRarity, rareMult: C.rareMult * DF.rareMult, uniqueMult: C.uniqueMult * DF.uniqueMult, setMult: C.setMult }))];
     if (this.rng.next() < C.specialChance) {
-      items.push(generateItem(this.rng, this.data, ilvl, { rarity: this.rng.next() < 0.5 ? 'unique' : 'set' }));
+      items.push(generateItem(this.rng, this.data, ilvl, this.dropOpts({ rarity: this.rng.next() < 0.5 ? 'unique' : 'set' })));
     }
-    for (let i = 0; i < C.extraItems; i++) items.push(generateItem(this.rng, this.data, ilvl, { minRarity: 'magic', rareMult: C.rareMult * DF.rareMult, uniqueMult: DF.uniqueMult, setMult: C.setMult }));
+    for (let i = 0; i < C.extraItems; i++) items.push(generateItem(this.rng, this.data, ilvl, this.dropOpts({ minRarity: 'magic', rareMult: C.rareMult * DF.rareMult, uniqueMult: DF.uniqueMult, setMult: C.setMult })));
     const first = this.ch.mapClears?.[P.clearKey(this.diff.id, this.map.id)] ? false : true;
-    if (first) items.push(generateItem(this.rng, this.data, ilvl, { minRarity: 'rare', rareMult: C.rareMult * DF.rareMult, uniqueMult: C.uniqueMult * DF.uniqueMult, setMult: C.setMult }));
+    if (first) items.push(generateItem(this.rng, this.data, ilvl, this.dropOpts({ minRarity: 'rare', rareMult: C.rareMult * DF.rareMult, uniqueMult: C.uniqueMult * DF.uniqueMult, setMult: C.setMult })));
     if (this.rng.next() < C.runeChance) items.push(generateRune(this.rng, this.data, ilvl));
     // Đồ Thần thoại (SSR): Ác mộng 1%, Địa ngục 3% mỗi boss, nhân vật từ cấp 60.
     const S = this.data.items.drops.ssr;
     if (S && this.ch.level >= S.minLevel && this.rng.next() < (S.chance[this.diff.id] || 0)) {
-      const ssr = generateSSR(this.rng, this.data, ilvl, this.ch.classId);
+      const ssr = generateSSR(this.rng, this.data, ilvl, this.ch.classId, mainTree(this.ch, this.data));
       if (ssr) { items.push(ssr); this.showBanner(`Đồ Thần thoại: ${ssr.name}!`, 4); this.log.ssr = ssr.name; }
     }
     items.forEach((it, i) => {
@@ -1397,6 +1397,11 @@ export class Game {
     return this.ch.level + bonus;
   }
 
+  // Thêm lớp nhân vật vào tuỳ chọn sinh đồ: dòng +cấp và đồ bộ ưu tiên đúng lớp.
+  dropOpts(o) {
+    return { ...o, classId: this.ch.classId };
+  }
+
   dropLoot(e, kind) {
     const D = this.data.items.drops;
     const cfg = D[kind];
@@ -1404,14 +1409,14 @@ export class Game {
     const DF = this.diff;
     if (this.rng.next() < (cfg.runeChance || 0)) this.dropItem(e.x - 10, e.y + 6, generateRune(this.rng, this.data, this.itemLevel(cfg.ilvlBonus || 0)));
     if (kind === 'normal') {
-      if (this.rng.next() < cfg.itemChance) this.dropItem(e.x, e.y, generateItem(this.rng, this.data, this.itemLevel(), { rareMult: DF.rareMult, uniqueMult: DF.uniqueMult }));
+      if (this.rng.next() < cfg.itemChance) this.dropItem(e.x, e.y, generateItem(this.rng, this.data, this.itemLevel(), this.dropOpts({ rareMult: DF.rareMult, uniqueMult: DF.uniqueMult })));
       if (this.rng.next() < cfg.goldChance) this.dropGold(e.x, e.y, this.itemLevel());
       return;
     }
     const ilvl = this.itemLevel(cfg.ilvlBonus);
     for (let i = 0; i < cfg.items; i++) {
       const minRarity = i === 0 && cfg.firstMinRarity ? cfg.firstMinRarity : cfg.minRarity;
-      const it = generateItem(this.rng, this.data, ilvl, { minRarity, rareMult: cfg.rareMult * DF.rareMult, uniqueMult: cfg.uniqueMult * DF.uniqueMult, setMult: cfg.setMult || 1 });
+      const it = generateItem(this.rng, this.data, ilvl, this.dropOpts({ minRarity, rareMult: cfg.rareMult * DF.rareMult, uniqueMult: cfg.uniqueMult * DF.uniqueMult, setMult: cfg.setMult || 1 }));
       const a = (i / cfg.items) * TAU;
       this.dropItem(e.x + Math.cos(a) * 18, e.y + Math.sin(a) * 18, it);
     }

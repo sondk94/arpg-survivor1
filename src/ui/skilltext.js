@@ -214,6 +214,10 @@ export function describeSkill(sk, lvl, ch, data, stats) {
       break;
   }
   if (mult !== 1) lines.push(['Hệ số sát thương', `×${num(mult)}`]);
+  // Thưởng vượt cấp tối đa (đã tính trong sát thương ở trên).
+  const over = lvl - (sk.maxLevel || lvl);
+  const per = data.config.skillLevels?.overMaxDmgPct || 0;
+  if (over > 0 && per && sk.type !== 'passive') lines.push(['Vượt cấp', `+${pct(over * per)} sát thương`]);
   return lines;
 }
 

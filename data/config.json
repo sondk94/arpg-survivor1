@@ -1,5 +1,5 @@
 {
-  "version": "1.17",
+  "version": "1.18",
   "testMode": true,
   "run": {
     "duration": 300,
@@ -183,5 +183,9 @@
     "aggro": 380,
     "retargetEvery": 0.5,
     "hitCooldown": 0.4
+  },
+  "skillLevels": {
+    "capAboveMax": 15,
+    "overMaxDmgPct": 0.03
   }
 }

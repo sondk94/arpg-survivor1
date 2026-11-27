@@ -109,6 +109,37 @@ Chỉ số cấp 1 so với pháp sư:
 | 10 | 438 / 378 (+16%) | 171 / 121 (+41%) | 5,8 / 7,7 giây |
 | 14 | 423 / 432 (−2%) | 239 / 177 (+36%) | 4,3 / 5,2 giây |
 
+## Cấp kỹ năng từ đồ cho cuối game, đồ bộ mạnh hơn (bản 1.18)
+
+**Dòng +cấp nhánh** (Lửa, Vũ Khí, Bầy Sói…; vũ khí, dây chuyền, tay phụ, mũ):
+
+| Cấp đồ | 6 | 14 | 30 | **50** | **75** |
+|---|---|---|---|---|---|
+| Giá trị | +1 | +2 | +3 | **+3–4** | **+4–5** |
+
+- **Ưu tiên đúng lớp:** khi rơi đồ, dòng +cấp nhánh của lớp khác chỉ còn 30% tỉ trọng (`ilvlScaling.otherClassSkillWeight`).
+- **Dòng mới "+cấp mọi kỹ năng"** (của Thiên Tài): chỉ trên dây chuyền và vũ khí, tỉ trọng ½. Cấp đồ 40 cho +1, cấp đồ 70 cho +2.
+- **Độc nhất / đồ bộ / SSR cấp cao:** mọi dòng +cấp kỹ năng trên món được +1 khi cấp đồ từ 60, +2 khi từ 90 (`ilvlScaling.skillBonus`).
+- **Trần cấp hiệu lực:** cấp tối đa +15, tức cấp 35 (`config.skillLevels.capAboveMax`).
+- **Vượt cấp:** mỗi cấp hiệu lực trên cấp tối đa (20) cho kỹ năng đó thêm **+3% sát thương** (`overMaxDmgPct`). Mô tả kỹ năng có dòng "Vượt cấp".
+
+**Đồ bộ** (cả đồ bộ thường và SSR; `items.setLines`):
+- Mỗi món có **ít nhất +3 cấp kỹ năng** hợp với nhân vật.
+  - Đồ bộ thường: +3 vào nhánh của bộ.
+  - SSR: +3 vào nhánh chính của nhân vật khi bộ đúng lớp; không thì vào một nhánh ngẫu nhiên của lớp đó.
+  - Cộng thêm +1 / +2 theo cấp đồ như trên.
+- Mỗi món có **5 dòng**, 35% có **6 dòng**. Các dòng thêm được tung như đồ hiếm, không trùng dòng sẵn có và không phải dòng +cấp kỹ năng.
+- Đồ bộ hợp lớp nhân vật rơi nhiều hơn (70%).
+- Đồ bộ đã lưu từ trước được nâng cấp khi tải game. Kết quả cố định theo mã món đồ.
+
+Mô phỏng 60 màn sau thay đổi:
+
+| Lớp | Số lượt | Ghi chú |
+|---|---|---|
+| Pháp sư Lửa | 60 | Không chết lần nào |
+| Chiến Binh Vũ Khí | 60 | Không chết lần nào |
+| Triệu hồi sư Bầy Sói | 70 | Hạt giống 1 và 2 đều vậy |
+
 ## Trùm nhỏ và boss ra chiêu nhiều hơn (bản 1.17)
 
 Số dưới đây là số gốc (Bình thường, màn 1-1); trong game nhân theo màn và độ khó.

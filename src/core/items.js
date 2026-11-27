@@ -1,4 +1,5 @@
 // Đồ đạc: sinh đồ ngẫu nhiên, cộng chỉ số, yêu cầu để mặc, kho đồ/trang bị/rương.
+import { RNG } from './rng.js';
 
 let uidSeq = 0;
 export function newUid(rng) {
@@ -45,15 +46,111 @@ export function scaleStats(stats, mult, data) {
 function applyPower(item, baseStats, baseReq, data) {
   const mult = powerFor(item.rarity, item.ilvl, baseReq, data);
   item.stats = scaleStats(baseStats, mult, data);
+  // Độc nhất / đồ bộ / SSR cấp cao: dòng +cấp kỹ năng sẵn có được cộng thêm (cấp đồ 60: +1, 90: +2).
+  const sb = skillBonusFor(item.rarity, item.ilvl, data);
+  if (sb) for (const k of Object.keys(item.stats)) if (isSkillStat(k)) item.stats[k] += sb;
   item.power = Math.round(mult * 1000) / 1000;
   // Đồ Thần thoại (SSR): yêu cầu cấp cố định (cấp 60), không nâng theo cấp đồ.
   if (mult > 1 && item.rarity !== 'ssr') item.req.level = Math.max(baseReq, item.ilvl - (data.items.ilvlScaling?.reqOffset ?? 10));
   return item;
 }
 
+// ---------- Dòng +cấp kỹ năng ----------
+export const isSkillStat = (k) => k === 'allSkills' || /^[a-z]+Skills$/.test(k);
+
+export function skillBonusFor(rarity, ilvl, data) {
+  if (rarity !== 'unique' && rarity !== 'set' && rarity !== 'ssr') return 0;
+  let b = 0;
+  for (const [lv, v] of data.items.ilvlScaling?.skillBonus || []) if (ilvl >= lv) b = v;
+  return b;
+}
+
+// Nhánh kỹ năng → lớp nhân vật.
+function treeOwner(data, tree) {
+  for (const c of data.classList || []) if ((c.trees || []).includes(tree)) return c.id;
+  return null;
+}
+
+// Tỉ trọng một dòng: dòng +cấp nhánh của lớp khác chỉ còn otherClassSkillWeight (30%).
+function affixWeight(af, data, classId) {
+  let w = af.weight ?? 1;
+  const m = /^([a-z]+)Skills$/.exec(af.stat);
+  if (classId && m && af.stat !== 'allSkills') {
+    const owner = treeOwner(data, m[1]);
+    if (owner && owner !== classId) w *= data.items.ilvlScaling?.otherClassSkillWeight ?? 1;
+  }
+  return w;
+}
+
+function takeWeighted(rng, pool, data, classId) {
+  const ws = pool.map((af) => affixWeight(af, data, classId));
+  let r = rng.next() * ws.reduce((a, b) => a + b, 0);
+  let i = 0;
+  while (i < pool.length - 1 && r >= ws[i]) { r -= ws[i]; i++; }
+  return pool.splice(i, 1)[0];
+}
+
+// Chọn bậc theo cấp đồ (bậc cao nhất đã mở có tỉ trọng cao hơn, mặc định 3 / 2 / 1) rồi tung giá trị.
+function rollAffix(rng, data, af, ilvl) {
+  const tiers = af.tiers.filter((t) => t[0] <= ilvl).sort((x, y) => y[0] - x[0]);
+  const tw = data.items.ilvlScaling?.tierWeights || [1];
+  const ws = tiers.map((_, i) => tw[Math.min(i, tw.length - 1)]);
+  let roll = rng.next() * ws.reduce((a, b) => a + b, 0);
+  let ti = 0;
+  while (ti < tiers.length - 1 && roll >= ws[ti]) { roll -= ws[ti]; ti++; }
+  const t = tiers[ti];
+  return { v: rng.int(t[2], t[3]), req: t[1] };
+}
+
+function affixPool(data, base, ilvl) {
+  return data.items.affixes.filter((af) => (af.slots.includes('*') || af.slots.includes(base.type)) && (!af.weaponKinds || af.weaponKinds.includes(base.weaponKind)) && af.tiers.some((t) => t[0] <= ilvl));
+}
+
+// Đồ bộ (cả SSR) mạnh hơn: +3 cấp nhánh hợp với nhân vật, và đủ 5 dòng (35% có 6 dòng).
+// Nhánh: đồ bộ thường theo nhánh của bộ; SSR theo nhánh chính của nhân vật (đúng lớp), không thì ngẫu nhiên trong lớp của bộ.
+export function enhanceSetItem(it, rng, data, opts = {}) {
+  const I = data.items;
+  const C = I.setLines;
+  const set = I.setsById?.[it.set];
+  if (!C || !set || it.setV2) return it;
+  let tree = set.tree;
+  if (!tree && set.class) {
+    const trees = data.classes?.[set.class]?.trees || [];
+    tree = opts.classId === set.class && trees.includes(opts.tree) ? opts.tree : rng.pick(trees);
+  }
+  if (tree) {
+    const k = `${tree}Skills`;
+    it.stats[k] = (it.stats[k] || 0) + C.skillLevels + skillBonusFor(it.rarity, it.ilvl, data);
+    it.skillTree = tree;
+  }
+  const target = rng.next() < (C.maxChance || 0) ? C.maxLines : C.minLines;
+  const base = I.basesById[it.base];
+  const pool = affixPool(data, base, it.ilvl).filter((af) => !isSkillStat(af.stat));
+  const mult = powerFor('rare', it.ilvl, base.req, data);
+  while (Object.keys(it.stats).length < target && pool.length) {
+    const af = pool.splice(Math.floor(rng.next() * pool.length), 1)[0];
+    if (af.stat in it.stats) continue;
+    const { v } = rollAffix(rng, data, af, it.ilvl);
+    it.stats[af.stat] = Math.max(1, scaleStats({ [af.stat]: v }, mult, data)[af.stat]);
+  }
+  it.setV2 = 1;
+  return it;
+}
+
+// Hạt giống ổn định từ uid để nâng cấp đồ bộ cũ luôn ra cùng kết quả.
+function uidSeed(uid) {
+  let h = 2166136261;
+  for (const ch of String(uid || 'x')) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return h >>> 0;
+}
+
 // Đồ độc nhất / đồ bộ cũ (lưu trước khi có sức mạnh theo cấp đồ): tính lại từ chỉ số gốc theo cấp đồ đã lưu.
 export function upgradeLegacyItem(it, data) {
-  if (!it || it.power !== undefined) return;
+  if (!it) return;
+  if (it.power !== undefined) {
+    if ((it.rarity === 'set' || it.rarity === 'ssr') && !it.setV2) enhanceSetItem(it, new RNG(uidSeed(it.uid)), data);
+    return;
+  }
   const I = data.items;
   let def = null;
   if (it.rarity === 'unique') def = I.uniquesById?.[it.unique];
@@ -61,10 +158,11 @@ export function upgradeLegacyItem(it, data) {
   if (!def) return;
   it.req = { ...it.req, level: def.req };
   applyPower(it, def.stats, def.req, data);
+  if (it.rarity === 'set' || it.rarity === 'ssr') enhanceSetItem(it, new RNG(uidSeed(it.uid)), data);
 }
 
 // Đồ Thần thoại (SSR): một món của bộ SSR; ownClass (70%) là bộ của lớp đang chơi.
-export function generateSSR(rng, data, ilvl, classId) {
+export function generateSSR(rng, data, ilvl, classId, tree = null) {
   const I = data.items;
   const C = I.drops.ssr;
   const sets = (I.sets || []).filter((s) => s.rarity === 'ssr');
@@ -74,12 +172,12 @@ export function generateSSR(rng, data, ilvl, classId) {
   const set = own.length && (!others.length || rng.next() < C.ownClass) ? rng.pick(own) : rng.pick(others.length ? others : sets);
   const pc = rng.pick(set.pieces);
   const base = I.basesById[pc.base];
-  return applyPower({
+  return enhanceSetItem(applyPower({
     uid: newUid(rng), base: base.id, type: base.type, rarity: 'ssr', set: set.id, piece: pc.id,
     name: pc.name, baseName: base.name, ilvl: Math.max(1, Math.round(ilvl)),
     req: { level: C.req ?? pc.req, str: 0 },
     stats: {}, sockets: C.sockets ?? 1, runes: [],
-  }, pc.stats, C.req ?? pc.req, data);
+  }, pc.stats, C.req ?? pc.req, data), rng, data, { classId, tree });
 }
 
 export function generateItem(rng, data, ilvl, opts = {}) {
@@ -90,14 +188,18 @@ export function generateItem(rng, data, ilvl, opts = {}) {
     const pool = [];
     for (const set of I.sets || []) if (set.rarity !== 'ssr') for (const pc of set.pieces) if (pc.req <= ilvl + 3 && (!opts.type || I.basesById[pc.base].type === opts.type)) pool.push([set, pc]);
     if (pool.length) {
-      const [set, pc] = rng.pick(pool);
+      // Đồ bộ hợp lớp nhân vật rơi nhiều hơn (70%, giống SSR).
+      const own = opts.classId ? pool.filter(([st]) => treeOwner(data, st.tree) === opts.classId) : [];
+      const others = pool.filter((x) => !own.includes(x));
+      const src = own.length && (!others.length || rng.next() < (I.drops.ssr?.ownClass ?? 0.7)) ? own : others.length ? others : pool;
+      const [set, pc] = rng.pick(src);
       const base = I.basesById[pc.base];
-      return applyPower({
+      return enhanceSetItem(applyPower({
         uid: newUid(rng), base: base.id, type: base.type, rarity, set: set.id, piece: pc.id,
         name: pc.name, baseName: base.name, ilvl,
         req: { level: pc.req, str: base.reqStr || 0 },
         stats: {}, sockets: 0, runes: [],
-      }, pc.stats, pc.req, data);
+      }, pc.stats, pc.req, data), rng, data, opts);
     }
     rarity = 'rare';
   }
@@ -124,21 +226,13 @@ export function generateItem(rng, data, ilvl, opts = {}) {
   const [amin, amax] = I.rarities[rarity].affixes;
   const count = amax ? rng.int(amin, amax) : 0;
   // Dòng có weaponKinds (vd. chỉ vũ khí cận chiến) chỉ ra trên đúng loại vũ khí.
-  const pool = I.affixes.filter((af) => (af.slots.includes('*') || af.slots.includes(base.type)) && (!af.weaponKinds || af.weaponKinds.includes(base.weaponKind)) && af.tiers.some((t) => t[0] <= ilvl));
+  const pool = affixPool(data, base, ilvl);
   const names = [];
   for (let i = 0; i < count && pool.length; i++) {
-    const idx = Math.floor(rng.next() * pool.length);
-    const af = pool.splice(idx, 1)[0];
-    // Bậc cao nhất đã mở có tỉ trọng cao hơn (mặc định 3 / 2 / 1).
-    const tiers = af.tiers.filter((t) => t[0] <= ilvl).sort((x, y) => y[0] - x[0]);
-    const tw = data.items.ilvlScaling?.tierWeights || [1];
-    const ws = tiers.map((_, i) => tw[Math.min(i, tw.length - 1)]);
-    let roll = rng.next() * ws.reduce((a, b) => a + b, 0);
-    let ti = 0;
-    while (ti < tiers.length - 1 && roll >= ws[ti]) { roll -= ws[ti]; ti++; }
-    const t = tiers[ti];
-    stats[af.stat] = (stats[af.stat] || 0) + rng.int(t[2], t[3]);
-    reqLevel = Math.max(reqLevel, t[1]);
+    const af = takeWeighted(rng, pool, data, opts.classId);
+    const { v, req } = rollAffix(rng, data, af, ilvl);
+    stats[af.stat] = (stats[af.stat] || 0) + v;
+    reqLevel = Math.max(reqLevel, req);
     names.push(af.name);
   }
   let name = base.name;
@@ -310,7 +404,7 @@ export function craft(ch, stash, ref, action, data, rng) {
   if ((cost.gold || 0) > ch.gold) return `Cần ${cost.gold} vàng`;
   if (action === 'reroll' || action === 'upgrade') {
     const rarity = action === 'upgrade' ? cost.to : it.rarity;
-    const fresh = generateItem(rng, data, it.ilvl, { rarity, baseId: it.base });
+    const fresh = generateItem(rng, data, it.ilvl, { rarity, baseId: it.base, classId: ch.classId });
     Object.assign(it, { rarity, name: fresh.name, stats: fresh.stats, power: fresh.power, req: { ...fresh.req, level: Math.max(fresh.req.level, data.items.basesById[it.base].req) } });
   } else if (action === 'socket') {
     it.sockets = (it.sockets || 0) + 1;

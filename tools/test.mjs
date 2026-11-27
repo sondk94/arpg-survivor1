@@ -1312,6 +1312,88 @@ t('Máu thú: cấp 1 và 10 gấp đôi bản cũ, đủ cấp 20 gấp 4', () 
   }
 });
 
+t('+cấp kỹ năng: bậc mới cấp đồ 50 / 75, dòng +cấp mọi kỹ năng chỉ trên dây chuyền / vũ khí', () => {
+  const r = new RNG(11);
+  let max75 = 0, all = 0, allBad = 0, max40 = 0;
+  for (let i = 0; i < 3000; i++) {
+    const it = I.generateItem(r, data, 80, { rarity: 'rare', type: ['weapon', 'amulet', 'head', 'offhand', 'ring'][i % 5], classId: 'summoner' });
+    for (const [k, v] of Object.entries(it.stats)) if (/^(fire|cold|lightning|weapon|shout|blood|pack|beast|swarm)Skills$/.test(k)) max75 = Math.max(max75, v);
+    if (it.stats.allSkills) { all++; if (!['weapon', 'amulet'].includes(it.type)) allBad++; max40 = Math.max(max40, it.stats.allSkills); }
+  }
+  assert.equal(max75, 5);
+  assert.ok(all > 0 && allBad === 0 && max40 === 2);
+  const lo = new RNG(2);
+  for (let i = 0; i < 500; i++) {
+    const it = I.generateItem(lo, data, 39, { rarity: 'rare', type: 'amulet' });
+    assert.ok(!it.stats.allSkills);
+    for (const [k, v] of Object.entries(it.stats)) if (/Skills$/.test(k)) assert.ok(v <= 3);
+  }
+});
+
+t('+cấp kỹ năng: dòng +cấp nhánh đúng lớp ra nhiều hơn lớp khác', () => {
+  const r = new RNG(5);
+  let own = 0, other = 0;
+  for (let i = 0; i < 4000; i++) {
+    const it = I.generateItem(r, data, 40, { rarity: 'rare', type: 'amulet', classId: 'summoner' });
+    for (const k of Object.keys(it.stats)) {
+      if (/^(pack|beast|swarm)Skills$/.test(k)) own++;
+      else if (/^(fire|cold|lightning|weapon|shout|blood)Skills$/.test(k)) other++;
+    }
+  }
+  // 3 nhánh đúng lớp tỉ trọng 1, 6 nhánh lớp khác tỉ trọng 0,3 → đúng lớp nhiều hơn khoảng 1,7 lần.
+  assert.ok(own > other * 1.3, `${own} / ${other}`);
+});
+
+t('Đồ bộ: 5–6 dòng, ít nhất +3 cấp nhánh của bộ; đúng lớp rơi nhiều hơn', () => {
+  const r = new RNG(8);
+  let six = 0, own = 0;
+  for (let i = 0; i < 400; i++) {
+    const it = I.generateItem(r, data, 30, { rarity: 'set', classId: 'warrior' });
+    const set = data.items.setsById[it.set];
+    const n = Object.keys(it.stats).length;
+    assert.ok(n >= 5 && n <= 6, `${it.name}: ${n} dòng`);
+    assert.ok(it.stats[`${set.tree}Skills`] >= 3);
+    if (n === 6) six++;
+    if (['weapon', 'shout', 'blood'].includes(set.tree)) own++;
+  }
+  assert.ok(six > 80 && six < 200, `6 dòng: ${six}`);
+  assert.ok(own > 230, `đúng lớp: ${own}`);
+  // Cấp đồ 60: +1, 90: +2 vào dòng +cấp.
+  const hi = I.generateItem(new RNG(3), data, 95, { rarity: 'set' });
+  assert.equal(hi.stats[`${data.items.setsById[hi.set].tree}Skills`], 5);
+});
+
+t('Đồ bộ SSR: +3 (+1 cấp đồ 60) nhánh chính của nhân vật, 5–6 dòng; đồ bộ cũ được nâng cấp ổn định', () => {
+  const r = new RNG(4);
+  for (let i = 0; i < 60; i++) {
+    const it = I.generateSSR(r, data, 70, 'summoner', 'beast');
+    const set = data.items.setsById[it.set];
+    const n = Object.keys(it.stats).length;
+    assert.ok(n >= 5 && n <= 6);
+    const trees = data.classes[set.class].trees;
+    const k = Object.keys(it.stats).find((x) => /^[a-z]+Skills$/.test(x) && x !== 'allSkills');
+    assert.ok(trees.includes(it.skillTree) && it.stats[k] >= 4);
+    if (set.class === 'summoner') assert.equal(it.skillTree, 'beast');
+  }
+  const mk = () => ({ uid: 'abc123', base: 'cap', type: 'head', rarity: 'set', set: 'set_pack', piece: 'sp_head', name: 'x', ilvl: 20, req: { level: 12 }, stats: { armor: 10, summonDmgPct: 12, ene: 8 }, power: 1, sockets: 0, runes: [] });
+  const a = mk(), b = mk();
+  I.upgradeLegacyItem(a, data); I.upgradeLegacyItem(b, data);
+  assert.deepEqual(a.stats, b.stats);
+  assert.ok(a.setV2 && a.stats.packSkills === 3 && Object.keys(a.stats).length >= 5);
+  const before = JSON.stringify(a.stats);
+  I.upgradeLegacyItem(a, data);
+  assert.equal(JSON.stringify(a.stats), before); // không nâng lần 2
+});
+
+t('Cấp kỹ năng: trần cấp tối đa +15; mỗi cấp trên 20 thêm 3% sát thương', () => {
+  const sk = data.skills.summon_wolf;
+  assert.equal(P.skillCap(sk, data), 35);
+  const ch = { skills: { summon_wolf: 20 } };
+  assert.equal(P.skillLevel(ch, 'summon_wolf', data, { skillBonus: { all: 30, pack: 0 } }), 35);
+  assert.ok(Math.abs(P.overLevelPct(ch, sk, data, { skillBonus: { all: 8 } }) - 0.24) < 1e-9);
+  assert.equal(P.overLevelPct({ skills: { summon_wolf: 15 } }, sk, data, { skillBonus: { all: 4 } }), 0);
+});
+
 // Nạp các file giao diện để bắt lỗi cú pháp (vd. khai báo trùng tên biến) mà các kiểm tra lõi không chạm tới.
 for (const f of ['render', 'panel', 'sprites', 'skilltext', 'tooltip', 'debug', 'input', 'telemetry', 'look']) {
   try { await import(`../src/ui/${f}.js`); n++; console.log(`ok - nạp được src/ui/${f}.js`); }
